@@ -1,0 +1,540 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wfs:FeatureCollection xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wfs/2.0 http://schemas.opengis.net/wfs/2.0/wfs.xsd http://www.opengis.net/gml/3.2 http://schemas.opengis.net/gml/3.2.1/gml.xsd http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210 https://wfs.geonorge.no/skwms1/wfs.turogfriluftsruter?SERVICE=WFS&amp;VERSION=2.0.0&amp;REQUEST=DescribeFeatureType&amp;OUTPUTFORMAT=text%2Fxml%3B+subtype%3Dgml%2F3.2.1&amp;TYPENAME=app:Fotrute&amp;NAMESPACES=xmlns(app,http%3A%2F%2Fskjema.geonorge.no%2FSOSI%2Fproduktspesifikasjon%2FTurOgFriluftsruter%2F20171210)" xmlns:wfs="http://www.opengis.net/wfs/2.0" timeStamp="2026-11-22T11:58:02Z" xmlns:gml="http://www.opengis.net/gml/3.2" numberMatched="unknown" numberReturned="0">
+  <!--NOTE: numberReturned attribute should be 'unknown' as well, but this would not validate against the current version of the WFS 2.0 schema (change upcoming). See change request (CR 144): https://portal.opengeospatial.org/files?artifact_id=43925.-->
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98371">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>53d7473e-2909-4129-8a1f-0f4321e6c593</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>1979-01-01</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>55</app:målemetode>
+          <app:nøyaktighet>1500</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:informasjon>Geometri hentet fra TraktorvegSti, 20170619</app:informasjon>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98371_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98371_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.642148 8.445790 61.641899 8.446732 61.641865 8.447110 61.641794 8.447505 61.641777 8.447602 61.641725 8.448023 61.641664 8.448510 61.641480 8.449513 61.641383 8.450000 61.641255 8.450645 61.641198 8.450934 61.641006 8.452220 61.640822 8.453412 61.640645 8.454174 61.640619 8.454284 61.640469 8.454853 61.640269 8.456555 61.640165 8.457405 61.639900 8.458580 61.639838 8.458902 61.639707 8.459584 61.639661 8.459922 61.639645 8.460038 61.639346 8.461534 61.639002 8.463011 61.638639 8.464357 61.638339 8.465627 61.638073 8.466575 61.637861 8.467352 61.637673 8.467945 61.637672 8.467946 61.637488 8.468396 61.637337 8.468852 61.637010 8.470197 61.636858 8.470938 61.636816 8.471144 61.636631 8.471996 61.636233 8.473682 61.635863 8.475330 61.635695 8.476146 61.635598 8.476617 61.635475 8.477204 61.635210 8.478416 61.634999 8.479514 61.634862 8.480302 61.634753 8.480933 61.634603 8.481577 61.634471 8.482240 61.634205 8.483377 61.634038 8.484096 61.633728 8.485252 61.633621 8.485556 61.633408 8.486168 61.633364 8.486296 61.632901 8.487379 61.632768 8.487796 61.632465 8.488480 61.631984 8.489375 61.631583 8.490212 61.631164 8.491105 61.630772 8.491828 61.630504 8.492248 61.630175 8.492970 61.629886 8.493527 61.629800 8.493693 61.629327 8.494399 61.629006 8.494838 61.628515 8.495638 61.627917 8.496685 61.627560 8.497314 61.627105 8.498038 61.626580 8.499033 61.626312 8.499541 61.626112 8.500000 61.625965 8.500338 61.625661 8.500834 61.625492 8.501157 61.625285 8.501500 61.625251 8.501557 61.625037 8.502051 61.624600 8.502888 61.624145 8.503650 61.623959 8.503917 61.623306 8.504851 61.622609 8.505862 61.622075 8.507115 61.621800 8.508044 61.621717 8.508252 61.621506 8.508784 61.621062 8.509885 61.620554 8.511043 61.620233 8.511708 61.619850 8.512619 61.619574 8.513246 61.618959 8.514293 61.618307 8.515284 61.618039 8.515609 61.617727 8.516254 61.617451 8.516975 61.617331 8.517318 61.616847 8.518701 61.616553 8.519327 61.616383 8.519632 61.616098 8.520296 61.615599 8.521247 61.615313 8.521817 61.615056 8.522518 61.614914 8.522973 61.614639 8.523995 61.614363 8.524867 61.614160 8.525587 61.613724 8.526875 61.613683 8.526999 61.613333 8.528050 61.612853 8.529340 61.612764 8.529624 61.612711 8.529964 61.612668 8.530398 61.612697 8.530982 61.612781 8.531905 61.612974 8.533410 61.613049 8.534107 61.613059 8.534465 61.613124 8.535161 61.613143 8.535465 61.613171 8.535912 61.613181 8.536065 61.613191 8.536663 61.613192 8.536706 61.613125 8.537952 61.613110 8.539083 61.613096 8.540196 61.613117 8.541006 61.613190 8.541458 61.613237 8.542098 61.613231 8.542909 61.613163 8.544022 61.613034 8.545872 61.612993 8.547041 61.612979 8.548248 61.613017 8.548606 61.613171 8.549207 61.613316 8.549657 61.613476 8.550000 61.613551 8.550163 61.613687 8.550613 61.613779 8.551046 61.613789 8.551479 61.613737 8.552178 61.613463 8.553445 61.613224 8.554344 61.613126 8.554713 61.612985 8.555394 61.612889 8.556206 61.612872 8.556715 61.612865 8.556799 61.612846 8.557017 61.612848 8.557583 61.612805 8.558130 61.612751 8.558325 61.612637 8.558736 61.612306 8.559665 61.612219 8.559911 61.611916 8.560669 61.611707 8.560993 61.611585 8.561183 61.611094 8.561831 61.610682 8.562195 61.610207 8.562635 61.610127 8.562674 61.610086 8.562708 61.609500 8.563192 61.608936 8.563727</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>ST</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot23</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98375">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>7aaecc37-a69b-48a1-a70b-46f69de46949</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>1984-01-01</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>55</app:målemetode>
+          <app:nøyaktighet>1500</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:informasjon>Geometri hentet fra TraktorvegSti, 20170619</app:informasjon>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98375_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98375_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.650690 8.550000 61.650669 8.549208 61.650678 8.549076 61.650692 8.547981 61.650753 8.547376 61.650780 8.546835 61.650795 8.546545 61.650890 8.545543 61.651021 8.544239 61.651020 8.544188 61.651000 8.542666 61.650997 8.542446 61.650913 8.541220 61.650874 8.540654 61.650852 8.540195 61.650816 8.539428 61.650784 8.538988 61.650731 8.538278 61.650719 8.537935 61.650692 8.537184 61.650672 8.536798 61.650597 8.535377 61.650596 8.535354 61.650539 8.534487 61.650515 8.534125 61.650473 8.533487 61.650440 8.533000 61.650425 8.532776 61.650350 8.531658 61.650332 8.531469 61.650257 8.530678 61.650201 8.529906 61.650181 8.529622 61.650106 8.528528 61.650088 8.528229 61.650010 8.526925 61.650002 8.526858 61.650000 8.526838 61.649997 8.526812 61.649918 8.526134 61.649813 8.525437 61.649706 8.524721 61.649657 8.524266 61.649577 8.523515 61.649520 8.522976 61.649474 8.522535 61.649388 8.521877 61.649271 8.520990 61.649253 8.520868 61.649134 8.520067 61.649099 8.519890 61.648949 8.519127 61.648905 8.518901 61.648723 8.518186 61.648523 8.517397 61.648521 8.517388 61.648414 8.516664 61.648357 8.516286 61.648350 8.515915 61.648346 8.515682 61.648363 8.515468 61.648406 8.514945 61.648406 8.514925 61.648405 8.514403 61.648404 8.514378 61.648364 8.513754 61.648338 8.513341 61.648319 8.513212 61.648222 8.512544 61.648191 8.512324 61.648113 8.511920 61.648008 8.511365 61.648000 8.511308 61.647953 8.510969 61.647855 8.510414 61.647778 8.509971 61.647585 8.509464 61.647506 8.509258 61.647288 8.508428 61.647151 8.507905 61.647051 8.507605 61.647002 8.507244 61.646922 8.506663 61.646921 8.506181 61.646919 8.505587 61.646881 8.505248 61.646815 8.504324 61.646811 8.504205 61.646805 8.504004 61.646621 8.502799 61.646402 8.501858 61.646333 8.501375 61.646273 8.500955 61.646263 8.500483 61.646301 8.500000 61.646304 8.499959 61.646383 8.498971 61.646440 8.497592 61.646402 8.496932 61.646301 8.496179 61.646242 8.496053 61.646093 8.495729 61.645912 8.495525 61.645903 8.495468 61.645690 8.494994 61.645659 8.494925 61.645279 8.493883 61.645187 8.493630 61.645042 8.493293 61.644914 8.492540 61.644895 8.492333 61.644875 8.491635 61.644880 8.490729 61.644870 8.489797 61.644867 8.489540 61.644830 8.489186 61.644792 8.488824 61.644584 8.488280 61.644385 8.487868 61.644334 8.487790 61.644069 8.487383 61.643807 8.486934 61.643651 8.486566 61.643499 8.486203 61.643289 8.485414 61.643206 8.484812 61.643195 8.484701 61.643131 8.484039 61.643040 8.483644 61.642958 8.483381 61.642885 8.483211 61.642732 8.482857 61.642514 8.482257 61.642432 8.481937 61.642295 8.481221 61.642249 8.480978 61.641866 8.479493 61.641638 8.478535 61.641238 8.477239 61.641174 8.476977 61.640946 8.476055 61.640773 8.475209 61.640606 8.473778 61.640548 8.472892 61.640526 8.471647 61.640507 8.471496 61.640512 8.470439 61.640538 8.470099 61.640545 8.469741 61.640571 8.469551 61.640572 8.469535 61.640588 8.469136 61.640762 8.467945 61.640788 8.467547 61.640779 8.466673 61.640774 8.466189 61.640789 8.465471 61.640831 8.464678 61.640972 8.464091 61.640944 8.463940 61.640934 8.463620 61.640967 8.462845 61.641124 8.461729 61.641471 8.460742 61.641568 8.460325 61.641620 8.459946 61.641663 8.459361 61.641778 8.458887 61.641865 8.458282 61.642024 8.457543 61.642112 8.457258 61.642200 8.456823 61.642279 8.456312 61.642267 8.455670 61.642284 8.455236 61.642264 8.454708 61.642258 8.453425 61.642240 8.452795 61.642238 8.452727 61.642257 8.450915 61.642325 8.450000 61.642326 8.449989 61.642278 8.449477 61.642232 8.448971 61.642326 8.447988 61.642253 8.447323 61.642252 8.447310 61.642269 8.447235 61.642267 8.446536 61.642257 8.446348 61.642239 8.446273 61.642238 8.446084 61.642225 8.446041 61.642148 8.445790</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>ST</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot24</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98410">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>b1799727-e2cc-4dba-a0f8-f1b098545460</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>2024-09-18</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>92</app:målemetode>
+          <app:nøyaktighet>200</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98410_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98410_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.625500 8.401556 61.625534 8.401571</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>ST</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Spiterstulen-Galdhøpiggen</app:rutenavn>
+          <app:rutenummer>jot41</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot116</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98405">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>11e72ead-87d6-4f07-9df7-856f285e621b</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>1993-07-30</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>95</app:målemetode>
+          <app:nøyaktighet>200</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:informasjon>Geometri hentet fra Vbase, 20170619</app:informasjon>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98405_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98405_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.632858 8.412263 61.632789 8.412219 61.632755 8.412180 61.632720 8.412140 61.632689 8.412100 61.632654 8.412060 61.632620 8.412018 61.632586 8.411978 61.632550 8.411936 61.632518 8.411898 61.632483 8.411860 61.632451 8.411825 61.632415 8.411782 61.632379 8.411740 61.632343 8.411698 61.632304 8.411655 61.632267 8.411614 61.632235 8.411581 61.632203 8.411545 61.632171 8.411508 61.632138 8.411472 61.632104 8.411431 61.632072 8.411391 61.632039 8.411353 61.632006 8.411312 61.631974 8.411270 61.631940 8.411232 61.631908 8.411191 61.631875 8.411149 61.631843 8.411108 61.631805 8.411062 61.631773 8.411023 61.631738 8.410983 61.626599 8.405155</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>BV</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot23</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot24</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98406">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>92f5f8b6-11bc-44ef-9ed9-1edb0af2e1d3</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>1993-07-30</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>95</app:målemetode>
+          <app:nøyaktighet>200</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:informasjon>Geometri hentet fra Vbase, 20170619</app:informasjon>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98406_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98406_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.626599 8.405155 61.626591 8.405144 61.626558 8.405104 61.626524 8.405064 61.626490 8.405024 61.626455 8.404982 61.626421 8.404940 61.626387 8.404898 61.626352 8.404858 61.626319 8.404814 61.626285 8.404771 61.626252 8.404726 61.626220 8.404680 61.626186 8.404634 61.626151 8.404591 61.626117 8.404551 61.626086 8.404512 61.626051 8.404465 61.626017 8.404417 61.625984 8.404369 61.625952 8.404321 61.625926 8.404269</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>ST</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot23</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot24</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot41</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot116</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98407">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>ff0f9a6f-2b3e-4f90-83dd-e17e3d05bf84</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>1984-01-01</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>55</app:målemetode>
+          <app:nøyaktighet>1500</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:informasjon>Geometri hentet fra TraktorvegSti, 20170619</app:informasjon>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98407_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98407_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.597621 8.397357 61.598264 8.396684 61.598363 8.396551 61.598444 8.396494 61.598586 8.396396 61.598989 8.396011 61.599039 8.395978 61.599553 8.395642 61.600000 8.395558 61.600225 8.395516 61.600620 8.395546 61.601223 8.395854 61.601227 8.395856 61.601646 8.396034 61.601935 8.396368 61.602072 8.396461 61.602118 8.396492 61.602124 8.396496 61.602286 8.396682 61.602637 8.396882 61.603132 8.397061 61.603428 8.397018 61.603778 8.397105 61.604237 8.397159 61.604470 8.397186 61.604703 8.397125 61.605098 8.397155 61.605753 8.396991 61.606076 8.396947 61.606246 8.396850 61.606658 8.396710 61.606891 8.396592 61.607089 8.396536 61.607178 8.396511 61.607645 8.396540 61.608112 8.396531 61.608408 8.396582 61.608939 8.396797 61.609443 8.397164 61.609947 8.397306 61.610262 8.397545 61.611070 8.397529 61.611139 8.397522 61.611303 8.397505 61.611663 8.397630 61.612273 8.397637 61.612525 8.397689 61.612777 8.397892 61.613415 8.398030 61.613757 8.398080 61.614000 8.398264 61.614585 8.398554 61.615223 8.398844 61.615552 8.399025 61.615817 8.399171 61.616267 8.399464 61.616866 8.400000 61.616907 8.400037 61.617186 8.400201 61.618015 8.400901 61.618430 8.401270 61.618880 8.401274 61.619236 8.401436 61.619915 8.401767 61.620087 8.401823 61.620269 8.402042 61.620349 8.402203 61.620561 8.402390 61.620740 8.402545 61.620826 8.402521 61.620974 8.402495 61.621138 8.402652 61.621733 8.403111 61.622228 8.403404 61.622583 8.403665 61.622592 8.403671 61.622777 8.403808 61.623002 8.403860 61.623068 8.403897 61.623569 8.404170 61.623609 8.404182 61.623802 8.404241 61.624324 8.404552 61.624605 8.404634 61.624918 8.404705 61.625191 8.404589 61.625669 8.404837 61.625931 8.404948 61.626211 8.405033 61.626461 8.405169 61.626599 8.405155</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>ST</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot16</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot40</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98408">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>98e814eb-43dc-4bd4-ad02-613e5db2ed27</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>1984-01-01</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>55</app:målemetode>
+          <app:nøyaktighet>1500</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:informasjon>Geometri hentet fra TraktorvegSti, 20170619</app:informasjon>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98408_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98408_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.642148 8.445790 61.642289 8.445385 61.642457 8.444740 61.642613 8.443397 61.642594 8.443001 61.642654 8.442359 61.642763 8.440564 61.642847 8.439241 61.642871 8.438486 61.642862 8.438343 61.642852 8.438203 61.642743 8.437771 61.642642 8.437263 61.642397 8.436670 61.642170 8.436121 61.641752 8.434902 61.641683 8.434661 61.641552 8.434207 61.641316 8.433627 61.641183 8.433340 61.641090 8.433140 61.640701 8.432354 61.640664 8.432279 61.640194 8.431458 61.640179 8.431435 61.639661 8.430637 61.639462 8.430301 61.639445 8.430279 61.639002 8.429687 61.638887 8.429545 61.638460 8.429018 61.638191 8.428528 61.638080 8.428327 61.637629 8.427694 61.637321 8.427323 61.637151 8.427117 61.636664 8.426711 61.636628 8.426712 61.636340 8.426472 61.636123 8.426117 61.635942 8.425744 61.635713 8.425372</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>ST</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot23</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot24</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98409">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>d2c3e49d-35e9-47e4-a2ba-cd59d44a2da1</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>2024-09-18</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>92</app:målemetode>
+          <app:nøyaktighet>200</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98409_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98409_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.625500 8.401556 61.625443 8.401635 61.625338 8.401764 61.625311 8.401783 61.625265 8.401791 61.625212 8.401802 61.625198 8.401821 61.625131 8.401881 61.625094 8.401904 61.625064 8.401916 61.624986 8.401923 61.624947 8.401921 61.624910 8.401912 61.624871 8.401915 61.624793 8.401921 61.624733 8.401918 61.624658 8.401892 61.624616 8.401854 61.624602 8.401943 61.624596 8.402011 61.624591 8.402100 61.624591 8.402155 61.624545 8.402989 61.624551 8.403060 61.624575 8.403138 61.624600 8.403207 61.624630 8.403238 61.624758 8.403297 61.624816 8.403325 61.625097 8.403460 61.625304 8.403607 61.625547 8.403775 61.625764 8.403995 61.625881 8.404175 61.625926 8.404269</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>ST</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Spiterstulen-Galdhøpiggen</app:rutenavn>
+          <app:rutenummer>jot41</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot116</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98411">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>3ec2c820-00f4-4099-b488-cde728cd40af</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>1984-01-01</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>55</app:målemetode>
+          <app:nøyaktighet>1500</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98411_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98411_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.632858 8.412263 61.632865 8.412399 61.632869 8.412490 61.632869 8.412593 61.632872 8.412675 61.632887 8.412823 61.632897 8.412912 61.632914 8.412991 61.632942 8.413084 61.632951 8.413175 61.632962 8.413224 61.633006 8.413355 61.633055 8.413538 61.633136 8.413862 61.633200 8.414081 61.633210 8.414133 61.633210 8.414221 61.633221 8.414288 61.633235 8.414338 61.633277 8.414448 61.633297 8.414535 61.633304 8.414607 61.633322 8.414684 61.633372 8.414793 61.633398 8.414894 61.633414 8.415081 61.633417 8.415234 61.633414 8.415335 61.633426 8.415458 61.633440 8.415595 61.633440 8.415680 61.633424 8.415824 61.633379 8.415993 61.633337 8.416192 61.633333 8.416301 61.633331 8.416510 61.633321 8.416690 61.633319 8.416870 61.633310 8.417130 61.633310 8.417330 61.633318 8.417506 61.633355 8.417808 61.633375 8.417887 61.633394 8.417966 61.633402 8.418012 61.633402 8.418061 61.633391 8.418132 61.633397 8.418170 61.633405 8.418197 61.633406 8.418256 61.633387 8.418373 61.633382 8.418475 61.633386 8.418534 61.633403 8.418598 61.633406 8.418642 61.633401 8.418723 61.633384 8.418849 61.633383 8.418909 61.633403 8.419054 61.633463 8.419282 61.633518 8.419481 61.633519 8.419527 61.633529 8.419657 61.633534 8.419702 61.633542 8.419747 61.633569 8.419803 61.633616 8.419886 61.633668 8.419983 61.633727 8.420100 61.633735 8.420124 61.633744 8.420208 61.633752 8.420286 61.633775 8.420364 61.633784 8.420398 61.633783 8.420429 61.633782 8.420495 61.633785 8.420521 61.633813 8.420612 61.633854 8.420681 61.633897 8.420743 61.633923 8.420775 61.633926 8.420791 61.633918 8.420854 61.633919 8.420905 61.633906 8.421032 61.633912 8.421164 61.633900 8.421212 61.633900 8.421243 61.633915 8.421309 61.633921 8.421362 61.633920 8.421437 61.633909 8.421497 61.633903 8.421571 61.633917 8.421627 61.634031 8.421894 61.634066 8.422004 61.634090 8.422151 61.634103 8.422282 61.634112 8.422404 61.634117 8.422470 61.634129 8.422507 61.634219 8.422703 61.634285 8.422849 61.634339 8.422948 61.634390 8.423032 61.634401 8.423088 61.634414 8.423193 61.634439 8.423352 61.634483 8.423557 61.634515 8.423657 61.634573 8.423769 61.634685 8.423914 61.634799 8.424018 61.634872 8.424094 61.634969 8.424164 61.635054 8.424253 61.635182 8.424387 61.635314 8.424608 61.635484 8.424943 61.635713 8.425372</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>ST</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot23</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot24</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+  <wfs:member>
+    <app:Fotrute xmlns:app="http://skjema.geonorge.no/SOSI/produktspesifikasjon/TurOgFriluftsruter/20171210" gml:id="fotrute.98412">
+      <app:identifikasjon>
+        <app:Identifikasjon>
+          <app:lokalId>76cb3529-e9bb-4865-b485-c0acfd2f13bb</app:lokalId>
+          <app:navnerom>http://data.geonorge.no/TurruterNGIS/Turruter/so</app:navnerom>
+          <app:versjonId>2026-09-02 13:00:35.127245000</app:versjonId>
+        </app:Identifikasjon>
+      </app:identifikasjon>
+      <app:datafangstdato>2024-09-18</app:datafangstdato>
+      <app:oppdateringsdato>2026-09-02T11:00:35</app:oppdateringsdato>
+      <app:kvalitet>
+        <app:Posisjonskvalitet>
+          <app:målemetode>92</app:målemetode>
+          <app:nøyaktighet>200</app:nøyaktighet>
+        </app:Posisjonskvalitet>
+      </app:kvalitet>
+      <app:senterlinje>
+        <!--Inlined geometry 'fotrute.98412_APP_SENTERLINJE'-->
+        <gml:LineString gml:id="fotrute.98412_APP_SENTERLINJE" srsName="urn:ogc:def:crs:EPSG::4258">
+          <gml:posList>61.634868 8.322036 61.634828 8.322349 61.634807 8.323165 61.634871 8.323977 61.634889 8.324195 61.634912 8.324352 61.635026 8.325133 61.635052 8.325310 61.635127 8.325717 61.635235 8.326298 61.635242 8.326519 61.635256 8.326984 61.635337 8.327928 61.635317 8.328357 61.635251 8.328804 61.635185 8.329253 61.635156 8.329451 61.635146 8.329518 61.635143 8.329539 61.635133 8.329602 61.635005 8.330080 61.634963 8.330237 61.634935 8.330342 61.634924 8.330385 61.634881 8.330546 61.634788 8.330890 61.634719 8.331149 61.634697 8.331229 61.634696 8.331236 61.634685 8.331276 61.634601 8.331604 61.634542 8.331834 61.634511 8.332086 61.634483 8.332314 61.634398 8.333007 61.634379 8.333164 61.634302 8.333652 61.634275 8.333824 61.634203 8.334277 61.634175 8.334451 61.634155 8.335353 61.633980 8.335997 61.633956 8.336086 61.633946 8.336120 61.633829 8.336554 61.633787 8.337055 61.633767 8.337284 61.633781 8.338225 61.633784 8.338416 61.633788 8.338657 61.633857 8.339092 61.633858 8.339103 61.633930 8.339558 61.634005 8.339741 61.634053 8.339859 61.634084 8.339928 61.634328 8.340460 61.634359 8.340631 61.634359 8.340889 61.634355 8.340944 61.634329 8.341360 61.634379 8.341747 61.634351 8.342009 61.634338 8.342133 61.634420 8.342434 61.634438 8.342785 61.634440 8.342820 61.634420 8.343292 61.634379 8.344191 61.634379 8.344193 61.634318 8.344837 61.634395 8.345403 61.634399 8.345438 61.634359 8.345910 61.634408 8.346351 61.634440 8.346639 61.634434 8.346812 61.634423 8.347145 61.634420 8.347240 61.634318 8.347670 61.634228 8.347889 61.634196 8.347970 61.634195 8.348235 61.634195 8.348313 61.634196 8.349214 61.634212 8.349642 61.634226 8.350000 61.634235 8.350238 61.634238 8.350313 61.634257 8.350802 61.634236 8.351188 61.634208 8.351238 61.634151 8.351338 61.634114 8.351403 61.634112 8.351424 61.634073 8.351832 61.633992 8.352004 61.633944 8.352217 61.633866 8.352565 61.633777 8.352795 61.633622 8.352982 61.633543 8.353077 61.633340 8.353439 61.633278 8.353549 61.633169 8.353676 61.632911 8.353978 61.632748 8.354364 61.632624 8.354564 61.632401 8.354922 61.632198 8.355543 61.632177 8.355609 61.632075 8.356210 61.631943 8.356595 61.631810 8.356982 61.631791 8.357048 61.631586 8.357754 61.631564 8.357954 61.631443 8.359085 61.631341 8.359643 61.631137 8.360474 61.631015 8.360973 61.630750 8.362089 61.630621 8.362653 61.630485 8.363248 61.630333 8.363578 61.630281 8.363806 61.630158 8.364449 61.630155 8.364466 61.630084 8.364891 61.630036 8.365179 61.629954 8.365307 61.629733 8.365675 61.629623 8.365857 61.629567 8.365951 61.629542 8.366095 61.629431 8.366739 61.629404 8.366895 61.629283 8.367824 61.629159 8.368784 61.629155 8.369108 61.629139 8.370410 61.629139 8.370414 61.629170 8.371883 61.629179 8.372346 61.629127 8.373059 61.629098 8.373461 61.629118 8.374148 61.629110 8.374315 61.629081 8.374927 61.628982 8.375687 61.628976 8.375736 61.628935 8.376895 61.628853 8.377195 61.628828 8.377230 61.628731 8.377367 61.628690 8.377667 61.628688 8.377752 61.628670 8.378657 61.628643 8.378716 61.628552 8.378841 61.628479 8.379004 61.628354 8.379342 61.628284 8.379556 61.628234 8.379790 61.628179 8.380094 61.628150 8.380307 61.628133 8.380409 61.628094 8.380526 61.628069 8.380554 61.628036 8.380562 61.627992 8.380544 61.627942 8.380565 61.627899 8.380638 61.627891 8.380768 61.627887 8.380883 61.627867 8.380928 61.627823 8.380968 61.627765 8.380993 61.627660 8.381057 61.627601 8.381102 61.627562 8.381132 61.627525 8.381192 61.627502 8.381311 61.627486 8.381508 61.627485 8.381797 61.627487 8.381951 61.627465 8.382045 61.627397 8.382169 61.627331 8.382278 61.627260 8.382358 61.627214 8.382437 61.627187 8.382551 61.627147 8.382762 61.627137 8.383002 61.627111 8.383227 61.627093 8.383362 61.627046 8.383653 61.626965 8.384001 61.626938 8.384168 61.626914 8.384410 61.626885 8.384725 61.626869 8.384861 61.626828 8.384995 61.626753 8.385138 61.626704 8.385285 61.626680 8.385468 61.626675 8.385708 61.626659 8.385816 61.626584 8.386175 61.626516 8.386494 61.626461 8.386750 61.626464 8.386834 61.626487 8.386944 61.626490 8.387107 61.626475 8.387264 61.626442 8.387458 61.626394 8.387672 61.626330 8.387871 61.626308 8.387995 61.626294 8.388188 61.626228 8.388424 61.626161 8.388686 61.626109 8.388958 61.626069 8.389236 61.626024 8.389506 61.625976 8.389974 61.625987 8.390204 61.626010 8.390393 61.626028 8.390639 61.626060 8.390775 61.626144 8.390890 61.626250 8.390995 61.626308 8.391205 61.626390 8.391529 61.626454 8.391835 61.626485 8.392099 61.626509 8.392370 61.626515 8.392560 61.626502 8.392714 61.626494 8.392756 61.626484 8.392788 61.626483 8.392811 61.626491 8.392861 61.626506 8.392931 61.626535 8.393084 61.626569 8.393182 61.626605 8.393255 61.626631 8.393279 61.626668 8.393288 61.626702 8.393300 61.626719 8.393326 61.626749 8.393376 61.626778 8.393461 61.626780 8.393503 61.626772 8.393548 61.626742 8.393634 61.626696 8.393757 61.626639 8.393893 61.626588 8.394035 61.626572 8.394146 61.626568 8.394256 61.626554 8.394352 61.626526 8.394469 61.626518 8.394561 61.626516 8.394843 61.626523 8.395014 61.626547 8.395340 61.626567 8.395522 61.626557 8.395678 61.626563 8.395853 61.626561 8.395895 61.626540 8.396012 61.626494 8.396192 61.626466 8.396375 61.626417 8.396616 61.626376 8.396838 61.626362 8.396973 61.626339 8.397030 61.626303 8.397138 61.626288 8.397167 61.626240 8.397216 61.626188 8.397253 61.626142 8.397309 61.626090 8.397359 61.626038 8.397376 61.625998 8.397403 61.625978 8.397433 61.625921 8.397506 61.625869 8.397579 61.625836 8.397667 61.625825 8.397722 61.625821 8.397794 61.625834 8.397921 61.625874 8.398101 61.625910 8.398221 61.625947 8.398333 61.626024 8.398454 61.626087 8.398488 61.626096 8.398517 61.626091 8.398588 61.626088 8.398618 61.626100 8.398647 61.626172 8.398676 61.626232 8.398702 61.626291 8.398740 61.626390 8.398827 61.626461 8.398943 61.626507 8.399036 61.626547 8.399165 61.626555 8.399243 61.626544 8.399340 61.626502 8.399549 61.626464 8.399657 61.626408 8.399804 61.626380 8.399932 61.626372 8.400060 61.626377 8.400210 61.626398 8.400305 61.626417 8.400357 61.626417 8.400405 61.626411 8.400480 61.626384 8.400629 61.626387 8.400734 61.626386 8.400767 61.626379 8.400809 61.626367 8.400830 61.626339 8.400834 61.626312 8.400839 61.626277 8.400848 61.626270 8.400869 61.626262 8.400898 61.626208 8.401031 61.626162 8.401102 61.626106 8.401178 61.626044 8.401237 61.626025 8.401278 61.625976 8.401329 61.625930 8.401360 61.625912 8.401389 61.625889 8.401425 61.625850 8.401439 61.625808 8.401461 61.625763 8.401494 61.625725 8.401536 61.625694 8.401545 61.625634 8.401566 61.625534 8.401571</gml:posList>
+        </gml:LineString>
+      </app:senterlinje>
+      <app:merking>JA</app:merking>
+      <app:ruteFølger>ST</app:ruteFølger>
+      <app:underlagstype></app:underlagstype>
+      <app:rutebredde></app:rutebredde>
+      <app:trafikkbelastning></app:trafikkbelastning>
+      <app:sesong></app:sesong>
+      <app:fotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Spiterstulen-Galdhøpiggen</app:rutenavn>
+          <app:rutenummer>jot41</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+        <app:FotruteInfo>
+          <app:rutenavn>Ukjent</app:rutenavn>
+          <app:rutenummer>jot116</app:rutenummer>
+          <app:vedlikeholdsansvarlig>DNT | DNT Oslo og omegn</app:vedlikeholdsansvarlig>
+          <app:spesialFotrutetype></app:spesialFotrutetype>
+          <app:gradering></app:gradering>
+          <app:rutetype></app:rutetype>
+          <app:rutebetydning></app:rutebetydning>
+          <app:tilpasning></app:tilpasning>
+        </app:FotruteInfo>
+      </app:fotruteInfo>
+    </app:Fotrute>
+  </wfs:member>
+</wfs:FeatureCollection>

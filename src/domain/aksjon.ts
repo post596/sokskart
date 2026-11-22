@@ -1,5 +1,5 @@
 import { kopierStatistikk, type LpbKategori, type Terreng } from '../data/lpb-stats';
-import { medStandard, type Modellantakelser, type Observasjonsklasse } from '../data/modellantakelser';
+import { medStandard, type Modellantakelser, type Observasjonsklasse, type SporRessurs } from '../data/modellantakelser';
 import type { ValgtKategori } from '../model/lpb';
 import { INGEN_RESSURSER, type Ressursantall } from '../model/ressurser';
 import type { OsmData } from '../model/typer';
@@ -50,6 +50,57 @@ export interface LoggPost {
   tekst: string;
 }
 
+export type Scenario = 'ukjent' | 'mobil' | 'i ro' | 'livløs';
+
+/** Savnetprofil (veileder kap. 10.3). The photo is stored separately, only on this device. */
+export interface Savnetprofil {
+  navn: string;
+  alder: string;
+  beskrivelse: string;
+  bekledning: string;
+  utstyr: string;
+  helse: string;
+  scenario: Scenario;
+  scenarioTekst: string;
+  notater: string;
+}
+
+/** Aksjon-wide text used in every 5-punktsordre (edited in the order dialog). */
+export interface Ordretekster {
+  egneStyrker: string;
+  varLysFore: string;
+  administrasjon: string;
+  ledelseSamband: string;
+}
+
+export interface Region {
+  id: string;
+  navn: string;
+  ring: LatLng[];
+}
+
+export interface Mattson {
+  deltakere: Array<{ id: string; navn: string }>;
+  /** deltaker id → region id (or 'resten') → points */
+  vurdering: Record<string, Record<string, number>>;
+}
+
+export type { SporRessurs } from '../data/modellantakelser';
+
+export interface Spor {
+  id: string;
+  navn: string;
+  ressurs: SporRessurs;
+  org: string;
+  enhet: string;
+  /** geographic area the track belongs to, e.g. T005 (from the name or chosen) */
+  avgrensning: string;
+  pts: LatLng[];
+  /** time of the last point, if the GPX had times */
+  tid: string | null;
+  importert: string;
+}
+
 export interface Aksjon {
   id: string;
   navn: string;
@@ -70,9 +121,33 @@ export interface Aksjon {
   seq: Sekvens;
   modell: Modellantakelser;
   logg: LoggPost[];
+  savnet: Savnetprofil;
+  ordre: Ordretekster;
+  regioner: Region[];
+  mattson: Mattson;
+  spor: Spor[];
   opprettet: string;
   endret: string;
 }
+
+export const TOM_PROFIL: Savnetprofil = {
+  navn: '',
+  alder: '',
+  beskrivelse: '',
+  bekledning: '',
+  utstyr: '',
+  helse: '',
+  scenario: 'ukjent',
+  scenarioTekst: '',
+  notater: '',
+};
+
+export const TOMME_ORDRETEKSTER: Ordretekster = {
+  egneStyrker: '',
+  varLysFore: '',
+  administrasjon: 'Oppmøte og retur til ILKO. Egen mat, drikke og nødbivuakk.',
+  ledelseSamband: 'ILKO leder søket. Samband på tildelt talegruppe (Nødnett). Meld start, avvik og ferdig søk til ILKO.',
+};
 
 export function nyId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -98,6 +173,11 @@ export function nyAksjon(): Aksjon {
     seq: {},
     modell: medStandard(undefined),
     logg: [{ tid: t, tekst: 'Aksjon opprettet' }],
+    savnet: { ...TOM_PROFIL },
+    ordre: { ...TOMME_ORDRETEKSTER },
+    regioner: [],
+    mattson: { deltakere: [], vurdering: {} },
+    spor: [],
     opprettet: t,
     endret: t,
   };
@@ -180,6 +260,14 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
     lnummer: a.lnummer && typeof a.lnummer === 'object' ? a.lnummer : {},
     seq: a.seq && typeof a.seq === 'object' ? a.seq : {},
     sykkelhjul: a.sykkelhjul && typeof a.sykkelhjul === 'object' ? a.sykkelhjul : {},
+    savnet: { ...TOM_PROFIL, ...(a.savnet ?? {}) },
+    ordre: { ...TOMME_ORDRETEKSTER, ...(a.ordre ?? {}) },
+    regioner: Array.isArray(a.regioner) ? a.regioner.filter((r) => r && Array.isArray(r.ring) && r.ring.every(erLatLng)) : [],
+    mattson: {
+      deltakere: Array.isArray(a.mattson?.deltakere) ? a.mattson!.deltakere : [],
+      vurdering: a.mattson?.vurdering && typeof a.mattson.vurdering === 'object' ? a.mattson.vurdering : {},
+    },
+    spor: Array.isArray(a.spor) ? a.spor.filter((s) => s && Array.isArray(s.pts) && s.pts.every(erLatLng)) : [],
   };
   if (Array.isArray(a.teiger) && aksjon.teiger.length < a.teiger.length) advarsler.push('Noen teiger hadde ugyldig geometri og ble hoppet over.');
   const statistikk = Array.isArray(o.statistikk) && o.statistikk.length ? (o.statistikk as LpbKategori[]) : kopierStatistikk();

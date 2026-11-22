@@ -43,6 +43,10 @@ export interface SannsynlighetInput {
   hav: Uint8Array | null;
   observasjoner: Observasjon[];
   sok: SokMaske[];
+  /** regions (cells); a cell in several regions belongs to the first */
+  regioner?: Int32Array[];
+  /** Mattson consensus shares aligned with `regioner`, last element = rest (outside) */
+  konsensus?: number[] | null;
 }
 
 export interface SannsynlighetResultat {
@@ -57,6 +61,8 @@ export interface SannsynlighetResultat {
   ringer: [number, number, number, number];
   /** cell indices sorted by post, descending */
   orden: Uint32Array;
+  /** model POA per region before consensus (last = rest) */
+  regionModell: number[];
 }
 
 export function normaliser(p: Float64Array): number {
@@ -159,6 +165,33 @@ export function beregnSannsynlighet(inp: SannsynlighetInput): SannsynlighetResul
   }
 
   normaliser(p);
+
+  // regions and Mattson consensus: the region totals are set to the consensus, the model
+  // decides the distribution inside each region (uniform if the model has nothing there)
+  let regionModell: number[] = [];
+  const R = inp.regioner?.length ?? 0;
+  if (R > 0) {
+    const tildelt = new Int16Array(N).fill(R);
+    inp.regioner!.forEach((celler, ri) => {
+      for (const c of celler) if (tildelt[c] === R) tildelt[c] = ri;
+    });
+    const masse = new Float64Array(R + 1);
+    const antall = new Int32Array(R + 1);
+    for (let k = 0; k < N; k++) {
+      masse[tildelt[k]] += p[k];
+      antall[tildelt[k]]++;
+    }
+    regionModell = Array.from(masse);
+    const kons = inp.konsensus;
+    if (kons && kons.length === R + 1) {
+      for (let k = 0; k < N; k++) {
+        const r = tildelt[k];
+        const mal = Math.max(0, kons[r]);
+        p[k] = masse[r] > 1e-15 ? (p[k] * mal) / masse[r] : antall[r] ? mal / antall[r] : 0;
+      }
+      normaliser(p);
+    }
+  }
   const prior = Float64Array.from(p);
   for (const s of inp.sok) {
     const f = 1 - Math.min(1, Math.max(0, s.pod));
@@ -182,7 +215,7 @@ export function beregnSannsynlighet(inp: SannsynlighetInput): SannsynlighetResul
   }
   const a = cellAreaKm2(g);
   const arealKm2 = [0, 1, 2, 3].map((i) => cnt.slice(0, i + 1).reduce((x, y) => x + y, 0) * a) as [number, number, number, number];
-  return { prior, post: p, sokt, band, arealKm2, ringer, orden };
+  return { prior, post: p, sokt, band, arealKm2, ringer, orden, regionModell };
 }
 
 /** Sum of a field over a set of cells. */

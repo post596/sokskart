@@ -11,6 +11,8 @@ export interface OsmLinje {
   /** waterway=river/canal (may be a barrier) */
   elv: boolean;
   pts: LatLng[];
+  /** where the line comes from (default OpenStreetMap) */
+  kilde?: 'osm' | 'turrutebasen';
 }
 
 export type OmradeType = 'vann' | 'myr' | 'bre';

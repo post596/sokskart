@@ -8,6 +8,18 @@
 
 export type Observasjonsklasse = 'sikker' | 'sannsynlig' | 'mulig' | 'usikker';
 
+/** Resource types for imported GPS tracks (colours per veileder 10.6 where given). */
+export type SporRessurs = 'fotmannskap' | 'hund' | 'hundefører' | 'drone' | 'helikopter' | 'motorisert';
+
+export const SPORRESSURSER: Array<{ type: SporRessurs; navn: string; farge: string; kode: string }> = [
+  { type: 'fotmannskap', navn: 'Søksmannskap til fots', farge: '#dc2626', kode: 'Msk' },
+  { type: 'hund', navn: 'Hund', farge: '#374151', kode: 'Hund' },
+  { type: 'hundefører', navn: 'Hundefører', farge: '#1d4ed8', kode: 'HF' },
+  { type: 'motorisert', navn: 'Motorisert', farge: '#16a34a', kode: 'ATV' },
+  { type: 'drone', navn: 'Drone', farge: '#0e7490', kode: 'Drone' },
+  { type: 'helikopter', navn: 'Helikopter', farge: '#7c2d12', kode: 'Heli' },
+];
+
 export interface Modellantakelser {
   /** Celler per side i rutenettet (ca. 300 × 300). */
   rutenett: number;
@@ -63,6 +75,9 @@ export interface Modellantakelser {
   /** Sannsynlighetsvekt for celler som ikke kan nås til fots. */
   uoppnaaeligVekt: number;
 
+  /** Effektiv søkebredde (m) per spor og ressurstype, for dekning C = W·L/A og POD = 1 − e^(−C). */
+  sokebredde: Record<SporRessurs, number>;
+
   /** Tak på søkeradius for stier og veier (km). */
   ledelinjeTakKm: number;
   /** Antall ledelinjer som får L-nummer. */
@@ -100,6 +115,8 @@ export const STANDARD_MODELL: Modellantakelser = {
   havVekt: 0.02,
   uoppnaaeligVekt: 0.02,
 
+  sokebredde: { fotmannskap: 30, hund: 80, hundefører: 30, drone: 60, helikopter: 150, motorisert: 20 },
+
   ledelinjeTakKm: 10,
   antallLedelinjer: 20,
   antallPunkter: 8,
@@ -111,12 +128,13 @@ export function medStandard(p: Partial<Modellantakelser> | undefined): Modellant
     ...STANDARD_MODELL,
     ...(p ?? {}),
     obsVekt: { ...STANDARD_MODELL.obsVekt, ...(p?.obsVekt ?? {}) },
+    sokebredde: { ...STANDARD_MODELL.sokebredde, ...(p?.sokebredde ?? {}) },
   };
 }
 
 /** Labels for the settings screen. */
 export const MODELL_FELT: Array<{
-  felt: Exclude<keyof Modellantakelser, 'obsVekt' | 'elvErBarriere'>;
+  felt: Exclude<keyof Modellantakelser, 'obsVekt' | 'elvErBarriere' | 'sokebredde'>;
   navn: string;
   steg: number;
   min: number;
