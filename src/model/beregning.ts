@@ -3,16 +3,17 @@ import { distanceM } from '../domain/geo';
 import { computeZone, type ZoneChoice } from '../domain/utm';
 import type { Modellantakelser, Observasjonsklasse } from '../data/modellantakelser';
 import { gangtid } from './gangtid';
-import { cellIndex, cellX, cellY, fraGrid, lagGrid, lagMercatorIndeks, tilGrid, type Grid, type MercatorIndeks } from './grid';
+import { cellAreaKm2, cellIndex, cellX, cellY, fraGrid, lagGrid, lagMercatorIndeks, tilGrid, type Grid, type MercatorIndeks } from './grid';
 import { blandingRinger, vektetFart, type Komponent } from './lpb';
 import { cellerLangs, rangerLinjer, tidVedPunkter } from './rangering';
 import { forCellsInPolygon, forCellsNearLine } from './raster';
 import { fordelRessurser, kandidatIBesteCelle, type Forslag, type Kandidat, type Ressursantall } from './ressurser';
 import { beregnSannsynlighet, mestSannsynlige, sumCeller, UTGANGSPUNKT } from './sannsynlighet';
 import { AREALKLASSE, byggTerreng, type TerrengLag } from './terreng';
-import { sokefaktorer } from './soketid';
+import { cellSoketid, sokefaktorer } from './soketid';
 import { genererTeiger } from './teiggenerator';
 import type { SokTeknikk } from '../data/modellantakelser';
+import { PUNKTTYPENAVN, punktvekter, type PunktTypeKandidat } from '../data/interessepunkter';
 import type { HoydeRaster, LinjeType, OsmData } from './typer';
 import { LINJETYPE_NAVN, POI_NAVN } from './typer';
 
@@ -44,6 +45,16 @@ export interface BeregningInput {
 export interface ForslagOnske {
   teig: { modus: 'navet' | 'neste' | 'sett' | 'region'; antall: number; teknikk: SokTeknikk; region?: LatLng[] } | null;
   drone: { antall: number } | null;
+}
+
+export interface PoiForslag {
+  type: PunktTypeKandidat;
+  navn: string;
+  pos: LatLng;
+  /** POA within ~150 m */
+  poa: number;
+  score: number;
+  timer: number | null;
 }
 
 export interface TeigForslag {
@@ -86,7 +97,7 @@ export interface BeregningResultat {
   post: Float32Array;
   arealKm2: [number, number, number, number];
   sokt: number;
-  teiger: Array<{ id: string; poaFor: number; poaNa: number; celler: number }>;
+  teiger: Array<{ id: string; poaFor: number; poaNa: number; celler: number; timer: number }>;
   /** POA now outside all teiger */
   utenforTeiger: number;
   /** per region: model POA (before consensus), POA before searches and POA now */
@@ -101,6 +112,8 @@ export interface BeregningResultat {
   forslag: Forslag[];
   teigforslag: TeigForslag[];
   droneforslag: TeigForslag[];
+  /** suggested points of interest for the chosen categories, best first */
+  poiforslag: PoiForslag[];
   harHoyde: boolean;
   brattCeller: number;
   ms: number;
@@ -245,12 +258,14 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
   }
 
   // teig statistics
-  const teiger = inp.teiger.map((t, k) => ({
-    id: t.id,
-    poaFor: sumCeller(s.prior, teigCeller[k]),
-    poaNa: sumCeller(s.post, teigCeller[k]),
-    celler: teigCeller[k].length,
-  }));
+  const sf = sokefaktorer(terr, m);
+  const cellM2 = cellAreaKm2(g) * 1e6;
+  const teknikk = m.teknikker[m.standardTeknikk];
+  const teiger = inp.teiger.map((t, k) => {
+    let timer = 0;
+    for (const c of teigCeller[k]) timer += sf[c] > 0 ? cellSoketid(cellM2, sf[c], teknikk) : 0;
+    return { id: t.id, poaFor: sumCeller(s.prior, teigCeller[k]), poaNa: sumCeller(s.post, teigCeller[k]), celler: teigCeller[k].length, timer };
+  });
   const iTeig = new Uint8Array(s.post.length);
   for (const c of teigCeller) for (const k of c) iTeig[k] = 1;
   let utenforTeiger = 0;
@@ -314,7 +329,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
         post: s.post,
         maal,
         opptatt,
-        sokefaktor: sokefaktorer(terr, m),
+        sokefaktor: sf,
         arealtype: terr.arealtype,
         hoyde: terr.terreng.hoyde,
         linjer,
@@ -353,7 +368,10 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     }
   }
 
+  const poiforslag = inp.osm ? lagPoiForslag(g, inp, terr, T1, s.post, v) : [];
+
   return {
+    poiforslag,
     teigforslag,
     droneforslag,
     grid: g,
@@ -421,6 +439,86 @@ export function droneeffekt(g: Grid, terr: TerrengLag): Float32Array {
     e[k] = v;
   }
   return e;
+}
+
+/**
+ * Points of interest for the chosen categories (data/interessepunkter.ts): OSM points plus
+ * cliffs, shores, wetlands and path junctions, scored by POA nearby × category weight.
+ */
+function lagPoiForslag(g: Grid, inp: BeregningInput, terr: TerrengLag, T1: Float32Array, post: Float64Array, v: number): PoiForslag[] {
+  const osm = inp.osm!;
+  const vekter = punktvekter(inp.komps.map((k) => ({ key: k.key, w: k.w })));
+  const kand: Array<{ type: PunktTypeKandidat; navn: string; pos: LatLng }> = [];
+  for (const p of osm.punkter) if (vekter[p.type]) kand.push({ type: p.type, navn: p.navn, pos: p.pos });
+  const besteCelle = (celler: number[]) => {
+    let b = -1;
+    for (const c of celler) if (b < 0 || post[c] > post[b]) b = c;
+    return b;
+  };
+  const tilPos = (c: number) => {
+    const i = c % g.n;
+    return fraGrid(g, cellX(g, i), cellY(g, (c - i) / g.n));
+  };
+  if (vekter.stup) {
+    for (const st of osm.stup) {
+      const celler: number[] = [];
+      forCellsNearLine(g, st.map((p) => tilGrid(g, p)), g.cell, (idx) => celler.push(idx));
+      const b = besteCelle(celler);
+      if (b >= 0) kand.push({ type: 'stup', navn: '', pos: tilPos(b) });
+    }
+  }
+  for (const o of osm.omrader) {
+    const type: PunktTypeKandidat | null = o.type === 'vann' && vekter.vann ? 'vann' : o.type === 'myr' && vekter.myr ? 'myr' : null;
+    if (!type) continue;
+    const inne: number[] = [];
+    forCellsInPolygon(g, o.ringer.map((r) => r.map((p) => tilGrid(g, p))), (idx) => inne.push(idx));
+    let celler = inne;
+    if (type === 'vann') {
+      const sett = new Set(inne);
+      celler = [];
+      for (const c of inne) {
+        const i = c % g.n;
+        for (const q of [c - 1, c + 1, c - g.n, c + g.n]) if (q >= 0 && q < post.length && !sett.has(q) && Math.abs((q % g.n) - i) <= 1 && !terr.hav[q]) celler.push(q);
+      }
+    }
+    const b = besteCelle(celler);
+    if (b >= 0) kand.push({ type, navn: o.navn, pos: tilPos(b) });
+  }
+  if (vekter.stikryss) {
+    const teller = new Map<string, { n: number; pos: LatLng }>();
+    for (const l of osm.linjer) {
+      if (l.type !== 'sti' && l.type !== 'traktorvei' && l.type !== 'vei') continue;
+      for (const p of [l.pts[0], l.pts[l.pts.length - 1]]) {
+        const k = p.lat.toFixed(5) + ',' + p.lng.toFixed(5);
+        const e = teller.get(k) ?? { n: 0, pos: p };
+        e.n++;
+        teller.set(k, e);
+      }
+    }
+    for (const e of teller.values()) if (e.n >= 3) kand.push({ type: 'stikryss', navn: '', pos: e.pos });
+  }
+  const eksisterende = inp.reflekser.map((r) => tilGrid(g, r.pos));
+  const ut: PoiForslag[] = [];
+  for (const k of kand) {
+    const [x, y] = tilGrid(g, k.pos);
+    const c = cellIndex(g, x, y);
+    if (c < 0) continue;
+    if (eksisterende.some(([ex, ey]) => Math.hypot(ex - x, ey - y) < 100)) continue;
+    const celler: number[] = [];
+    forCellsNearLine(g, [[x, y]], Math.max(150, g.cell * 0.75), (idx) => celler.push(idx));
+    const poa = sumCeller(post, celler);
+    const score = poa * (vekter[k.type] ?? 0);
+    if (score <= 0) continue;
+    ut.push({ type: k.type, navn: k.navn || PUNKTTYPENAVN[k.type], pos: k.pos, poa, score, timer: Number.isFinite(T1[c]) ? T1[c] / v : null });
+  }
+  ut.sort((a, b) => b.score - a.score);
+  // spread: no two suggestions closer than 150 m
+  const valgt: PoiForslag[] = [];
+  for (const p of ut) {
+    if (valgt.length >= 20) break;
+    if (valgt.every((q) => distanceM(q.pos, p.pos) > 150)) valgt.push(p);
+  }
+  return valgt;
 }
 
 function lagKandidater(

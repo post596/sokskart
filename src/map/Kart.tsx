@@ -62,6 +62,8 @@ export function Kart() {
   const valgtTeig = useStore((s) => s.valgtTeig);
   const redigererTeig = useStore((s) => s.redigererTeig);
   const visKvalitet = useStore((s) => s.visKvalitet);
+  const teigforslag = useStore((s) => s.teigforslag);
+  const droneforslag = useStore((s) => s.droneforslag);
 
   // ------------------------------------------------------------ init
   useEffect(() => {
@@ -88,7 +90,7 @@ export function Kart() {
       if (p !== 'teiger') map.getPane(p)!.style.pointerEvents = p === 'linjer' ? 'auto' : 'none';
     }
     linjeRenderer.current = L.canvas({ pane: 'linjer', padding: 0.3 });
-    for (const g of ['regioner', 'ringer', 'alleLinjer', 'spor', 'topp', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'forslag', 'egen']) {
+    for (const g of ['regioner', 'ringer', 'alleLinjer', 'spor', 'topp', 'teigforslag', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'forslag', 'egen']) {
       grupper.current[g] = L.layerGroup().addTo(map);
     }
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
@@ -390,6 +392,23 @@ export function Kart() {
         .addTo(g);
     }
   }, [aksjon.spor, visning.resultatkart]);
+
+  // ------------------------------------------------------------ suggested teiger and drone areas
+  useEffect(() => {
+    const g = grupper.current.teigforslag;
+    if (!g) return;
+    g.clearLayers();
+    teigforslag.forEach((f, i) => {
+      L.polygon(f.ring.map(toLL), { color: '#334155', weight: 2.5, dashArray: '6 5', fillColor: '#64748b', fillOpacity: 0.12, pane: 'teiger' })
+        .bindTooltip(`Forslag ${i + 1}`, { permanent: true, direction: 'center', className: 'forslagetikett' })
+        .addTo(g);
+    });
+    droneforslag.forEach((f, i) => {
+      L.polygon(f.ring.map(toLL), { color: '#0e7490', weight: 2.5, dashArray: '10 6', fillColor: '#0e7490', fillOpacity: 0.1, pane: 'teiger' })
+        .bindTooltip(`Drone ${i + 1}`, { permanent: true, direction: 'center', className: 'forslagetikett' })
+        .addTo(g);
+    });
+  }, [teigforslag, droneforslag]);
 
   // ------------------------------------------------------------ quality assurance highlight
   useEffect(() => {

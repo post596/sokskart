@@ -48,6 +48,7 @@ export function lagInput(): BeregningInput | null {
     konsensus: konsensusListe(),
     ressurser: a.ressurser,
     visningTimer: s.visningTimer ?? standardVisning(),
+    forslagOnske: s.forslagOnske,
     merkatorBredde: Math.min(1100, Math.max(400, Math.round(g.n * 2.2))),
   };
 }
@@ -133,6 +134,16 @@ async function kjor(): Promise<void> {
   const cur = useStore.getState();
   if (r) {
     cur.set({ resultat: r, beregner: false, beregningFeil: null });
+    if (input.forslagOnske) {
+      // freeze the suggestions so accepting one does not reshuffle the rest
+      cur.set({
+        forslagOnske: null,
+        ...(input.forslagOnske.teig ? { teigforslag: r.teigforslag } : {}),
+        ...(input.forslagOnske.drone ? { droneforslag: r.droneforslag } : {}),
+      });
+      const n = (input.forslagOnske.teig ? r.teigforslag.length : 0) + (input.forslagOnske.drone ? r.droneforslag.length : 0);
+      cur.melding(n ? `${n} forslag er klare. Godkjenn dem i fanen Teiger.` : 'Fant ingen områder å foreslå (alt er dekket av teiger, eller mangler sannsynlighet).', n ? 'ok' : 'info');
+    }
     tildelLnummer();
   } else cur.set({ beregner: false });
 }
@@ -157,13 +168,13 @@ function tildelLnummer(): void {
 export function startBeregning(): void {
   let forrige: unknown[] = [];
   useStore.subscribe((s) => {
-    const deps = [s.aksjon, s.statistikk, s.osm, s.hoyde, s.naa, s.visningTimer, s.lastet];
+    const deps = [s.aksjon, s.statistikk, s.osm, s.hoyde, s.naa, s.visningTimer, s.lastet, s.forslagOnske];
     if (deps.every((d, i) => d === forrige[i])) return;
     const kunTid = deps.every((d, i) => i === 5 || d === forrige[i]);
     forrige = deps;
     if (!s.lastet) return;
     // while the slider moves, wait until it settles before recomputing suggestions
-    planleggBeregning(kunTid ? 500 : 250);
+    planleggBeregning(s.forslagOnske ? 50 : kunTid ? 500 : 250);
   });
   planleggBeregning(0);
 }

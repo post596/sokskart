@@ -244,6 +244,30 @@ describe('teig- og droneforslag', () => {
   });
 });
 
+describe('interessepunkter per kategori', () => {
+  it('turgåer får hytta som forslag', () => {
+    const r = beregn(input({ osm, osmVersjon: '1' }));
+    expect(r.poiforslag.some((p) => p.type === 'hytte' && p.navn === 'Hytta')).toBe(true);
+  });
+  it('økt selvmordsrisiko prioriterer bru foran lekeplass', () => {
+    const suicid: Komponent = { key: 'suicid', navn: 'Økt selvmordsrisiko', w: 1, r: [200, 600, 1800, 9000], v: 2, mob: 8, verifisert: false };
+    const o: OsmData = {
+      ...osm,
+      punkter: [
+        { id: 'b1', type: 'bru', navn: 'Brua', pos: at(300, 300) },
+        { id: 'l1', type: 'lekeplass', navn: 'Leiken', pos: at(-300, -300) },
+      ],
+    };
+    const r = beregn(input({ komps: [suicid], osm: o, osmVersjon: '2' }));
+    expect(r.poiforslag[0].type).toBe('bru');
+    expect(r.poiforslag.some((p) => p.type === 'lekeplass')).toBe(false);
+  });
+  it('foreslår ikke punkter som allerede er registrert som refleks', () => {
+    const r = beregn(input({ osm, osmVersjon: '1', reflekser: [{ id: 'R001', navn: 'Hytta', pos: at(2000, 2000) }] }));
+    expect(r.poiforslag.some((p) => p.navn === 'Hytta')).toBe(false);
+  });
+});
+
 describe('ressursforslag', () => {
   it('gir like mange forslag som enheter når det finnes nok mål, og følger reglene', () => {
     const r = beregn(

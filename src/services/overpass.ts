@@ -12,13 +12,32 @@ export const OVERPASS_ENDEPUNKTER = [
   'https://overpass.kumi.systems/api/interpreter',
 ];
 
-export function byggSporring(senter: LatLng, radiusM: number): string {
+/**
+ * 'linjer': paths, roads, water, barriers and the main POIs (needed first).
+ * 'areal': land cover and small POIs near the IPP (optional, sent afterwards).
+ */
+export function byggSporring(senter: LatLng, radiusM: number, del: 'linjer' | 'areal' = 'linjer'): string {
   const a = `(around:${Math.round(radiusM)},${senter.lat.toFixed(6)},${senter.lng.toFixed(6)})`;
   // land cover and small buildings closer to the IPP to keep the response small
   const n = `(around:${Math.round(Math.min(radiusM, 6000))},${senter.lat.toFixed(6)},${senter.lng.toFixed(6)})`;
   const b = `(around:${Math.round(Math.min(radiusM, 3000))},${senter.lat.toFixed(6)},${senter.lng.toFixed(6)})`;
+  if (del === 'areal') {
+    return (
+      '[out:json][timeout:120];(' +
+      `nwr${n}[amenity=parking];` +
+      `nwr${n}[leisure=playground];` +
+      `nwr${n}[amenity=place_of_worship];` +
+      `nwr${n}[landuse=cemetery];` +
+      `way${b}[building~"^(barn|shed|farm_auxiliary|hut)$"];` +
+      `way${n}[natural~"^(wood|scrub|heath|bare_rock|scree|grassland)$"];` +
+      `relation${n}[natural~"^(wood|scrub|heath|bare_rock|scree|grassland)$"];` +
+      `way${n}[landuse~"^(forest|residential|industrial|commercial|farmland|meadow)$"];` +
+      `relation${n}[landuse~"^(forest|residential|farmland)$"];` +
+      ');out geom tags qt;'
+    );
+  }
   return (
-    '[out:json][timeout:120];(' +
+    '[out:json][timeout:90];(' +
     `way${a}[highway~"^(path|footway|bridleway|steps|track|cycleway|unclassified|residential|service|tertiary|secondary|primary|trunk|living_street|road)$"];` +
     `way${a}[waterway~"^(river|stream|ditch|canal|drain)$"];` +
     `way${a}[power=line];` +
@@ -30,15 +49,6 @@ export function byggSporring(senter: LatLng, radiusM: number): string {
     `node${a}[natural=peak];` +
     `nwr${a}[man_made=pier];` +
     `nwr${a}[waterway~"^(dam|weir)$"];` +
-    `nwr${n}[amenity=parking];` +
-    `nwr${n}[leisure=playground];` +
-    `nwr${n}[amenity=place_of_worship];` +
-    `nwr${n}[landuse=cemetery];` +
-    `way${b}[building~"^(barn|shed|farm_auxiliary|hut)$"];` +
-    `way${n}[natural~"^(wood|scrub|heath|bare_rock|scree|grassland)$"];` +
-    `relation${n}[natural~"^(wood|scrub|heath|bare_rock|scree|grassland)$"];` +
-    `way${n}[landuse~"^(forest|residential|industrial|commercial|farmland|meadow)$"];` +
-    `relation${n}[landuse~"^(forest|residential|farmland)$"];` +
     ');out geom tags qt;'
   );
 }
@@ -254,12 +264,13 @@ export function tolkSvar(json: { elements?: OverpassElement[] }, senter: LatLng,
 export class OverpassFeil extends Error {}
 
 /** Fetches once from the first endpoint, falls back to the next on failure. */
-export async function hentOsm(senter: LatLng, radiusM: number, signal?: AbortSignal): Promise<OsmData> {
-  const q = byggSporring(senter, radiusM);
+export async function hentOsm(senter: LatLng, radiusM: number, signal?: AbortSignal, del: 'linjer' | 'areal' = 'linjer'): Promise<OsmData> {
+  const q = byggSporring(senter, radiusM, del);
   const feil: string[] = [];
-  for (const url of OVERPASS_ENDEPUNKTER.slice(0, 2)) {
+  // each endpoint is tried once, in order (never in a loop)
+  for (const [nr, url] of OVERPASS_ENDEPUNKTER.entries()) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 100_000);
+    const timer = setTimeout(() => ctrl.abort(), nr === 0 ? 60_000 : 75_000);
     signal?.addEventListener('abort', () => ctrl.abort(), { once: true });
     try {
       const r = await fetch(url, {

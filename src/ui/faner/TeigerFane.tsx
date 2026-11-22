@@ -12,7 +12,8 @@ import { dekningForTeig, type TeigDekning } from '../../state/dekning';
 import { endreSpor, leggTilSpor, registrerSok, settTeigStatus, slettSok, slettSpor, slettTeig } from '../../state/handlinger';
 import { useStore } from '../../state/store';
 import { Advarsel, Modellmerke } from '../felles';
-import { fmtAvstand, fmtKm2, fmtTid, lesProsent } from '../format';
+import { Teigforslag } from '../Teigforslag';
+import { fmtAvstand, fmtKm2, fmtTid, fmtTimer, lesProsent } from '../format';
 
 const TYPENAVN = { T: 'Teig', H: 'Helikoptersøk', D: 'Droneområde' } as const;
 
@@ -343,6 +344,7 @@ export function TeigerFane() {
           </span>
         ))}
       </div>
+      <Teigforslag />
       <Kvalitetssikring />
       {!a.teiger.length && <p className="dempet">Ingen teiger ennå.</p>}
       <ul className="liste">
@@ -392,7 +394,8 @@ export function TeigerFane() {
                 </div>
                 <div className="dempet liten-tekst">
                   {fmtKm2(areal)}
-                  {(areal < 0.2 || areal > 0.5) && t.type === 'T' && <span title="Typisk teigstørrelse er 0,2–0,5 km²"> (utenfor 0,2–0,5)</span>} · POA nå{' '}
+                  {t.type === 'T' && areal > a.modell.maksTeigKm2 && <span className="feiltekst"> (over {String(a.modell.maksTeigKm2).replace('.', ',')} km²)</span>}
+                  {st && t.type === 'T' && <> · ca. {fmtTimer(st.timer)} søk{st.timer > a.modell.maksSoketid && <span className="feiltekst"> (over {fmtTimer(a.modell.maksSoketid)})</span>}</>} · POA nå{' '}
                   {st ? prosent(st.poaNa) : '–'}
                   {st && t.sok.length > 0 && ` (før søk ${prosent(st.poaFor)})`} · akk. POD {prosent(akk, 0)} ({podBetegnelse(akk)}) · {t.sok.length} søk
                 </div>

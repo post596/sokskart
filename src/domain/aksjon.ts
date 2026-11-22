@@ -114,6 +114,8 @@ export interface Aksjon {
   sone: ZoneChoice;
   ipp: LatLng | null;
   ippSatt: string | null;
+  /** when the search started (search phase is measured from here) */
+  aksjonStart: string | null;
   teiger: Teig[];
   punkter: Punkt[];
   sykkelhjul: Record<string, boolean>;
@@ -167,6 +169,7 @@ export function nyAksjon(): Aksjon {
     sone: 'auto',
     ipp: null,
     ippSatt: null,
+    aksjonStart: null,
     teiger: [],
     punkter: [],
     sykkelhjul: {},
@@ -253,6 +256,7 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
     ...a,
     id: typeof a.id === 'string' ? a.id : base.id,
     ipp: erLatLng(a.ipp) ? a.ipp : null,
+    aksjonStart: typeof a.aksjonStart === 'string' ? a.aksjonStart : (a.ippSatt ?? null),
     teiger: Array.isArray(a.teiger) ? a.teiger.filter((t) => t && Array.isArray(t.ring) && t.ring.every(erLatLng)) : [],
     punkter: Array.isArray(a.punkter) ? a.punkter.filter((p) => p && erLatLng(p.pos)) : [],
     kategorier: Array.isArray(a.kategorier) && a.kategorier.length ? a.kategorier : base.kategorier,

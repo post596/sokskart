@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { kopierStatistikk, type LpbKategori } from '../data/lpb-stats';
 import { harRegistrerteSok, lesAksjonsfil, nyAksjon, type Aksjon } from '../domain/aksjon';
 import type { LatLng } from '../domain/coords';
-import type { BeregningResultat } from '../model/beregning';
+import type { BeregningResultat, ForslagOnske, TeigForslag } from '../model/beregning';
 import type { HoydeRaster, OsmData } from '../model/typer';
 import { hent, lagre, slettAlt } from '../services/lagring';
 
@@ -67,6 +67,10 @@ interface State {
   valgtTeig: string | null;
   redigererTeig: string | null;
   ordreFor: OrdreFor | null;
+  /** suggestions asked for (computed by the worker, then frozen below) */
+  forslagOnske: ForslagOnske | null;
+  teigforslag: TeigForslag[];
+  droneforslag: TeigForslag[];
   /** photo of the missing person (data URL), only on this device, never exported */
   bilde: string | null;
   visKvalitet: boolean;
@@ -123,6 +127,9 @@ export const useStore = create<State>()((set, get) => ({
   valgtTeig: null,
   redigererTeig: null,
   ordreFor: null,
+  forslagOnske: null,
+  teigforslag: [],
+  droneforslag: [],
   bilde: null,
   visKvalitet: false,
 
@@ -255,6 +262,7 @@ export const useStore = create<State>()((set, get) => ({
       (a) => {
         a.ipp = { lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6) };
         a.ippSatt = new Date().toISOString();
+        a.aksjonStart ??= a.ippSatt;
       },
       flyttet ? 'IPP flyttet' : 'IPP satt',
     );

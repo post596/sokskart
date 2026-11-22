@@ -7,7 +7,7 @@ import { AREALKLASSE, type TerrengLag } from './terreng';
  * open terrain; the speed is lowered in heavy terrain:
  *  - terrain speed relative to open terrain (myr/bre slower, paths a bit faster)
  *  - forest (skogSokefaktor)
- *  - slope (mean of Tobler up and down the gradient)
+ *  - slope: Tobler averaged over up, down and twice across the slope (teams traverse)
  * Steep cells (barriers) cannot be searched on foot (factor 0).
  * All numbers are model assumptions; the veileder only says teiger must suit a crew team.
  */
@@ -23,8 +23,9 @@ export function sokefaktorer(terr: TerrengLag, m: Modellantakelser): Float32Arra
     if (terr.arealtype[k] === AREALKLASSE.skog) f *= m.skogSokefaktor;
     const h = terr.helning?.[k];
     if (h != null && Number.isFinite(h)) {
+      // a search team mostly traverses along the contours: mean of up, down and twice across
       const S = Math.tan((h * Math.PI) / 180);
-      f *= (toblerFaktor(S) + toblerFaktor(-S)) / 2;
+      f *= (toblerFaktor(S) + toblerFaktor(-S) + 2 * toblerFaktor(0)) / 4;
     }
     ut[k] = f;
   }

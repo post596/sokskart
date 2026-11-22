@@ -206,7 +206,8 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
     let t = 0;
     for (const p of celler) t += tid[p];
     const a = celler.length * finArealKm2;
-    return drone ? a / inp.maksKm2 : Math.max(t / inp.maksTimer, a / inp.maksKm2);
+    // 15 % margin: the boundary cells are added to the parts afterwards
+    return drone ? a / inp.maksKm2 : Math.max(t / (inp.maksTimer * 0.85), a / (inp.maksKm2 * 0.9));
   };
 
   // 2. split too large parts (geodesic k-means with ridge cost)
@@ -262,7 +263,9 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
           bestMal = m2;
         }
       }
-      if (best < 0 && nabo.size) best = [...nabo.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      // never break the time/area limit to reach the minimum size – heavy terrain gives small
+      // teiger; only slivers (a few cells) always join the neighbour they touch most
+      if (best < 0 && nabo.size && d.length * finArealKm2 < 0.01) best = [...nabo.entries()].sort((a, b) => b[1] - a[1])[0][0];
       if (best >= 0) {
         deler[best] = deler[best].concat(d);
         deler[i] = [];

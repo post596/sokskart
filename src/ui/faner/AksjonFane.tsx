@@ -37,8 +37,10 @@ export async function hentStier(): Promise<void> {
   const medSki = a.kategorier.some((k) => k.key === 'langrenn' || k.key === 'alpin');
   const [osmR, trbR] = await Promise.allSettled([hentOsm(a.ipp, radius), hentTurruter(a.ipp, radius, medSki)]);
   const st = useStore.getState();
-  if (osmR.status === 'rejected' && trbR.status === 'rejected') {
-    const feil = osmR.reason instanceof Error ? osmR.reason.message : String(osmR.reason);
+  const forrige = st.osm;
+  if (osmR.status === 'rejected' && (trbR.status === 'rejected' || forrige)) {
+    // keep what we already have rather than replacing it with less
+    const feil = `${osmR.reason instanceof Error ? osmR.reason.message : String(osmR.reason)}${forrige ? ' Beholder stiene og veiene fra forrige henting.' : ''}`;
     st.set({ osmStatus: { henter: false, feil } });
     st.melding(feil, 'feil');
     return;
@@ -59,6 +61,22 @@ export async function hentStier(): Promise<void> {
   st.set({ osm: { ...osm, hentet: new Date().toISOString() }, osmStatus: { henter: false, feil } });
   st.endreAksjon(() => {}, `Stier og veier hentet (${osm.linjer.length} ledelinjer innen ${fmtAvstand(radius)}${trbTekst})`);
   st.melding(`${osm.linjer.length} ledelinjer, ${osm.omrader.length} områder og ${osm.punkter.length} punkter hentet innen ${fmtAvstand(radius)}${trbTekst}.`, 'ok');
+  // land cover and small POIs in a separate, optional request (keeps the first one light)
+  st.set({ osmStatus: { henter: true, feil } });
+  try {
+    const areal = await hentOsm(a.ipp, radius, undefined, 'areal');
+    const cur = useStore.getState();
+    if (cur.osm) {
+      cur.set({
+        osm: { ...cur.osm, omrader: [...cur.osm.omrader, ...areal.omrader], punkter: [...cur.osm.punkter, ...areal.punkter], hentet: new Date().toISOString() },
+        osmStatus: { henter: false, feil },
+      });
+      cur.endreAksjon(() => {}, `Arealtyper hentet (${areal.omrader.length} områder, ${areal.punkter.length} punkter)`);
+    }
+  } catch (e) {
+    useStore.getState().set({ osmStatus: { henter: false, feil } });
+    useStore.getState().melding(`Arealtyper (skog/åpent) ble ikke hentet: ${e instanceof Error ? e.message : e}. Teigforslag bruker bare stier og vann som grenser.`, 'info');
+  }
 }
 
 export function lagMannskapsGpx(): void {
@@ -215,6 +233,16 @@ export function AksjonFane() {
           <input type="datetime-local" value={a.sistSett ?? ''} onChange={(e) => endre((x) => void (x.sistSett = e.target.value || null), 'Tidspunkt sist sett endret')} />
         </label>
         <button type="button" className="knapp" onClick={() => endre((x) => void (x.sistSett = lokalTid()), 'Tidspunkt sist sett satt til nå')}>
+          Nå
+        </button>
+      </div>
+
+      <div className="rad">
+        <label className="bred">
+          Søket startet (søksfasen regnes herfra)
+          <input type="datetime-local" value={a.aksjonStart ? lokalTid(new Date(a.aksjonStart)) : ''} onChange={(e) => endre((x) => void (x.aksjonStart = e.target.value ? new Date(e.target.value).toISOString() : null), 'Tidspunkt for søkestart endret')} />
+        </label>
+        <button type="button" className="knapp" onClick={() => endre((x) => void (x.aksjonStart = new Date().toISOString()), 'Søkestart satt til nå')}>
           Nå
         </button>
       </div>

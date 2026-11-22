@@ -57,6 +57,16 @@ describe('teiggenerator', () => {
     const sum = t.reduce((s, x) => s + x.arealKm2, 0);
     expect(sum).toBeCloseTo(9.61, 1);
   });
+  it('i tungt terreng blir teigene små, men bryter aldri 2-timersgrensen', () => {
+    const g = grid();
+    const sokefaktor = new Float32Array(g.n * g.n).fill(0.2); // steep: 5 × slower
+    const t = genererTeiger(input({ sokefaktor }));
+    for (const x of t) {
+      if (x.arealKm2 < 0.01) continue; // slivers
+      expect(x.timer).toBeLessThanOrEqual(2.2);
+    }
+    expect(Math.max(...t.map((x) => x.arealKm2))).toBeLessThan(0.06);
+  });
   it('lager polygoner med riktig areal (ikke firkanter med rette hjørner)', () => {
     const t = genererTeiger(input());
     for (const x of t.slice(0, 5)) {
