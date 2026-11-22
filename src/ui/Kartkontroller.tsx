@@ -63,22 +63,14 @@ export function Kartkontroller() {
   const lastNedKart = async () => {
     if (!r) return;
     const [[s, w], [n, e]] = r.merc.bounds;
-    const lag = KARTLAG.find((k) => k.id === grunnkart) ?? KARTLAG[0];
-    const fliser = fliserForOmrade(s, w, n, e, 8, 15);
-    // also the closer zoom levels around the IPP area (R75)
-    const kjerne = r.ringer[2] * 1.2;
-    const ipp = useStore.getState().aksjon.ipp!;
-    const dLat = kjerne / 110540;
-    const dLng = kjerne / (111320 * Math.cos((ipp.lat * Math.PI) / 180));
-    fliser.push(...fliserForOmrade(ipp.lat - dLat, ipp.lng - dLng, ipp.lat + dLat, ipp.lng + dLng, 16, 16));
-    const maks = 6000;
-    if (fliser.length > maks) {
-      useStore.getState().melding(`Området er for stort (${fliser.length} fliser). Begrens beregningsområdet eller velg en mindre kategori.`, 'feil');
-      return;
-    }
+    // Kartverket only (OSM's tile servers do not allow bulk download). Only overview levels
+    // 8–11: Kartverket's terms say levels 12–20 contain Geovekst data that may not be copied
+    // without special permission. Detail levels are cached as they are viewed.
+    const lag = KARTLAG.find((k) => k.id === grunnkart && k.id !== 'osm') ?? KARTLAG[0];
+    const fliser = fliserForOmrade(s, w, n, e, 8, 11);
     const ok = await useStore.getState().bekreft({
-      tittel: 'Last ned kart for området?',
-      tekst: `Laster ned ${fliser.length} kartfliser fra ${lag.navn} (zoom 8–16) slik at kartet virker uten nett. Det tar litt tid og bruker ca. ${Math.round((fliser.length * 25) / 1024)} MB. Last ned bare det dere trenger.`,
+      tittel: 'Last ned oversiktskart for området?',
+      tekst: `Laster ned ${fliser.length} kartfliser fra ${lag.navn} på oversiktsnivå (zoom 8–11) slik at kartet virker uten nett. Detaljnivåene lagres når de vises i kartet – zoom gjennom søksområdet mens dere har nett. Kartverkets vilkår krever løyve for å kopiere detaljnivåene (Geovekst-data).`,
       ja: 'Last ned',
       nei: 'Avbryt',
     });
@@ -91,7 +83,12 @@ export function Kartkontroller() {
       abort.current.signal,
     );
     setNedlasting(null);
-    useStore.getState().melding(feil ? `Kart lastet ned, men ${feil} fliser feilet.` : 'Kart for området er lastet ned og virker uten nett.', feil ? 'feil' : 'ok');
+    useStore
+      .getState()
+      .melding(
+        feil ? `Oversiktskart lastet ned, men ${feil} fliser feilet.` : 'Oversiktskart er lastet ned. Detaljnivåene virker uten nett der dere har vist dem.',
+        feil ? 'feil' : 'ok',
+      );
   };
 
   return (
@@ -139,7 +136,7 @@ export function Kartkontroller() {
             {egen ? 'Skjul min posisjon' : 'Min posisjon'}
           </button>
           <button type="button" className="knapp liten" disabled={!r || !!nedlasting} onClick={() => void lastNedKart()}>
-            Last ned kart for området
+            Last ned oversiktskart
           </button>
           {nedlasting && (
             <div className="liten-tekst">

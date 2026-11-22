@@ -706,6 +706,25 @@ hr {
   gap: 8px;
   align-items: center;
 }
+@media (max-width: 860px) {
+  .tidslinje {
+    bottom: 34px;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+  }
+  .tid-topp .dempet,
+  .tidslinje > .liten-tekst {
+    display: none;
+  }
+  .koordinat {
+    bottom: auto;
+    top: 8px;
+    font-size: 0.75rem;
+  }
+  .kartkontroller {
+    top: 44px;
+  }
+}
 .tid-kontroll input[type='range'] {
   flex: 1;
   min-height: 36px;
