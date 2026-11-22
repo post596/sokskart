@@ -8,7 +8,7 @@ import { blandingRinger, vektetFart, type Komponent } from './lpb';
 import { cellerLangs, rangerLinjer, tidVedPunkter } from './rangering';
 import { forCellsInPolygon, forCellsNearLine } from './raster';
 import { fordelRessurser, kandidatIBesteCelle, type Forslag, type Kandidat, type Ressursantall } from './ressurser';
-import { beregnSannsynlighet, mestSannsynlige, sumCeller } from './sannsynlighet';
+import { beregnSannsynlighet, mestSannsynlige, sumCeller, UTGANGSPUNKT } from './sannsynlighet';
 import { byggTerreng, type TerrengLag } from './terreng';
 import type { HoydeRaster, LinjeType, OsmData } from './typer';
 import { LINJETYPE_NAVN, POI_NAVN } from './typer';
@@ -88,6 +88,7 @@ export interface BeregningCache {
   terrKey?: string;
   terr?: TerrengLag;
   T1?: Float32Array;
+  obsT1?: Map<string, Float32Array>;
 }
 
 const gridKeyOf = (g: Grid) => `${g.zone}|${g.west.toFixed(2)}|${g.north.toFixed(2)}|${g.n}|${g.cell.toFixed(4)}`;
@@ -135,10 +136,25 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     return Int32Array.from(c);
   });
 
+  // walking time from each observation that becomes a new starting point (cached)
+  cache.obsT1 ??= new Map();
+  const brukt = new Set<string>();
   const obs = inp.observasjoner.map((o) => {
     const [x, y] = tilGrid(g, o.pos);
-    return { x, y, timerSiden: o.timerSiden, klasse: o.klasse };
+    let T1o: Float32Array | null = null;
+    const c = cellIndex(g, x, y);
+    if (c >= 0 && UTGANGSPUNKT.includes(o.klasse) && (m.obsVekt[o.klasse] ?? 0) > 0) {
+      const key = `${tk}|${c}`;
+      brukt.add(key);
+      T1o = cache.obsT1!.get(key) ?? null;
+      if (!T1o) {
+        T1o = gangtid(g, terr.terreng, [c], m.maksHelning);
+        cache.obsT1!.set(key, T1o);
+      }
+    }
+    return { x, y, timerSiden: o.timerSiden, klasse: o.klasse, T1: T1o };
   });
+  for (const k of [...cache.obsT1.keys()]) if (!brukt.has(k)) cache.obsT1.delete(k);
 
   const s = beregnSannsynlighet({
     g,

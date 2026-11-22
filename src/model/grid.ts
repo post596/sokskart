@@ -104,6 +104,9 @@ export interface MercatorIndeks {
   height: number;
   /** cell index per pixel (row 0 = north), -1 outside the grid */
   index: Int32Array;
+  /** fractional cell coordinates per pixel (cell centres at integers) for smooth sampling */
+  fx: Float32Array;
+  fy: Float32Array;
 }
 
 const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
@@ -136,13 +139,43 @@ export function lagMercatorIndeks(g: Grid, width: number): MercatorIndeks {
   const xSpan = ((e - w) * Math.PI) / 180;
   const height = Math.max(1, Math.round(width * ((yN - yS) / xSpan)));
   const index = new Int32Array(width * height);
+  const fx = new Float32Array(width * height);
+  const fy = new Float32Array(width * height);
   for (let py = 0; py < height; py++) {
     const lat = invMercY(yN - ((py + 0.5) / height) * (yN - yS));
     for (let px = 0; px < width; px++) {
       const lng = w + ((px + 0.5) / width) * (e - w);
       const u = toUtm(lat, lng, g.zone);
-      index[py * width + px] = cellIndex(g, u.e, u.n);
+      const p = py * width + px;
+      index[p] = cellIndex(g, u.e, u.n);
+      fx[p] = (u.e - g.west) / g.cell - 0.5;
+      fy[p] = (g.north - u.n) / g.cell - 0.5;
     }
   }
-  return { bounds: [[s, w], [n, e]], width, height, index };
+  return { bounds: [[s, w], [n, e]], width, height, index, fx, fy };
+}
+
+/**
+ * Bilinear value of a cell-centred field at fractional cell coordinates. If a neighbour
+ * is not finite (barrier), the nearest cell's value is used so edges stay sharp.
+ */
+export function bilineaer(f: ArrayLike<number>, n: number, fx: number, fy: number): number {
+  const i0 = Math.floor(fx);
+  const j0 = Math.floor(fy);
+  const tx = fx - i0;
+  const ty = fy - j0;
+  const i1 = Math.min(n - 1, i0 + 1);
+  const j1 = Math.min(n - 1, j0 + 1);
+  const a0 = Math.max(0, i0);
+  const b0 = Math.max(0, j0);
+  const v00 = f[b0 * n + a0];
+  const v10 = f[b0 * n + i1];
+  const v01 = f[j1 * n + a0];
+  const v11 = f[j1 * n + i1];
+  if (!Number.isFinite(v00) || !Number.isFinite(v10) || !Number.isFinite(v01) || !Number.isFinite(v11)) {
+    const i = Math.min(n - 1, Math.max(0, Math.round(fx)));
+    const j = Math.min(n - 1, Math.max(0, Math.round(fy)));
+    return f[j * n + i];
+  }
+  return (v00 * (1 - tx) + v10 * tx) * (1 - ty) + (v01 * (1 - tx) + v11 * tx) * ty;
 }

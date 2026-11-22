@@ -18,7 +18,12 @@ export interface Observasjon {
   y: number;
   timerSiden: number;
   klasse: Observasjonsklasse;
+  /** walking time from the observation (h at 1 km/h); null → straight-line distance */
+  T1?: Float32Array | null;
 }
+
+/** Classes that become a new starting point (veileder 5.3); the rest only weight locally. */
+export const UTGANGSPUNKT: Observasjonsklasse[] = ['sikker', 'sannsynlig'];
 
 export interface SokMaske {
   celler: Int32Array;
@@ -94,20 +99,51 @@ export function beregnSannsynlighet(inp: SannsynlighetInput): SannsynlighetResul
     }
   }
 
-  for (let k = 0; k < N; k++) {
-    if (inp.naer?.[k]) p[k] *= m.vektNaer;
-    else if (inp.korridor?.[k]) p[k] *= m.vektKorridor;
-    if (inp.hav?.[k]) p[k] *= m.havVekt;
-    else if (inp.vann?.[k]) p[k] *= m.vannVekt;
-  }
+  const terrengvekt = (a: Float64Array) => {
+    for (let k = 0; k < N; k++) {
+      if (inp.naer?.[k]) a[k] *= m.vektNaer;
+      else if (inp.korridor?.[k]) a[k] *= m.vektKorridor;
+      if (inp.hav?.[k]) a[k] *= m.havVekt;
+      else if (inp.vann?.[k]) a[k] *= m.vannVekt;
+    }
+  };
+  terrengvekt(p);
+  normaliser(p);
 
   const ringer = blandingRinger(komps, m.haleFaktor);
   const { v, mob } = vektetFart(komps);
+  const spredningM = (h: number) =>
+    Math.min(ringer[3], Math.max(m.obsMinSpredningM, v * 1000 * m.effektivFremdrift * Math.min(h, mob) * m.obsSpredning));
+
+  // sikker/sannsynlig: new starting point with share w/(w + K), spread by walking time from it
+  let rSum = 0;
   for (const o of inp.observasjoner) {
     const w = m.obsVekt[o.klasse] ?? 0;
-    if (w <= 0) continue;
+    if (w <= 0 || !UTGANGSPUNKT.includes(o.klasse)) continue;
+    const r = w / Math.max(0.01, m.obsAndelK);
+    const sgT = spredningM(Math.max(0, o.timerSiden)) / (1000 * v); // hours
+    const G = new Float64Array(N);
+    for (let j = 0; j < n; j++) {
+      const dy = cellY(g, j) - o.y;
+      for (let i = 0; i < n; i++) {
+        const k = j * n + i;
+        const t = o.T1 ? o.T1[k] / v : Math.hypot(cellX(g, i) - o.x, dy) / g.k / (1000 * v);
+        G[k] = Number.isFinite(t) ? Math.exp(-0.5 * (t / sgT) ** 2) : 0;
+      }
+    }
+    terrengvekt(G);
+    if (normaliser(G) <= 0) continue;
+    for (let k = 0; k < N; k++) p[k] += r * G[k];
+    rSum += r;
+  }
+  if (rSum > 0) for (let k = 0; k < N; k++) p[k] /= 1 + rSum;
+
+  // mulig: local weighting only
+  for (const o of inp.observasjoner) {
+    const w = m.obsVekt[o.klasse] ?? 0;
+    if (w <= 0 || UTGANGSPUNKT.includes(o.klasse)) continue;
     const h = Math.max(0, o.timerSiden);
-    const sg = Math.min(ringer[3], Math.max(m.obsMinSpredningM, v * 1000 * m.effektivFremdrift * Math.min(h, mob) * m.obsSpredning));
+    const sg = spredningM(h);
     const r = sg * 4;
     const i0 = Math.max(0, Math.floor((o.x - r - g.west) / g.cell));
     const i1 = Math.min(n - 1, Math.floor((o.x + r - g.west) / g.cell));

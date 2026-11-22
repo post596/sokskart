@@ -35,7 +35,7 @@ function SokSkjema({ teig }: { teig: Teig }) {
         <label>
           Etat/org.
           <select value={org} onChange={(e) => setOrg(e.target.value)}>
-            {Object.entries(ORGANISASJONER).map(([k, v]) => (
+            {ORGANISASJONER.map(([k, v]) => (
               <option key={k} value={k}>
                 {k} – {v}
               </option>

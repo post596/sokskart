@@ -28,22 +28,22 @@ export function regionId(index: number): string {
   return 'REG' + s;
 }
 
-/** Etat/organisasjon (veileder tabell s. 69). */
-export const ORGANISASJONER: Record<string, string> = {
-  P: 'Politi',
-  BV: 'Brannvesen',
-  F: 'Forsvaret',
-  NFS: 'Norsk Folkehjelp',
-  RK: 'Røde Kors',
-  NRH: 'Norske redningshunder',
-  NRO: 'Norsk Redningshund Organisasjon',
-  RO: 'Rovere',
-  LA: 'Luftambulanse',
-  RS: 'Redningsselskapet',
-  SF: 'Sivilforsvaret',
-  '330': 'Redningshelikopter',
-  AN: 'Andre',
-};
+/** Etat/organisasjon (veileder tabell s. 69), in the veileder's order. */
+export const ORGANISASJONER: Array<[string, string]> = [
+  ['P', 'Politi'],
+  ['BV', 'Brannvesen'],
+  ['F', 'Forsvaret'],
+  ['NFS', 'Norsk Folkehjelp'],
+  ['RK', 'Røde Kors'],
+  ['NRH', 'Norske redningshunder'],
+  ['NRO', 'Norsk Redningshund Organisasjon'],
+  ['RO', 'Rovere'],
+  ['LA', 'Luftambulanse'],
+  ['RS', 'Redningsselskapet'],
+  ['SF', 'Sivilforsvaret'],
+  ['330', 'Redningshelikopter'],
+  ['AN', 'Andre'],
+];
 
 /** Type ressurs (veileder tabell s. 69). */
 export const RESSURSTYPER: Record<string, string> = {

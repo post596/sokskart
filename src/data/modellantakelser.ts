@@ -32,8 +32,14 @@ export interface Modellantakelser {
   /** Korridor = innen (m). */
   korridorM: number;
 
-  /** Vekt i formelen p × (1 + w · gauss) rundt observasjoner. */
+  /**
+   * Vekt per klasse. Sikker og sannsynlig blir nye utgangspunkt med andel w/(w + K) av
+   * sannsynligheten, spredt etter gangtid fra observasjonen. Mulig vekter lokalt:
+   * p × (1 + w · gauss). Usikker (0) gjør ingenting.
+   */
   obsVekt: Record<Observasjonsklasse, number>;
+  /** K i andelen w/(w + K) for observasjoner som blir nytt utgangspunkt. */
+  obsAndelK: number;
   /** Spredning = gangfart × effektiv fremdrift × timer siden observasjonen × denne faktoren. */
   obsSpredning: number;
   /** Minste spredning (m). */
@@ -80,6 +86,7 @@ export const STANDARD_MODELL: Modellantakelser = {
   korridorM: 200,
 
   obsVekt: { sikker: 6, sannsynlig: 3, mulig: 1, usikker: 0 },
+  obsAndelK: 3,
   obsSpredning: 0.6,
   obsMinSpredningM: 150,
 
@@ -129,6 +136,14 @@ export const MODELL_FELT: Array<{
   { felt: 'vannVekt', navn: 'Sannsynlighetsvekt i vann', steg: 0.05, min: 0, max: 1 },
   { felt: 'havVekt', navn: 'Sannsynlighetsvekt i havet', steg: 0.01, min: 0, max: 1 },
   { felt: 'uoppnaaeligVekt', navn: 'Vekt for områder som ikke kan nås', steg: 0.01, min: 0, max: 1 },
+  {
+    felt: 'obsAndelK',
+    navn: 'K for observasjon som utgangspunkt',
+    steg: 0.5,
+    min: 0.5,
+    max: 50,
+    hjelp: 'Sikker og sannsynlig observasjon får andelen vekt/(vekt + K) av sannsynligheten. K = 3: sikker 67 %, sannsynlig 50 %.',
+  },
   { felt: 'obsSpredning', navn: 'Spredning rundt observasjoner (faktor)', steg: 0.05, min: 0.05, max: 3 },
   { felt: 'obsMinSpredningM', navn: 'Minste spredning rundt observasjoner (m)', steg: 10, min: 20, max: 2000 },
   { felt: 'haleFaktor', navn: 'Fall-off utenfor R95 (andel av R95)', steg: 0.05, min: 0.05, max: 2 },

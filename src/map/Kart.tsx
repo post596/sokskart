@@ -251,7 +251,14 @@ export function Kart() {
       if (!map.hasLayer(rekk.current)) rekk.current.addTo(map);
       rekk.current.settData(
         osm && osm.linjer.length + 1 === resultat!.linjeStart.length
-          ? { linjer: osm.linjer.map((l) => l.pts), tider: resultat!.linjeTider, start: resultat!.linjeStart, v: resultat!.fart.v, tMax: tVis }
+          ? {
+              linjer: osm.linjer.map((l) => l.pts),
+              bred: osm.linjer.map((l) => l.type === 'sti' || l.type === 'traktorvei' || l.type === 'vei'),
+              tider: resultat!.linjeTider,
+              start: resultat!.linjeStart,
+              v: resultat!.fart.v,
+              tMax: tVis,
+            }
           : null,
       );
     }

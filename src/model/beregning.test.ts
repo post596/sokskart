@@ -136,34 +136,53 @@ describe('søk og observasjoner', () => {
     // POA now = remaining / (1 − POS)
     expect(etter.teiger[0].poaNa).toBeCloseTo((poa * 0.4) / (1 - poa * 0.6), 6);
   });
-  it('sikre og sannsynlige observasjoner vekter kartet, usikre gjør ingenting', () => {
-    const pos = at(1500, -1500);
-    const masse = (rr: ReturnType<typeof beregn>) => {
-      const g = rr.grid;
-      let s = 0;
-      for (let j = 0; j < g.n; j++) {
-        for (let i = 0; i < g.n; i++) {
-          const e = g.west + (i + 0.5) * g.cell;
-          const nn = g.north - (j + 0.5) * g.cell;
-          if (Math.hypot(e - (u0.e + 1500), nn - (u0.n - 1500)) < 600) s += rr.post[j * g.n + i];
-        }
+  const masseNaer = (rr: ReturnType<typeof beregn>, de: number, dn: number, radius: number) => {
+    const g = rr.grid;
+    let s = 0;
+    for (let j = 0; j < g.n; j++) {
+      for (let i = 0; i < g.n; i++) {
+        const e = g.west + (i + 0.5) * g.cell;
+        const nn = g.north - (j + 0.5) * g.cell;
+        if (Math.hypot(e - (u0.e + de), nn - (u0.n + dn)) < radius) s += rr.post[j * g.n + i];
       }
-      return s;
-    };
-    const ingen = masse(beregn(input()));
-    const sikker = masse(beregn(input({ observasjoner: [{ pos, timerSiden: 0.5, klasse: 'sikker' }] })));
-    const sannsynlig = masse(beregn(input({ observasjoner: [{ pos, timerSiden: 0.5, klasse: 'sannsynlig' }] })));
-    const mulig = masse(beregn(input({ observasjoner: [{ pos, timerSiden: 0.5, klasse: 'mulig' }] })));
-    const usikker = masse(beregn(input({ observasjoner: [{ pos, timerSiden: 0.5, klasse: 'usikker' }] })));
-    expect(sikker / ingen).toBeGreaterThan(3);
-    expect(sannsynlig / ingen).toBeGreaterThan(2);
-    expect(sikker).toBeGreaterThan(sannsynlig);
-    expect(sannsynlig).toBeGreaterThan(mulig);
-    expect(mulig / ingen).toBeLessThan(sannsynlig / ingen);
-    expect(usikker).toBeCloseTo(ingen, 12);
-    // with a strong observation the top point moves towards it
+    }
+    return s;
+  };
+
+  it('sikker og sannsynlig blir nytt utgangspunkt også langt fra IPP (veileder 5.3)', () => {
+    const pos = at(6000, -6000);
+    const obs = (klasse: 'sikker' | 'sannsynlig' | 'mulig' | 'usikker') =>
+      masseNaer(beregn(input({ observasjoner: [{ pos, timerSiden: 0.5, klasse }] })), 6000, -6000, 1500);
+    const ingen = masseNaer(beregn(input()), 6000, -6000, 1500);
+    const sikker = obs('sikker');
+    const sannsynlig = obs('sannsynlig');
+    const mulig = obs('mulig');
+    // share w/(w + K) with K = 3: sikker 6/9, sannsynlig 3/6
+    expect(sikker).toBeGreaterThan(0.6);
+    expect(sikker).toBeLessThan(6 / 9 + ingen + 0.01);
+    expect(sannsynlig).toBeGreaterThan(0.45);
+    expect(sannsynlig).toBeLessThan(sikker);
+    // mulig only weights locally: little effect where the probability is low
+    expect(mulig).toBeLessThan(0.05);
+    expect(mulig).toBeGreaterThan(ingen);
+    expect(obs('usikker')).toBeCloseTo(ingen, 12);
     const r = beregn(input({ observasjoner: [{ pos, timerSiden: 0.5, klasse: 'sikker' }] }));
-    expect(Math.min(...r.punkter.map((p) => distanceM(p.pos, pos)))).toBeLessThan(600);
+    expect(distanceM(r.punkter[0].pos, pos)).toBeLessThan(600);
+  });
+
+  it('mulig observasjon vekter lokalt nær IPP', () => {
+    const pos = at(1500, -1500);
+    const ingen = masseNaer(beregn(input()), 1500, -1500, 600);
+    const mulig = masseNaer(beregn(input({ observasjoner: [{ pos, timerSiden: 0.5, klasse: 'mulig' }] })), 1500, -1500, 600);
+    expect(mulig / ingen).toBeGreaterThan(1.3);
+    expect(mulig / ingen).toBeLessThan(2.01);
+  });
+
+  it('spredningen rundt observasjonen øker med tiden siden den ble gjort', () => {
+    const pos = at(6000, -6000);
+    const fersk = masseNaer(beregn(input({ observasjoner: [{ pos, timerSiden: 0, klasse: 'sikker' }] })), 6000, -6000, 400);
+    const gammel = masseNaer(beregn(input({ observasjoner: [{ pos, timerSiden: 3, klasse: 'sikker' }] })), 6000, -6000, 400);
+    expect(fersk).toBeGreaterThan(gammel);
   });
 });
 

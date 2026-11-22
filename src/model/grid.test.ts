@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cellAreaKm2, cellIndex, cellX, cellY, fraGrid, lagGrid, lagMercatorIndeks, sample, tilGrid } from './grid';
+import { bilineaer, cellAreaKm2, cellIndex, cellX, cellY, fraGrid, lagGrid, lagMercatorIndeks, sample, tilGrid } from './grid';
 import { forCellsInPolygon, glatt, rasterLinjer } from './raster';
 
 const IPP = { lat: 61.6265, lng: 8.4006 };
@@ -46,6 +46,16 @@ describe('Web Mercator-indeks', () => {
     const inside = Array.from(m.index).filter((v) => v >= 0).length;
     expect(inside).toBeGreaterThan(0.9 * m.width * m.height);
     expect(inside).toBeLessThanOrEqual(m.width * m.height);
+    // fractional coordinates agree with the cell index
+    const p = Math.floor(m.height / 2) * m.width + Math.floor(m.width / 2);
+    expect(Math.round(m.fx[p]) + Math.round(m.fy[p]) * g.n).toBe(m.index[p]);
+  });
+  it('bilineær interpolasjon og nærmeste celle ved barrierer', () => {
+    const f = new Float32Array([0, 1, 2, 3]); // 2×2 field
+    expect(bilineaer(f, 2, 0.5, 0.5)).toBeCloseTo(1.5, 10);
+    expect(bilineaer(f, 2, 0, 0)).toBe(0);
+    const g2 = new Float32Array([0, Infinity, 2, 3]);
+    expect(bilineaer(g2, 2, 0.2, 0.1)).toBe(0);
   });
 });
 

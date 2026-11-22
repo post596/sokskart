@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import type { LatLng } from '../domain/coords';
-import type { MercatorIndeks } from '../model/grid';
+import { bilineaer, type MercatorIndeks } from '../model/grid';
 
 /** Colours for the 25/50/75/95 % bands (darkest = most probable), RGBA. */
 export const BANDFARGER: Array<[number, number, number, number]> = [
@@ -54,14 +54,14 @@ export function konturSteg(tMax: number): number {
 export function tegnGangtid(canvas: HTMLCanvasElement, merc: MercatorIndeks, T1: Float32Array, v: number, tMax: number): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const { width: W, height: H, index } = merc;
+  const { width: W, height: H, index, fx, fy } = merc;
+  const n = Math.round(Math.sqrt(T1.length));
   const img = ctx.createImageData(W, H);
   const d = img.data;
   const steg = konturSteg(tMax);
   const tid = new Float32Array(W * H).fill(Number.POSITIVE_INFINITY);
   for (let p = 0; p < index.length; p++) {
-    const c = index[p];
-    if (c >= 0) tid[p] = T1[c] / v;
+    if (index[p] >= 0) tid[p] = bilineaer(T1, n, fx[p], fy[p]) / v;
   }
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
@@ -97,6 +97,8 @@ export function tegnGangtid(canvas: HTMLCanvasElement, merc: MercatorIndeks, T1:
 
 export interface RekkeviddeData {
   linjer: LatLng[][];
+  /** true for paths and roads (drawn wider than streams and power lines) */
+  bred: boolean[];
   /** hours at 1 km/h per vertex, concatenated */
   tider: Float32Array;
   start: Uint32Array;
@@ -167,10 +169,12 @@ export class Rekkeviddelinjer extends L.Layer {
     const front: Array<[number, number]> = [];
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    const segs: Array<[number, number, number, number]> = [];
+    const brede: Array<[number, number, number, number]> = [];
+    const smale: Array<[number, number, number, number]> = [];
     for (let i = 0; i < d.linjer.length; i++) {
       const pts = d.linjer[i];
       const s = d.start[i];
+      const segs = d.bred[i] ? brede : smale;
       let prevP: L.Point | null = null;
       let prevT = Infinity;
       for (let k = 0; k < pts.length; k++) {
@@ -187,18 +191,14 @@ export class Rekkeviddelinjer extends L.Layer {
             const y = aOk ? prevP.y + (p.y - prevP.y) * f : p.y + (prevP.y - p.y) * (1 - f);
             if (aOk) segs.push([prevP.x, prevP.y, x, y]);
             else segs.push([x, y, p.x, p.y]);
-            front.push([x, y]);
+            if (d.bred[i]) front.push([x, y]);
           }
         }
         prevP = p;
         prevT = t;
       }
     }
-    // casing, then line
-    for (const [w, col] of [
-      [7, 'rgba(255,255,255,0.95)'],
-      [4, '#6d28d9'],
-    ] as const) {
+    const strek = (segs: Array<[number, number, number, number]>, w: number, col: string) => {
       ctx.lineWidth = w;
       ctx.strokeStyle = col;
       ctx.beginPath();
@@ -207,13 +207,18 @@ export class Rekkeviddelinjer extends L.Layer {
         ctx.lineTo(x1, y1);
       }
       ctx.stroke();
-    }
-    ctx.lineWidth = 2;
+    };
+    // streams and power lines thin, paths and roads with a white casing on top
+    strek(smale, 2, 'rgba(109,40,217,0.75)');
+    strek(brede, 5, 'rgba(255,255,255,0.9)');
+    strek(brede, 3, '#6d28d9');
+    const r = front.length > 60 ? 4 : 5.5;
+    ctx.lineWidth = 1.5;
     ctx.strokeStyle = '#111827';
     ctx.fillStyle = '#fde047';
     for (const [x, y] of front) {
       ctx.beginPath();
-      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
     }
