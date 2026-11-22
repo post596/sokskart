@@ -143,7 +143,17 @@ Kildene vises nederst til høyre i kartet. URL-ene ble sjekket 22.11.2026 (svare
 Kartverkets egen tjenesteside for cache-tjenesten var ikke tilgjengelig, så sjekk
 [register.geonorge.no/varsler](https://register.geonorge.no/varsler) for endringer.
 
-*Turrutebasen* (merkede stier) er planlagt i fase 2. API-et dokumenteres da.
+**Turrutebasen** (merkede ruter, Kartverket):
+
+- WFS 2.0.0 `https://wfs.geonorge.no/skwms1/wfs.turogfriluftsruter`, typer `app:Fotrute` og
+  `app:Skiløype`.
+- Formatet er GML 3.2, med bbox i EPSG:4258 og rekkefølgen bredde, lengde.
+- CORS er åpent.
+- Rutene legges til som stier når de ikke allerede finnes i OSM (mindre enn 30 m unna på
+  minst 70 % av lengden).
+- WMS-metadata oppgir «Copyright Statens kartverk». Kartverkets åpne data er normalt CC BY 4.0,
+  men lisensen for akkurat Turrutebasen er ikke bekreftet i kartkatalogen. Bekreft den før
+  bred bruk.
 
 ## Personvern
 
@@ -187,16 +197,36 @@ docs/
 Alle tall som vises (POA, POD, POS, areal, avstander, tider), og UTM-konvertering begge
 veier, har enhetstester (`*.test.ts` ved siden av koden).
 
+## Fase 2 – bruk
+
+- **Savnet:** savnetprofil (navn, beskrivelse, bekledning, utstyr, helse, scenario) og
+  statistiske hovedpunkter. Bildet er valgfritt, lagres bare på enheten og tas ikke med i
+  aksjonsfila.
+- **5-punktsordre:** knappen «Ordre» på en teig, ledelinje, sperrepost eller refleks lager
+  ferdig tekst (situasjon, oppdrag, utførelse, administrasjon/forsyning, ledelse/samband)
+  med UTM, savnetprofil og sikre/sannsynlige observasjoner. Tekstene for egne styrker, vær,
+  administrasjon og samband gjelder hele aksjonen.
+- **Regioner og Mattson konsensus** (fanen Regioner): tegn REGA, REGB …, legg til deltakere
+  i ILKO og la hver fordele poeng. Snittet styrer sannsynlighetskartet. I teiglista vises
+  teigene som REGA-T001 (bare internt i ILKO).
+- **GPS-spor** (fanen Teiger): importer GPX. Navn etter veilederen
+  («T005–281345–RK–Drone–71») gir ressurstype, organisasjon og id automatisk. Åpne en teig
+  for å se dekning og foreslått POD, trykk «Bruk foreslått POD» og juster før du registrerer.
+  Sporene vises i resultatkartet med veilederens farger.
+- **Kvalitetssikring** (fanen Teiger): teiger som ikke oppfyller kravet for R50/R75, og teiger
+  med markert høyere gjenstående POA. De kan markeres i kartet.
+- **Tidslinje:** sist sett, observasjoner, funn og søk på en tidsakse. Observasjoner som ikke
+  stemmer med hvor langt personen kan ha gått, får gul markering. Hele aksjonsloggen ligger
+  her, med filter og eksport.
+- **Turrutebasen:** «Hent stier og veier» henter også merkede ruter fra Kartverket og legger
+  til dem som mangler i OSM. Skiløyper tas med når en skikategori er valgt.
+
 ## Status
 
-Fase 1 er på plass, og i tillegg:
+Fase 1 og fase 2 er på plass, og i tillegg:
 
-- gangtid i terrenget med høydedata (opprinnelig fase 2)
 - tidslinje med voksende ledelinjer
 - ressursforslag
 - observasjoner som nytt utgangspunkt
-- enkel aksjonslogg
 
-Gjenstår fra fase 2: Turrutebasen, import av GPX-spor med dekning og foreslått POD,
-regioner med Mattson konsensus, visning av kvalitetssikring, tidslinje for observasjoner,
-savnetprofil og 5-punktsordre. Fase 3 startes ikke uten avklaring.
+Fase 3 startes ikke uten avklaring.

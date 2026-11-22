@@ -138,6 +138,53 @@ Flere observasjoner: p = (grunnfordeling + Σ rᵢ Gᵢ) / (1 + Σ rᵢ), der r�
 Eksempel fra veilederen: R25 har POA 25 %. Hund med POD 50 % gir 12,5 % igjen.
 Søkekjede med POD 70 % gir 3,75 % igjen. Dette er dekket av enhetstester.
 
+## 8b. Regioner og Mattson konsensus
+
+Regioner (REGA, REGB …) er områder med tilnærmet lik POA (veileder 7.5). En celle som ligger
+i flere regioner, hører til den første. Hver deltaker i ILKO fordeler poeng på regionene og
+«resten» utenfor alle regioner. Poengene normaliseres til 100 % per deltaker, og snittet
+blir konsensus-POA (veilederen: «gjennomsnittet av hva hver enkelt mener»).
+
+Når minst én deltaker har vurdert, skaleres sannsynligheten i hver region slik at regionens
+sum blir lik konsensus. Modellen bestemmer fordelingen *inne* i regionen. Har modellen
+ingenting i en region, fordeles konsensus jevnt på arealet. Søk virker deretter som før.
+Uten vurderinger vises modellens POA per region til sammenligning.
+
+## 8c. Dekning og POD fra GPS-spor
+
+For importerte spor regnes dekning C = Σ (W · L) / A, der W er effektiv søkebredde for
+ressurstypen, L er sporets lengde inne i teigen og A er teigens areal. Foreslått POD er
+1 − e^(−C), den eksponentielle deteksjonsfunksjonen fra søketeori (Koopman, Koester m.fl. 2004).
+Brukeren godkjenner eller justerer forslaget før søket registreres. Spor som er brukt i et
+registrert søk, telles ikke igjen for samme teig.
+
+| Ressurs | Søkebredde W (`sokebredde`) |
+|---|---|
+| Søksmannskap til fots | 30 m |
+| Hund | 80 m |
+| Hundefører | 30 m |
+| Drone | 60 m |
+| Helikopter | 150 m |
+| Motorisert | 20 m |
+
+Søkebreddene er modellantakelser («moderate» standardverdier valgt av brukeren). Når både
+hund og hundefører har spor i teigen, telles begge.
+
+## 8d. Kvalitetssikring
+
+Ved avslutning uten funn (veileder 7.5.2) viser appen teiger som **berører** R50 og ikke har
+akkumulert POD over 95 %, og teiger som berører R75 og ikke har minst 50 % (normal høy).
+Teiger med POA nå over 1,5 × snittet av teigene markeres som «markert høyere gjenstående
+POA». Faktoren 1,5 er en modellantakelse. Appen viser også hvor mye av POA nå som ligger
+utenfor alle teiger.
+
+## 8e. Tidslinje og observasjoner
+
+For hver observasjon sammenligner tidslinja gangtiden fra IPP til observasjonen (med
+kategoriens gangfart) med tiden mellom sist sett og observasjonen. Krever observasjonen mer
+enn 5 % raskere fremdrift enn mulig, får den en gul markering, og appen ber om ny vurdering
+av observasjonen, IPP eller tidspunktet.
+
 ## 9. Fargebånd og mest sannsynlige punkter
 
 - Cellene sorteres etter POA nå. Båndene viser **minste areal** som dekker 25, 50, 75
