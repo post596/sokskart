@@ -1,0 +1,846 @@
+/* Søkskart – calm and clear, readable outdoors in sunlight and on tablets in ILKO.
+   Norsk Folkehjelp red as accent; HRS colour codes drive the map. */
+:root {
+  --rod: #c8102e;
+  --rod-mork: #9b0c23;
+  --blekk: #0f172a;
+  --dempet: #475569;
+  --linje: #cbd5e1;
+  --flate: #ffffff;
+  --flate-2: #f1f5f9;
+  --flate-3: #e2e8f0;
+  --gul: #fef3c7;
+  --gul-kant: #d97706;
+  --bla-info: #e0f2fe;
+  --bla-kant: #0369a1;
+  --feil: #fee2e2;
+  --feil-kant: #b91c1c;
+  --ok: #dcfce7;
+  --ok-kant: #15803d;
+  --fokus: #2563eb;
+  --trykk: 44px;
+  --radius: 8px;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--blekk);
+  background: var(--flate);
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+  min-width: 0;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--flate);
+  overflow: hidden;
+}
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+}
+
+/* ---------------------------------------------------------------- header */
+.topp {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2px 16px;
+  padding: 8px 16px;
+  border-bottom: 4px solid var(--rod);
+  background: var(--flate);
+}
+.tittel {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.topp h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+.aksjonsnavn {
+  font-weight: 600;
+  color: var(--dempet);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status {
+  justify-self: end;
+  display: flex;
+  gap: 6px;
+}
+.statusmerke {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--flate-3);
+}
+.statusmerke.av {
+  background: var(--feil);
+  color: var(--feil-kant);
+  font-weight: 600;
+}
+.stotte {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--dempet);
+}
+
+/* ---------------------------------------------------------------- layout */
+.hoved {
+  display: grid;
+  grid-template-columns: minmax(340px, 440px) 1fr;
+  min-height: 0;
+}
+.sidepanel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--linje);
+  min-height: 0;
+  background: var(--flate);
+}
+.faner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px 8px 0;
+  border-bottom: 1px solid var(--linje);
+}
+.faner button {
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 10px 10px;
+  min-height: var(--trykk);
+  color: var(--dempet);
+  border-bottom: 4px solid transparent;
+  cursor: pointer;
+}
+.faner button.pa {
+  color: var(--blekk);
+  font-weight: 700;
+  border-bottom-color: var(--rod);
+}
+.faneinnhold {
+  overflow-y: auto;
+  padding: 12px 16px 48px;
+  flex: 1;
+}
+.kartkolonne {
+  position: relative;
+  min-height: 0;
+}
+.kartomrade,
+.kart {
+  position: absolute;
+  inset: 0;
+}
+
+@media (max-width: 860px) {
+  body {
+    overflow: auto;
+  }
+  .app {
+    height: auto;
+    min-height: 100%;
+  }
+  .hoved {
+    grid-template-columns: 1fr;
+    grid-template-rows: 58vh auto;
+  }
+  .kartkolonne {
+    order: 1;
+    height: 58vh;
+  }
+  .sidepanel {
+    order: 2;
+    border-right: 0;
+    border-top: 1px solid var(--linje);
+  }
+  .faneinnhold {
+    overflow: visible;
+  }
+  .topp {
+    padding: 6px 12px;
+  }
+}
+
+/* ---------------------------------------------------------------- forms */
+.fane h3 {
+  font-size: 1rem;
+  margin: 18px 0 6px;
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.85rem;
+  color: var(--dempet);
+  margin: 8px 0 0;
+}
+label.avkryss {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  color: var(--blekk);
+  font-size: 0.95rem;
+  min-height: var(--trykk);
+  margin: 0;
+}
+input,
+select,
+textarea {
+  font: inherit;
+  font-size: 1rem;
+  color: var(--blekk);
+  background: #fff;
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-height: var(--trykk);
+  width: 100%;
+}
+input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  accent-color: var(--rod);
+  flex: none;
+}
+input[type='range'] {
+  accent-color: #6d28d9;
+  padding: 0;
+  border: 0;
+}
+:focus-visible {
+  outline: 3px solid var(--fokus);
+  outline-offset: 2px;
+}
+.rad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  margin-top: 6px;
+}
+.rad > * {
+  flex: 1 1 140px;
+}
+.rad > .knapp {
+  flex: 0 0 auto;
+}
+.rad > .bred {
+  flex: 3 1 200px;
+}
+fieldset {
+  border: 1px solid var(--linje);
+  border-radius: var(--radius);
+  margin: 12px 0 0;
+  padding: 6px 10px 10px;
+}
+legend {
+  font-size: 0.85rem;
+  color: var(--dempet);
+  padding: 0 4px;
+}
+
+/* ---------------------------------------------------------------- buttons */
+.knapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--trykk);
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #64748b;
+  background: #fff;
+  color: var(--blekk);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.knapp:hover {
+  background: var(--flate-2);
+}
+.knapp.hoved {
+  background: var(--rod);
+  border-color: var(--rod);
+  color: #fff;
+}
+.knapp.hoved:hover {
+  background: var(--rod-mork);
+}
+.knapp.fare {
+  border-color: var(--feil-kant);
+  color: var(--feil-kant);
+}
+.knapp.fare:hover {
+  background: var(--feil);
+}
+.dialog .knapp.fare {
+  background: var(--feil-kant);
+  color: #fff;
+}
+.knapp:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.knapp.liten {
+  min-height: 36px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+@media (pointer: coarse) {
+  .knapp.liten {
+    min-height: var(--trykk);
+  }
+}
+.knapperad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  align-items: center;
+}
+.knapperad.hoyre {
+  justify-content: flex-end;
+}
+.linje .knapperad {
+  margin: 0;
+}
+.lenkeknapp {
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  padding: 6px 0;
+  cursor: pointer;
+  text-align: left;
+  min-height: var(--trykk);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.brikker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.brikke {
+  border: 1px solid #64748b;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  min-height: 40px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--blekk);
+}
+.brikke.pa {
+  background: var(--blekk);
+  border-color: var(--blekk);
+  color: #fff;
+}
+.ikke-ok {
+  color: var(--gul-kant);
+  font-weight: 800;
+}
+.brikke.pa .ikke-ok {
+  color: #fcd34d;
+}
+.vekter .vekt {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--blekk);
+}
+.vekter .vekt > span:first-child {
+  flex: 1;
+}
+.vekter .vekt input {
+  width: 90px;
+}
+
+/* ---------------------------------------------------------------- content */
+.dempet {
+  color: var(--dempet);
+}
+.liten-tekst {
+  font-size: 0.82rem;
+}
+.mono {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+}
+.boks {
+  background: var(--flate-2);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 10px 0;
+}
+.boks h3 {
+  margin-top: 0;
+}
+.kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+  margin: 0;
+  font-size: 0.92rem;
+}
+.kv dt {
+  font-weight: 600;
+}
+.kv dd {
+  margin: 0;
+}
+.varsel {
+  border-left: 5px solid var(--gul-kant);
+  background: var(--gul);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 10px 0;
+  font-size: 0.9rem;
+}
+.varsel.info {
+  border-color: var(--bla-kant);
+  background: var(--bla-info);
+}
+.varsel.feil {
+  border-color: var(--feil-kant);
+  background: var(--feil);
+}
+.merke {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #ede9fe;
+  color: #5b21b6;
+  vertical-align: middle;
+}
+.liste {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+}
+.liste > li {
+  border: 1px solid var(--linje);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  margin: 6px 0;
+}
+.liste > li.valgt {
+  border-color: var(--blekk);
+  border-width: 2px;
+}
+.linje {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.utm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.utm .mono {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.farge {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  vertical-align: -2px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+.forklaring,
+.bandforklaring {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.85rem;
+  margin: 10px 0;
+}
+.sjekkliste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.sjekkliste label {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--blekk);
+  font-size: 0.92rem;
+  padding: 6px 0;
+}
+.sjekkliste input {
+  margin-top: 2px;
+}
+.logg {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.85rem;
+}
+.logg li {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--flate-3);
+}
+.seksjon {
+  margin-top: 16px;
+  border-top: 1px solid var(--linje);
+}
+.seksjon-tittel {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  padding: 10px 0;
+  min-height: var(--trykk);
+  cursor: pointer;
+}
+.teigdetaljer {
+  margin-top: 6px;
+  border-top: 1px dashed var(--linje);
+  padding-top: 6px;
+}
+.soklist {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+  font-size: 0.85rem;
+}
+.soklist li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+.sokskjema {
+  background: var(--flate-2);
+  border-radius: 6px;
+  padding: 4px 8px 8px;
+  margin-top: 6px;
+}
+.sokskjema .linje {
+  margin-top: 8px;
+}
+.ressursinput {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.ressursgruppe h3 {
+  margin-bottom: 0;
+}
+.tabellramme {
+  overflow-x: auto;
+  margin: 8px 0;
+}
+table.stat {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+table.stat th,
+table.stat td {
+  border-bottom: 1px solid var(--flate-3);
+  padding: 3px 2px;
+  text-align: left;
+  vertical-align: middle;
+}
+table.stat td input[type='number'] {
+  width: 62px;
+  padding: 4px;
+  min-height: 36px;
+  text-align: right;
+  font-size: 0.9rem;
+}
+table.stat tr.ikke-verifisert th[scope='row'] {
+  color: #92400e;
+}
+.feiltekst {
+  color: var(--feil-kant);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.modellfelt {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0 10px;
+  margin-bottom: 10px;
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--linje);
+  margin: 8px 0;
+}
+
+/* ---------------------------------------------------------------- map overlays */
+.koordinat {
+  position: absolute;
+  z-index: 800;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--linje);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.sentrumskors {
+  display: none;
+}
+@media (pointer: coarse) {
+  .sentrumskors {
+    display: block;
+    position: absolute;
+    z-index: 790;
+    left: 50%;
+    top: 50%;
+    width: 28px;
+    height: 28px;
+    margin: -14px 0 0 -14px;
+    pointer-events: none;
+    background:
+      linear-gradient(#0f172a, #0f172a) center / 2px 100% no-repeat,
+      linear-gradient(#0f172a, #0f172a) center / 100% 2px no-repeat;
+    opacity: 0.7;
+  }
+}
+.kart.sikte,
+.kart.sikte .leaflet-interactive {
+  cursor: crosshair !important;
+}
+.modusbar {
+  position: absolute;
+  z-index: 900;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--blekk);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 8px 6px 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  max-width: calc(100% - 32px);
+  font-size: 0.92rem;
+}
+.kartkontroller {
+  position: absolute;
+  z-index: 850;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid var(--linje);
+  border-radius: var(--radius);
+  padding: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  max-width: 260px;
+  max-height: calc(100% - 140px);
+  overflow-y: auto;
+}
+.kk-innhold {
+  padding: 4px 4px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kk-innhold .knapp {
+  margin-top: 4px;
+}
+.tidslinje {
+  position: absolute;
+  z-index: 850;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  width: min(640px, calc(100% - 24px));
+  background: rgba(255, 255, 255, 0.97);
+  border: 2px solid #6d28d9;
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  font-size: 0.88rem;
+}
+.tid-kontroll {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.tid-kontroll input[type='range'] {
+  flex: 1;
+  min-height: 36px;
+}
+.meldinger {
+  position: fixed;
+  z-index: 2000;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+}
+.melding {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: var(--blekk);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  font-size: 0.92rem;
+}
+.melding.feil {
+  background: var(--feil-kant);
+}
+.melding.ok {
+  background: var(--ok-kant);
+}
+.melding .lukk {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  color: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  min-width: 32px;
+  min-height: 32px;
+}
+.dialog-bakgrunn {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(15, 23, 42, 0.5);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.dialog {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+.dialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+/* Leaflet markers */
+.ipp-ikon {
+  background: var(--rod);
+  color: #fff;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  font: 800 12px/32px system-ui, sans-serif;
+  text-align: center;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+.ringetikett span {
+  position: absolute;
+  transform: translate(-50%, -120%);
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font: 700 12px system-ui, sans-serif;
+  color: #111;
+}
+.ringetikett.svak span {
+  font-weight: 500;
+  transform: translate(-50%, 20%);
+}
+.toppunkt {
+  background: #111827;
+  color: #fff;
+  border: 3px solid #fde047;
+  border-radius: 50%;
+  font: 800 13px/22px system-ui, sans-serif;
+  text-align: center;
+}
+.punktikon span,
+.forslagikon span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: 5px;
+  padding: 1px 4px;
+  font: 800 11px/16px system-ui, sans-serif;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+.forslagikon span {
+  border-radius: 10px;
+  border-color: #111;
+}
+.egenpos {
+  background: #2563eb;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+.leaflet-tooltip.teigetikett,
+.leaflet-tooltip.linjeetikett {
+  font: 800 12px system-ui, sans-serif;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: none;
+}
+.leaflet-tooltip.teigetikett::before,
+.leaflet-tooltip.linjeetikett::before {
+  display: none;
+}
+.leaflet-container {
+  font: inherit;
+  background: #e5e7eb;
+}
+.leaflet-control-attribution {
+  font-size: 11px;
+}

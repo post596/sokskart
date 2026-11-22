@@ -55,8 +55,6 @@ function input(over: Partial<BeregningInput> = {}): BeregningInput {
   };
 }
 
-const sum = (a: ArrayLike<number>) => Array.from(a).reduce((x, y) => x + y, 0);
-
 describe('rekkevidde', () => {
   it('er 1 innenfor og faller raskt utenfor', () => {
     expect(rekkeviddeFaktor(1, 2, 0.2)).toBe(1);

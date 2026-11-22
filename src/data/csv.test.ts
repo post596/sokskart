@@ -28,6 +28,11 @@ describe('CSV-import av statistikk', () => {
     expect(r.feil).toHaveLength(2);
     expect(r.endret).toEqual(['Turgåer']);
   });
+  it('tåler byte order mark (Excel)', () => {
+    const r = importerCsv('﻿kategori;r25;r50;r75;r95\nRus;0,3;0,6;1,6;5\n', kopierStatistikk());
+    expect(r.feil).toEqual([]);
+    expect(r.endret).toEqual(['Rus']);
+  });
   it('krever kolonnene for ringene', () => {
     expect(importerCsv('kategori;r25\nDemens;1\n', kopierStatistikk()).feil[0]).toMatch(/r50/);
   });

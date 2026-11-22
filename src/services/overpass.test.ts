@@ -112,7 +112,7 @@ describe('tolking av Overpass-svar', () => {
         },
       ],
     };
-    const d = tolkSvar(json, p(61, 8), 5000, 'test');
+    const d = tolkSvar(json as unknown as Parameters<typeof tolkSvar>[0], p(61, 8), 5000, 'test');
     expect(d.linjer.map((x) => [x.type, x.navn, x.elv])).toEqual([
       ['sti', 'Stien', false],
       ['vann', '', true],

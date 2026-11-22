@@ -15,6 +15,8 @@ export interface CsvResultat {
   feil: string[];
 }
 
+const BOM = new RegExp('^' + String.fromCharCode(0xfeff));
+
 const KOLONNER = ['kategori', 'terreng', 'r25', 'r50', 'r75', 'r95', 'gangfart', 'mobilitet', 'verifisert', 'kilde'] as const;
 
 function splitLinje(linje: string, sep: string): string[] {
@@ -50,7 +52,7 @@ const norm = (s: string) =>
 
 export function importerCsv(tekst: string, gjeldende: LpbKategori[]): CsvResultat {
   const linjer = tekst
-    .replace(/^﻿/, '')
+    .replace(BOM, '')
     .split(/\r?\n/)
     .filter((l) => l.trim() && !l.trim().startsWith('#'));
   const feil: string[] = [];
