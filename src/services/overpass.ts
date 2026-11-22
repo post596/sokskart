@@ -264,13 +264,17 @@ export function tolkSvar(json: { elements?: OverpassElement[] }, senter: LatLng,
 export class OverpassFeil extends Error {}
 
 /** Fetches once from the first endpoint, falls back to the next on failure. */
-export async function hentOsm(senter: LatLng, radiusM: number, signal?: AbortSignal, del: 'linjer' | 'areal' = 'linjer'): Promise<OsmData> {
+/** Tries the endpoints in order within a total deadline (ms), then gives up so a fallback can take over. */
+export async function hentOsm(senter: LatLng, radiusM: number, signal?: AbortSignal, del: 'linjer' | 'areal' = 'linjer', fristMs = 60_000): Promise<OsmData> {
   const q = byggSporring(senter, radiusM, del);
+  const slutt = Date.now() + fristMs;
   const feil: string[] = [];
   // each endpoint is tried once, in order (never in a loop)
-  for (const [nr, url] of OVERPASS_ENDEPUNKTER.entries()) {
+  for (const url of OVERPASS_ENDEPUNKTER) {
+    const igjen = slutt - Date.now();
+    if (igjen < 3000) break;
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), nr === 0 ? 60_000 : 75_000);
+    const timer = setTimeout(() => ctrl.abort(), igjen);
     signal?.addEventListener('abort', () => ctrl.abort(), { once: true });
     try {
       const r = await fetch(url, {

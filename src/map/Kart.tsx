@@ -10,6 +10,7 @@ import { TEIGFARGER, teigfarge } from '../domain/pod';
 import { RESSURSER } from '../model/ressurser';
 import { LINJETYPE_FARGE, LINJETYPE_NAVN } from '../model/typer';
 import { KARTLAG } from '../services/kartfliser';
+import { VEKTOR_ATTRIBUSJON } from '../services/vektorfliser';
 import { mixRinger, standardVisning } from '../state/beregning';
 import { endreTeigRing, leggTilPunkt, leggTilRegion, leggTilTeig } from '../state/handlinger';
 import { kvalitetssikring } from '../domain/kvalitet';
@@ -272,6 +273,17 @@ export function Kart() {
       );
     }
   }, [resultat, visning.gangtid, aksjon.ipp, tVis, osm]);
+
+  // ------------------------------------------------------------ attribution for fallback sources
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !osm) return;
+    const tekster = [osm.kilde.includes('OpenFreeMap') ? VEKTOR_ATTRIBUSJON : '', osm.linjer.some((l) => l.kilde === 'turrutebasen') ? 'Turrutebasen © Kartverket' : ''].filter(Boolean);
+    for (const t of tekster) map.attributionControl.addAttribution(t);
+    return () => {
+      for (const t of tekster) map.attributionControl.removeAttribution(t);
+    };
+  }, [osm]);
 
   // ------------------------------------------------------------ all ledelinjer
   useEffect(() => {

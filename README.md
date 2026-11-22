@@ -135,6 +135,7 @@ Aksjonen lagres fortløpende på enheten og overlever omlasting.
 | Kilde | Bruk | Vilkår |
 |---|---|---|
 | Kartverket topo og gråtone (WMTS-cache), `https://cache.kartverket.no/v1/wmts/1.0.0/{topo,topograatone}/default/webmercator/{z}/{y}/{x}.png` | Grunnkart | CC BY 4.0, «© Kartverket». Ifølge [vilkårene](https://www.kartverket.no/api-og-data/vilkar-for-bruk) inneholder nivå 12–20 data fra Geovekst, som krever særskilt løyve for kopiering. Søkskart forhåndslaster derfor bare nivå 8–11. Detaljnivå lagres bare når de vises. Spør Kartverket (post@kartverket.no) om løyve hvis dere trenger mer. |
+| OpenFreeMap-vektorfliser (`tiles.openfreemap.org`, OpenMapTiles-skjema) | Automatisk reserve for stier, vann og arealtyper når Overpass ikke svarer | © OpenMapTiles © OpenStreetMap-bidragsytere (ODbL). Gratis, uten nøkkel. |
 | OpenStreetMap-fliser (reserve) | Grunnkart | © OpenStreetMap-bidragsytere (ODbL). Masse-nedlasting er ikke tillatt, så de forhåndslastes ikke. |
 | Overpass API (`overpass-api.de`, reserve `overpass.private.coffee`) | Stier, veier, vann, myr, bre, stup, hytter | Én spørring per trykk, aldri i løkke. Resultatet lagres i aksjonen og sendes med i aksjonsfila. |
 | Kartverket høydemodell (DTM), WCS `https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-258{32,33,35}`, coverage `nhm_dtm_topo_258xx` | Helning og hav i gangtiden | CC BY 4.0. Hentes som GeoTIFF for beregningsområdet og lagres lokalt. |
@@ -256,11 +257,27 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
   egen forespørsel. Tre Overpass-servere prøves én gang hver, og svarer ingen, beholdes
   forrige henting.
 
+**Reserve når Overpass er nede** (avklart 22.11.2026):
+
+- **N50 Kartdata** finnes ikke som WFS. Den kan bare bestilles via Geonorges nedlastings-API,
+  som ikke tillater kall fra nettleseren (mangler CORS) og leverer etter noen minutter.
+  Automatisk N50 krever derfor en server eller at Kartverket åpner for CORS.
+  NIBIOs AR50-WFS mangler også CORS.
+- **Appen bruker derfor automatisk OpenFreeMap-vektorfliser** (`tiles.openfreemap.org`).
+  Det er de samme OpenStreetMap-dataene som ferdige fliser på CDN: gratis, uten nøkkel, med
+  åpen CORS og uten egen server. Overpass får 60 sekunder. Svarer det ikke, hentes stier,
+  veier, jernbane, bekker, vann, skog, myr, bre, åpent terreng og punkter fra flisene. Det tok
+  under 1 sekund for 5 km i testen.
+- Stup og kraftgater finnes ikke i flisene.
+- Kildehenvisning «© OpenMapTiles © OpenStreetMap-bidragsytere (OpenFreeMap)» vises i kartet
+  når flisene er brukt.
+- Svikter også flisene, beholdes forrige henting.
+
 Oppfølging:
 
-- **Norsk reservekilde for stier, vann og arealtyper** når Overpass er nede, f.eks. N50 fra
-  Geonorge. `wfs.geonorge.no/skwms1/wfs.n50` finnes ikke, så riktig tjeneste må finnes.
 - **Fagfolk bør kvalitetssikre** lista over interessepunkter og søketeknikkene.
+- **Be Kartverket åpne for CORS** på nedlastings-API-et (`nedlasting.geonorge.no/api/order`),
+  så kan N50 bli en ekstra automatisk kilde senere.
 
 ## Status
 

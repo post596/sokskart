@@ -8,6 +8,8 @@ const base = process.env.BASE_PATH ?? '/';
 
 export default defineConfig({
   base,
+  // vector tile test fixtures
+  assetsInclude: ['**/*.pbf'],
   plugins: [
     react(),
     VitePWA({

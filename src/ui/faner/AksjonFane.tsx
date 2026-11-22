@@ -11,6 +11,7 @@ import { LINJETYPE_NAVN } from '../../model/typer';
 import type { OsmData } from '../../model/typer';
 import { hentOsm } from '../../services/overpass';
 import { fjernDuplikater, hentTurruter } from '../../services/turrutebasen';
+import { hentFraVektorfliser } from '../../services/vektorfliser';
 import { useStore } from '../../state/store';
 import { Advarsel, lastNed, loggVedEndring, Modellmerke, Utm, VisKnapp } from '../felles';
 import { fmtAvstand, fmtFart, fmtKm2, fmtTid, fmtTimer } from '../format';
@@ -36,47 +37,77 @@ export async function hentStier(): Promise<void> {
   s.set({ osmStatus: { henter: true, feil: null } });
   // ski tracks from Turrutebasen only when a ski category is chosen
   const medSki = a.kategorier.some((k) => k.key === 'langrenn' || k.key === 'alpin');
-  const [osmR, trbR] = await Promise.allSettled([hentOsm(a.ipp, radius), hentTurruter(a.ipp, radius, medSki)]);
+  const feilTekst = (e: unknown) => (e instanceof Error ? e.message : String(e));
+  const trbP = hentTurruter(a.ipp, radius, medSki);
+  let osm: OsmData | null = null;
+  let kilde = 'OpenStreetMap (Overpass)';
+  let overpassFeil: string | null = null;
+  try {
+    osm = await hentOsm(a.ipp, radius);
+  } catch (e) {
+    overpassFeil = feilTekst(e);
+    // automatic fallback: the same OSM data as ready-made vector tiles (no server, no queue)
+    useStore.getState().melding('Overpass svarer ikke. Henter de samme OSM-dataene som vektorfliser fra OpenFreeMap …', 'info');
+    try {
+      osm = await hentFraVektorfliser(a.ipp, radius);
+      kilde = 'OpenFreeMap-vektorfliser';
+    } catch (e2) {
+      overpassFeil += ` Vektorfliser: ${feilTekst(e2)}`;
+    }
+  }
+  const [trbR] = await Promise.allSettled([trbP]);
   const st = useStore.getState();
   const forrige = st.osm;
-  if (osmR.status === 'rejected' && (trbR.status === 'rejected' || forrige)) {
+  if (!osm && (trbR.status === 'rejected' || forrige)) {
     // keep what we already have rather than replacing it with less
-    const feil = `${osmR.reason instanceof Error ? osmR.reason.message : String(osmR.reason)}${forrige ? ' Beholder stiene og veiene fra forrige henting.' : ''}`;
+    const feil = `Fikk ikke hentet stier og veier (${overpassFeil}).${forrige ? ' Beholder stiene og veiene fra forrige henting.' : ''}`;
     st.set({ osmStatus: { henter: false, feil } });
     st.melding(feil, 'feil');
     return;
   }
-  const osm: OsmData =
-    osmR.status === 'fulfilled'
-      ? osmR.value
-      : { linjer: [], omrader: [], stup: [], punkter: [], senter: a.ipp, radiusM: radius, hentet: new Date().toISOString(), kilde: 'Turrutebasen' };
+  if (!osm) {
+    osm = { linjer: [], omrader: [], stup: [], punkter: [], senter: a.ipp, radiusM: radius, hentet: new Date().toISOString(), kilde: 'Turrutebasen' };
+    kilde = 'Turrutebasen';
+  }
   let trbTekst = '';
   if (trbR.status === 'fulfilled') {
     const { beholdt, duplikater } = fjernDuplikater(trbR.value, osm.linjer);
     osm.linjer = [...osm.linjer, ...beholdt];
     trbTekst = `, ${beholdt.length} nye merkede ruter fra Turrutebasen (${duplikater} fantes i OSM)`;
   } else {
-    st.melding(`Turrutebasen svarte ikke (${trbR.reason instanceof Error ? trbR.reason.message : trbR.reason}). Bruker bare OpenStreetMap.`, 'info');
+    st.melding(`Turrutebasen svarte ikke (${feilTekst(trbR.reason)}). Bruker bare OpenStreetMap.`, 'info');
   }
-  const feil = osmR.status === 'rejected' ? `OpenStreetMap svarte ikke: ${osmR.reason instanceof Error ? osmR.reason.message : osmR.reason}` : null;
+  const feil = kilde === 'OpenFreeMap-vektorfliser' ? `Overpass svarte ikke (${overpassFeil}). Brukte OpenFreeMap-vektorfliser (samme OSM-data, uten stup og kraftgater).` : null;
   st.set({ osm: { ...osm, hentet: new Date().toISOString() }, osmStatus: { henter: false, feil } });
-  st.endreAksjon(() => {}, `Stier og veier hentet (${osm.linjer.length} ledelinjer innen ${fmtAvstand(radius)}${trbTekst})`);
-  st.melding(`${osm.linjer.length} ledelinjer, ${osm.omrader.length} områder og ${osm.punkter.length} punkter hentet innen ${fmtAvstand(radius)}${trbTekst}.`, 'ok');
+  st.endreAksjon(() => {}, `Stier og veier hentet fra ${kilde} (${osm.linjer.length} ledelinjer innen ${fmtAvstand(radius)}${trbTekst})`);
+  st.melding(`${osm.linjer.length} ledelinjer, ${osm.omrader.length} områder og ${osm.punkter.length} punkter hentet fra ${kilde} innen ${fmtAvstand(radius)}${trbTekst}.`, 'ok');
+  if (kilde !== 'OpenStreetMap (Overpass)') return; // vector tiles already include land cover
+
   // land cover and small POIs in a separate, optional request (keeps the first one light)
   st.set({ osmStatus: { henter: true, feil } });
+  let areal: OsmData;
+  let arealKilde = 'Overpass';
   try {
-    const areal = await hentOsm(a.ipp, radius, undefined, 'areal');
-    const cur = useStore.getState();
-    if (cur.osm) {
-      cur.set({
-        osm: { ...cur.osm, omrader: [...cur.osm.omrader, ...areal.omrader], punkter: [...cur.osm.punkter, ...areal.punkter], hentet: new Date().toISOString() },
-        osmStatus: { henter: false, feil },
-      });
-      cur.endreAksjon(() => {}, `Arealtyper hentet (${areal.omrader.length} områder, ${areal.punkter.length} punkter)`);
+    areal = await hentOsm(a.ipp, radius, undefined, 'areal');
+  } catch {
+    try {
+      const v = await hentFraVektorfliser(a.ipp, radius, true);
+      // only land cover; water is already in the first answer
+      areal = { ...v, omrader: v.omrader.filter((o) => o.type !== 'vann'), punkter: [] };
+      arealKilde = 'OpenFreeMap-vektorfliser';
+    } catch (e) {
+      useStore.getState().set({ osmStatus: { henter: false, feil } });
+      useStore.getState().melding(`Arealtyper (skog/åpent) ble ikke hentet: ${feilTekst(e)}. Teigforslag bruker bare stier og vann som grenser.`, 'info');
+      return;
     }
-  } catch (e) {
-    useStore.getState().set({ osmStatus: { henter: false, feil } });
-    useStore.getState().melding(`Arealtyper (skog/åpent) ble ikke hentet: ${e instanceof Error ? e.message : e}. Teigforslag bruker bare stier og vann som grenser.`, 'info');
+  }
+  const cur = useStore.getState();
+  if (cur.osm && areal) {
+    cur.set({
+      osm: { ...cur.osm, omrader: [...cur.osm.omrader, ...areal.omrader], punkter: [...cur.osm.punkter, ...areal.punkter], hentet: new Date().toISOString() },
+      osmStatus: { henter: false, feil },
+    });
+    cur.endreAksjon(() => {}, `Arealtyper hentet fra ${arealKilde} (${areal.omrader.length} områder, ${areal.punkter.length} punkter)`);
   }
 }
 

@@ -15,9 +15,11 @@
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.20.8",
+    "@mapbox/vector-tile": "^3.0.0",
     "geotiff": "^3.0.5",
     "idb-keyval": "^6.3.0",
     "leaflet": "^1.9.4",
+    "pbf": "^5.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zustand": "^5.1.0"
