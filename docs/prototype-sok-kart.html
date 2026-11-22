@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Søkskart – IPP og sannsynlighet</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/*
+VOICE: operativt verktøy, rolig og tydelig, lesbart ute og i ILKO
+IDEA: plankartet i ILKO – IPP, ringer, ledelinjer, teiger
+PICTURE: kartet selv, med sannsynlighetslag
+COLOUR: hvit flate, Folkehjelp-rød som aksent, HRS-fargekoder på teiger
+TYPE / LAYOUT: systemfont, sidepanel til venstre, kart fyller resten; stables på mobil
+*/
+:root{--red:#c8102e;--ink:#111827;--mut:#5b6472;--line:#e3e6ea;--bg:#fff;--soft:#f5f6f8}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%;margin:0}
+body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+#app{display:grid;grid-template-columns:380px 1fr;height:100%}
+#side{display:flex;flex-direction:column;border-right:1px solid var(--line);overflow:hidden;background:var(--bg)}
+header{padding:12px 14px 8px;border-bottom:3px solid var(--red)}
+header h1{font-size:18px;margin:0;line-height:1.15}
+header p{margin:2px 0 0;color:var(--mut);font-size:13px}
+nav{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+nav button{border:0;background:none;padding:9px 10px;font:inherit;font-size:14px;color:var(--mut);border-bottom:3px solid transparent;cursor:pointer;min-height:40px}
+nav button.on{color:var(--ink);border-bottom-color:var(--red);font-weight:600}
+.panel{display:none;overflow-y:auto;padding:12px 14px 40px;flex:1}
+.panel.on{display:block}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 3px}
+input,select,textarea{font:inherit;font-size:16px;width:100%;padding:8px 9px;border:1px solid #cfd4da;border-radius:6px;background:#fff;color:var(--ink)}
+input[type=checkbox]{width:auto;transform:scale(1.25);margin-right:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1 1 140px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 12px;border-radius:6px;border:1px solid #cfd4da;background:#fff;font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+.btn.pri{background:var(--red);border-color:var(--red);color:#fff}
+.btn.sm{min-height:34px;padding:4px 9px;font-size:13px;font-weight:500}
+.btn:focus-visible,input:focus-visible,select:focus-visible,nav button:focus-visible{outline:3px solid #2563eb;outline-offset:1px}
+.btn[disabled]{opacity:.55;cursor:wait}
+.box{background:var(--soft);border-radius:8px;padding:10px 12px;margin:12px 0}
+.box h3,.panel h3{font-size:14px;margin:14px 0 6px}
+.box h3{margin-top:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:14px}
+.kv b{font-weight:600;white-space:nowrap}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+.warn{background:#fff4e5;border-left:4px solid #f59e0b;padding:8px 10px;border-radius:4px;font-size:13px;margin:10px 0}
+.list{list-style:none;padding:0;margin:0}
+.list li{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:14px}
+.list li .t{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.list li .s{color:var(--mut);font-size:13px}
+.chip{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.check li{display:flex;align-items:flex-start;padding:4px 0;font-size:14px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:4px 3px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+td input{font-size:14px;padding:4px;width:58px;text-align:right}
+.scroll{overflow-x:auto}
+#map{height:100%}
+#modebar{position:absolute;z-index:1000;top:10px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:8px 14px;border-radius:20px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;gap:10px;align-items:center}
+#modebar[hidden],[hidden]{display:none!important}
+#modebar button{background:#fff;color:#111;border:0;border-radius:12px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+#coord{position:absolute;z-index:1000;bottom:22px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.92);padding:3px 10px;border-radius:12px;white-space:nowrap}
+#toast{position:fixed;z-index:2000;bottom:20px;right:20px;max-width:360px;background:#111827;color:#fff;padding:10px 14px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none}
+#toast.on{opacity:1}
+.mapwrap{position:relative;height:100%}
+.ipp{background:var(--red);color:#fff;border:2px solid #fff;border-radius:50%;font:700 11px/30px system-ui;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.rlabel span,.wlabel span{position:absolute;transform:translate(-50%,-125%);white-space:nowrap;background:rgba(255,255,255,.9);padding:1px 6px;border-radius:4px;font:600 12px system-ui;color:#111}
+.hot{background:#111827;color:#fff;border:2px solid #fde047;border-radius:50%;font:700 12px/22px system-ui;text-align:center}
+.pt{border:2px solid #fff;border-radius:4px;color:#fff;font:700 10px/18px system-ui;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.4);white-space:nowrap;padding:0 3px}
+.leaflet-tooltip.lt{font:600 12px system-ui;padding:1px 5px}
+.heat{image-rendering:pixelated}
+.legend{display:grid;grid-template-columns:auto 1fr auto;gap:3px 8px;font-size:13px;align-items:center}
+@media(max-width:800px){
+ #app{grid-template-columns:1fr;grid-template-rows:52vh 48vh}
+ #side{order:2;border-right:0;border-top:1px solid var(--line)}
+ .mapwrap{order:1}
+}
+</style>
+</head>
+<body>
+<div id="app">
+<aside id="side">
+ <header><h1>Søkskart</h1><p>IPP, savnetkategori, ledelinjer og sannsynlighet – etter sykkelhjulmodellen</p></header>
+ <nav id="tabs">
+  <button data-tab="aksjon" class="on">Aksjon</button>
+  <button data-tab="ledel">Ledelinjer</button>
+  <button data-tab="teiger">Teiger</button>
+  <button data-tab="punkt">Punkter</button>
+  <button data-tab="stat">Statistikk</button>
+ </nav>
+
+ <section class="panel on" id="p-aksjon">
+  <div id="statWarn"></div>
+  <label for="aName">Aksjon</label>
+  <input id="aName" placeholder="F.eks. SAR-nr. eller sted">
+  <label for="aCat">Savnetkategori</label>
+  <select id="aCat"></select>
+  <div class="row">
+   <div><label for="aSeen">Sist sett / IPP-tidspunkt</label><input id="aSeen" type="datetime-local"></div>
+   <div><label for="aZone">UTM-sone</label><select id="aZone"><option value="auto">Auto</option><option>32</option><option>33</option><option>35</option></select></div>
+  </div>
+  <label for="aIppTxt">IPP (klikk i kart, eller skriv UTM «33 0597123 7632456» / «61.123, 9.456»)</label>
+  <div class="row"><input id="aIppTxt" placeholder="UTM eller grader" style="flex:3 1 180px"><button class="btn" id="bIppTxt" style="flex:1 1 60px">Sett</button></div>
+  <div class="row" style="margin-top:10px">
+   <button class="btn pri" id="bIpp">Sett IPP i kart</button>
+   <button class="btn" id="bWays">Hent stier og veier</button>
+  </div>
+  <div class="box" id="sumBox"></div>
+  <h3>Mest sannsynlige punkter</h3>
+  <ol class="list" id="hotList"></ol>
+  <h3>Sykkelhjulmodellen – førsteinnsats</h3>
+  <ul class="list check" id="wheel"></ul>
+  <h3>Aksjonsfil</h3>
+  <div class="row">
+   <button class="btn sm" id="bExp">Lagre aksjon (.json)</button>
+   <label class="btn sm" style="margin:0;color:var(--ink)">Åpne aksjon<input type="file" id="fImp" accept=".json" hidden></label>
+   <button class="btn sm" id="bGpx">GPX til mannskap</button>
+   <button class="btn sm" id="bNew">Ny aksjon</button>
+  </div>
+ </section>
+
+ <section class="panel" id="p-ledel">
+  <p class="s" style="color:var(--mut);font-size:13px">Eikene i sykkelhjulet. Rangert etter hvor mye sannsynlighet linja går gjennom. Søk ledelinjer helt ut – også forbi R95 når tid og scenario tilsier det.</p>
+  <div id="wayInfo"></div>
+  <ol class="list" id="wayList"></ol>
+ </section>
+
+ <section class="panel" id="p-teiger">
+  <p style="color:var(--mut);font-size:13px">Tegn teiger (typisk 0,2–0,5 km²) og registrer søk med POD. Gjenværende sannsynlighet oppdateres: POS = POA × POD, akkumulert POD = 1 − (1 − POD₁)(1 − POD₂)…</p>
+  <button class="btn pri" id="bTeig">Tegn ny teig</button>
+  <div class="legend" style="margin-top:12px">
+   <span class="chip" style="background:#2563eb"></span><span>Planlagt</span><span></span>
+   <span class="chip" style="background:#dc2626"></span><span>Utdelt og startet</span><span></span>
+   <span class="chip" style="background:#f97316"></span><span>Ett søk</span><span></span>
+   <span class="chip" style="background:#eab308"></span><span>Flere søk – vurder på nytt</span><span></span>
+   <span class="chip" style="background:#16a34a"></span><span>Akkumulert POD &gt; 95 %</span><span></span>
+  </div>
+  <ul class="list" id="teigList"></ul>
+ </section>
+
+ <section class="panel" id="p-punkt">
+  <p style="color:var(--mut);font-size:13px">Observasjoner, spor og funn oppdaterer sannsynligheten. Bare sikre og sannsynlige observasjoner skal normalt føre til omprioritering – IPP flyttes ikke.</p>
+  <div class="row">
+   <div><label for="ptType">Type</label><select id="ptType"><option value="obs">Observasjon / spor</option><option value="sp">Sperrepost</option><option value="poi">Refleks / POI</option><option value="funn">Funn av gjenstand</option></select></div>
+   <div><label for="ptCls">Klassifisering</label><select id="ptCls"><option value="sikker">Sikker</option><option value="sannsynlig" selected>Sannsynlig</option><option value="mulig">Mulig</option><option value="usikker">Usikker</option></select></div>
+  </div>
+  <label for="ptTime">Tidspunkt for observasjonen</label><input id="ptTime" type="datetime-local">
+  <label for="ptTxt">Beskrivelse / kilde</label><input id="ptTxt" placeholder="Hvem, hva, hvordan verifisert">
+  <div style="margin-top:10px"><button class="btn pri" id="bPt">Plasser i kart</button></div>
+  <ul class="list" id="ptList"></ul>
+ </section>
+
+ <section class="panel" id="p-stat">
+  <div class="warn"><b>Tallene under er plassholdere.</b> De er omtrentlige verdier skrevet inn uten oppslag og <b>må kontrolleres mot tabellene i Lost Person Behavior (Koester)</b> før operativ bruk. Huk av «OK» når en kategori er kontrollert.</div>
+  <div class="scroll"><table id="statTab"></table></div>
+  <p style="font-size:12px;color:var(--mut)">R-verdier i km (avstand i rett linje fra IPP til funnsted). v = antatt gangfart km/t. Mob = antatt maks antall timer i bevegelse.</p>
+  <h3>Modellparametre</h3>
+  <div class="row">
+   <div><label for="pLin1">Vekt nær ledelinje</label><input id="pLin1" type="number" step="0.1" min="1"></div>
+   <div><label for="pBuf1">Nær = innen (m)</label><input id="pBuf1" type="number" step="10" min="10"></div>
+  </div>
+  <div class="row">
+   <div><label for="pLin2">Vekt i ledelinjekorridor</label><input id="pLin2" type="number" step="0.1" min="1"></div>
+   <div><label for="pBuf2">Korridor = innen (m)</label><input id="pBuf2" type="number" step="10" min="20"></div>
+  </div>
+  <div class="row">
+   <div><label for="pEff">Effektiv fremdrift (0–1)</label><input id="pEff" type="number" step="0.05" min="0.1" max="1"></div>
+   <div><label for="pQR">Maks søkeradius for stier (km)</label><input id="pQR" type="number" step="1" min="1" max="20"></div>
+  </div>
+  <p style="font-size:12px;color:var(--mut)">Effektiv fremdrift: hvor mye av gangfarten som blir avstand i rett linje fra IPP (folk går ikke rett ut). Brukes til rekkeviddegrensen.</p>
+  <button class="btn sm" id="bReset">Tilbakestill statistikk og parametre</button>
+ </section>
+</aside>
+<div class="mapwrap">
+ <div id="map"></div>
+ <div id="modebar" hidden><span id="modeTxt"></span><button id="bDone" hidden>Ferdig</button><button id="bCancel">Avbryt</button></div>
+ <div id="coord" class="mono">Beveg musa over kartet for UTM</div>
+</div>
+</div>
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+{
+const $=s=>document.querySelector(s);
+const rad=Math.PI/180;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(3,'0');
+const fmtKm=v=>(v<1?Math.round(v*1000)+' m':(+v).toFixed(1).replace('.',',')+' km');
+const pct=v=>(v*100).toFixed(v<0.1?1:0).replace('.',',')+' %';
+
+/* PLASSHOLDERE – må kontrolleres mot Lost Person Behavior */
+const DEF_STATS={
+ turgaer:{n:'Turgåer',r25:0.7,r50:1.9,r75:3.6,r95:11.3,v:3,mob:12},
+ jeger:{n:'Jeger',r25:1.3,r50:3.0,r75:5.0,r95:13.8,v:3,mob:12},
+ plukker:{n:'Bær-/soppplukker',r25:0.9,r50:1.6,r75:3.6,r95:6.9,v:2,mob:10},
+ fisker:{n:'Fisker',r25:0.3,r50:1.4,r75:4.1,r95:8.0,v:2.5,mob:10},
+ langrenn:{n:'Skiløper, langrenn',r25:1.0,r50:3.2,r75:6.4,r95:18,v:5,mob:10},
+ alpin:{n:'Skiløper, alpin',r25:0.6,r50:1.5,r75:3.0,r95:7.0,v:4,mob:8},
+ dement:{n:'Demens',r25:0.3,r50:0.8,r75:1.9,r95:8.3,v:1.5,mob:12},
+ suicid:{n:'Økt selvmordsrisiko',r25:0.2,r50:0.6,r75:1.8,r95:9.0,v:2,mob:8},
+ utvikl:{n:'Psykisk utviklingshemmet',r25:0.2,r50:0.6,r75:1.7,r95:6.9,v:2,mob:10},
+ autist:{n:'Autisme',r25:0.2,r50:0.6,r75:2.4,r95:9.7,v:2.5,mob:10},
+ rus:{n:'Rus',r25:0.2,r50:0.5,r75:1.5,r95:5.0,v:2,mob:6},
+ b13:{n:'Barn 1–3 år',r25:0.1,r50:0.2,r75:0.6,r95:2.0,v:1,mob:4},
+ b46:{n:'Barn 4–6 år',r25:0.1,r50:0.5,r75:1.0,r95:2.6,v:1.5,mob:6},
+ b79:{n:'Barn 7–9 år',r25:0.3,r50:0.8,r75:2.0,r95:5.1,v:2,mob:8},
+ b1012:{n:'Barn 10–12 år',r25:0.2,r50:0.9,r75:1.6,r95:5.6,v:2.5,mob:10},
+ b1315:{n:'Barn 13–15 år',r25:0.4,r50:0.8,r75:2.1,r95:6.2,v:3,mob:12}
+};
+const DEF_PARAMS={lin1:3,lin2:1.6,buf1:60,buf2:200,eff:0.6,qR:8,N:300};
+const OBSW={sikker:6,sannsynlig:3,mulig:1,usikker:0};
+const PODS=[[95,'Svært høy (>95 %)'],[85,'Høy (75–95 %)'],[60,'Normal høy (50–75 %)'],[40,'Normal lav (25–50 %)'],[15,'Lav (<25 %)']];
+const RES=['Mannskap søkekjede','Mannskap ledelinje','Hund','Drone','Helikopter','Annet'];
+const WHEEL=[['aksling','Akslingen – IPP søkt grundig'],['navet','Navet – R25 søkt (finsøk hvis R25 < 300 m)'],['eikene','Eikene – ledelinjer hurtigsøkt, helt ut'],['felgen','Felgen – søksområde og sperreposter (R50/R75)'],['refleks','Refleksene – POI og risikoområder søkt']];
+
+function fresh(){return {name:'',cat:'turgaer',lastSeen:'',zone:'auto',ipp:null,stats:JSON.parse(JSON.stringify(DEF_STATS)),params:{...DEF_PARAMS},teiger:[],points:[],wheel:{},seq:{T:0,SP:0,R:0,OBS:0,F:0}}}
+let S=fresh(),WAYS=[],G=null;
+try{const s=JSON.parse(localStorage.getItem('sar_state')||'null');if(s)S=Object.assign(fresh(),s)}catch(e){}
+try{const w=JSON.parse(localStorage.getItem('sar_ways')||'null');if(w)WAYS=w}catch(e){}
+const save=()=>{try{localStorage.setItem('sar_state',JSON.stringify(S))}catch(e){}};
+const saveWays=()=>{try{localStorage.setItem('sar_ways',JSON.stringify(WAYS))}catch(e){toast('Ledelinjene er for store til å lagres lokalt – hent dem på nytt neste gang.')}};
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),4500)}
+
+/* ---------- UTM (WGS84) ---------- */
+const A=6378137,F=1/298.257223563,K0=0.9996,E2=F*(2-F),EP2=E2/(1-E2);
+function utm(lat,lon,force){
+ let z=Math.floor((lon+180)/6)+1;
+ if(lat>=56&&lat<64&&lon>=3&&lon<12)z=32;
+ if(lat>=72&&lat<84){if(lon>=0&&lon<9)z=31;else if(lon<21)z=33;else if(lon<33)z=35;else if(lon<42)z=37}
+ if(force&&force!=='auto')z=+force;
+ const phi=lat*rad,l0=((z-1)*6-180+3)*rad,lam=lon*rad;
+ const s=Math.sin(phi),c=Math.cos(phi),t=Math.tan(phi);
+ const N=A/Math.sqrt(1-E2*s*s),T=t*t,C=EP2*c*c,a=c*(lam-l0);
+ const e4=E2*E2,e6=e4*E2;
+ const M=A*((1-E2/4-3*e4/64-5*e6/256)*phi-(3*E2/8+3*e4/32+45*e6/1024)*Math.sin(2*phi)+(15*e4/256+45*e6/1024)*Math.sin(4*phi)-(35*e6/3072)*Math.sin(6*phi));
+ const E=K0*N*(a+(1-T+C)*a**3/6+(5-18*T+T*T+72*C-58*EP2)*a**5/120)+500000;
+ let Nn=K0*(M+N*t*(a*a/2+(5-T+9*C+4*C*C)*a**4/24+(61-58*T+T*T+600*C-330*EP2)*a**6/720));
+ if(lat<0)Nn+=1e7;
+ return {z,band:'CDEFGHJKLMNPQRSTUVWXX'[Math.floor((lat+80)/8)]||'',E:Math.round(E),N:Math.round(Nn)};
+}
+function fromUTM(z,E,N){
+ const e1=(1-Math.sqrt(1-E2))/(1+Math.sqrt(1-E2)),x=E-500000;
+ const mu=(N/K0)/(A*(1-E2/4-3*E2*E2/64-5*E2**3/256));
+ const p1=mu+(3*e1/2-27*e1**3/32)*Math.sin(2*mu)+(21*e1*e1/16-55*e1**4/32)*Math.sin(4*mu)+(151*e1**3/96)*Math.sin(6*mu)+(1097*e1**4/512)*Math.sin(8*mu);
+ const s=Math.sin(p1),c=Math.cos(p1),t=Math.tan(p1);
+ const N1=A/Math.sqrt(1-E2*s*s),T1=t*t,C1=EP2*c*c,R1=A*(1-E2)/Math.pow(1-E2*s*s,1.5),D=x/(N1*K0);
+ const lat=p1-(N1*t/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*EP2)*D**4/24+(61+90*T1+298*C1+45*T1*T1-252*EP2-3*C1*C1)*D**6/720);
+ const lon=((z-1)*6-180+3)*rad+(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1*C1+8*EP2+24*T1*T1)*D**5/120)/c;
+ return [lat/rad,lon/rad];
+}
+const fmtUTM=(lat,lon)=>{const u=utm(lat,lon,S.zone);return `${u.z}${u.band} ${String(u.E).padStart(7,'0')} ${String(u.N).padStart(7,'0')}`};
+
+/* lokale meter rundt IPP */
+const kx=()=>111320*Math.cos(S.ipp.lat*rad);
+const xy=(lat,lng)=>[(lng-S.ipp.lng)*kx(),(lat-S.ipp.lat)*110540];
+const ll=(x,y)=>[S.ipp.lat+y/110540,S.ipp.lng+x/kx()];
+function lenM(pts){let s=0;for(let k=1;k<pts.length;k++){const dy=(pts[k][0]-pts[k-1][0])*110540,dx=(pts[k][1]-pts[k-1][1])*111320*Math.cos(pts[k][0]*rad);s+=Math.hypot(dx,dy)}return s}
+
+/* ---------- kart ---------- */
+const map=L.map('map',{preferCanvas:true}).setView([61.5,9.5],6);
+const KV='https://cache.kartverket.no/v1/wmts/1.0.0/';
+const base={
+ 'Topo (Kartverket)':L.tileLayer(KV+'topo/default/webmercator/{z}/{y}/{x}.png',{maxZoom:18,attribution:'© <a href="https://www.kartverket.no">Kartverket</a>'}),
+ 'Gråtone (Kartverket)':L.tileLayer(KV+'topograatone/default/webmercator/{z}/{y}/{x}.png',{maxZoom:18,attribution:'© Kartverket'}),
+ 'OpenStreetMap':L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap-bidragsytere'})
+};
+base['Topo (Kartverket)'].addTo(map);
+const lyr={};
+['heat','rings','ways','top','teig','pts','hot','tmp'].forEach(k=>lyr[k]=L.layerGroup().addTo(map));
+L.control.layers(base,{'Sannsynlighet':lyr.heat,'Ringer R25–R95':lyr.rings,'Alle ledelinjer':lyr.ways,'Prioriterte ledelinjer':lyr.top,'Teiger':lyr.teig,'Punkter':lyr.pts,'Mest sannsynlige punkter':lyr.hot}).addTo(map);
+L.control.scale({imperial:false}).addTo(map);
+const cvR=L.canvas({padding:.5});
+map.on('mousemove',e=>{$('#coord').textContent='UTM '+fmtUTM(e.latlng.lat,e.latlng.lng)});
+
+let mode=null,tmp=[];
+function setMode(m){
+ mode=m;const mb=$('#modebar');mb.hidden=!m;
+ $('#modeTxt').textContent=m?{ipp:'Klikk i kartet for å sette IPP',teig:'Klikk hjørnene i teigen – dobbeltklikk eller «Ferdig»',punkt:'Klikk der punktet skal stå'}[m]:'';
+ $('#bDone').hidden=m!=='teig';
+ if(m==='teig')map.doubleClickZoom.disable();else map.doubleClickZoom.enable();
+ if(m!=='teig'){tmp=[];lyr.tmp.clearLayers()}
+ map.getContainer().style.cursor=m?'crosshair':'';
+}
+$('#bCancel').onclick=()=>setMode(null);
+$('#bDone').onclick=()=>finishTeig();
+map.on('click',e=>{
+ const {lat,lng}=e.latlng;
+ if(mode==='ipp'){setIpp(lat,lng)}
+ else if(mode==='teig'){
+  const l=tmp[tmp.length-1];if(l&&Math.abs(l[0]-lat)<1e-7&&Math.abs(l[1]-lng)<1e-7)return;
+  tmp.push([lat,lng]);lyr.tmp.clearLayers();
+  L.polyline(tmp.length>2?[...tmp,tmp[0]]:tmp,{color:'#2563eb',dashArray:'5 5',renderer:cvR}).addTo(lyr.tmp);
+  tmp.forEach(p=>L.circleMarker(p,{radius:4,color:'#2563eb',renderer:cvR}).addTo(lyr.tmp));
+ }
+ else if(mode==='punkt'){addPoint(lat,lng);setMode(null)}
+});
+map.on('dblclick',()=>{if(mode==='teig')finishTeig()});
+
+function setIpp(lat,lng){
+ const moved=!!S.ipp;S.ipp={lat,lng};setMode(null);
+ if(moved&&WAYS.length){WAYS=[];saveWays();lyr.ways.clearLayers();toast('IPP endret – hent stier og veier på nytt.')}
+ else toast('IPP satt. Hent stier og veier for å vekte ledelinjer.');
+ save();drawAll();compute();map.fitBounds(L.latLng(lat,lng).toBounds(S.stats[S.cat].r75*2400));
+}
+
+/* ---------- tid og rekkevidde ---------- */
+function timing(){
+ const st=S.stats[S.cat];if(!S.lastSeen)return {el:null,reach:null};
+ const el=(Date.now()-new Date(S.lastSeen).getTime())/3.6e6;
+ if(!(el>0))return {el:0,reach:null};
+ return {el,reach:st.v*Math.min(el,st.mob)*1000*S.params.eff};
+}
+const fmtH=h=>{const t=Math.floor(h),m=Math.round((h-t)*60);return (t?t+' t ':'')+m+' min'};
+
+/* ---------- tegning ---------- */
+function drawRings(){
+ lyr.rings.clearLayers();if(!S.ipp)return;
+ const st=S.stats[S.cat],c=[S.ipp.lat,S.ipp.lng];
+ [['R25',st.r25,'#7f1d1d'],['R50',st.r50,'#b91c1c'],['R75',st.r75,'#ea580c'],['R95',st.r95,'#a16207']].forEach(([n,r,col])=>{
+  L.circle(c,{radius:r*1000,color:col,weight:2,fill:false,dashArray:n==='R95'?'8 6':null,interactive:false,renderer:cvR}).addTo(lyr.rings);
+  L.marker(ll(0,r*1000),{icon:L.divIcon({className:'rlabel',html:`<span>${n} · ${fmtKm(r)}</span>`,iconSize:null}),interactive:false}).addTo(lyr.rings);
+ });
+ const {reach}=timing();
+ if(reach){L.circle(c,{radius:reach,color:'#334155',weight:1.5,dashArray:'2 6',fill:false,interactive:false,renderer:cvR}).addTo(lyr.rings);
+  L.marker(ll(reach*0.7071,-reach*0.7071),{icon:L.divIcon({className:'rlabel',html:`<span>Mulig rekkevidde ${fmtKm(reach/1000)}</span>`,iconSize:null}),interactive:false}).addTo(lyr.rings)}
+ L.marker(c,{icon:L.divIcon({className:'ipp',html:'IPP',iconSize:[34,34]})}).bindTooltip('IPP '+fmtUTM(c[0],c[1]),{className:'lt'}).addTo(lyr.rings);
+}
+const KIND={sti:{c:'#be185d',w:2.5,d:'6 4',n:'Sti'},traktorvei:{c:'#92400e',w:2.5,d:null,n:'Traktor-/skogsvei'},vei:{c:'#374151',w:3,d:null,n:'Vei'},vann:{c:'#1d4ed8',w:2,d:null,n:'Elv/bekk/grøft'},kraft:{c:'#6d28d9',w:2,d:'1 6',n:'Kraftgate'}};
+function drawWays(){
+ lyr.ways.clearLayers();
+ WAYS.forEach(w=>{const k=KIND[w.kind];L.polyline(w.pts,{color:k.c,weight:k.w,dashArray:k.d,opacity:.85,renderer:cvR}).bindTooltip(`${k.n}${w.name?': '+esc(w.name):''}`,{className:'lt',sticky:true}).addTo(lyr.ways)});
+}
+const accPOD=t=>1-t.searches.reduce((a,s)=>a*(1-s.pod/100),1);
+function teigCol(t){const a=accPOD(t);if(a>=.95)return '#16a34a';if(t.searches.length>=2)return '#eab308';if(t.searches.length===1)return '#f97316';return t.status==='utdelt'?'#dc2626':'#2563eb'}
+function drawTeiger(){
+ lyr.teig.clearLayers();
+ S.teiger.forEach(t=>{const c=teigCol(t);L.polygon(t.pts,{color:c,weight:2.5,fillColor:c,fillOpacity:.12,renderer:cvR}).bindTooltip(t.id,{permanent:true,direction:'center',className:'lt'}).addTo(lyr.teig)});
+}
+const PTC={obs:{sikker:'#7f1d1d',sannsynlig:'#dc2626',mulig:'#f59e0b',usikker:'#9ca3af'},sp:'#0f766e',poi:'#7c3aed',funn:'#0369a1'};
+function drawPts(){
+ lyr.pts.clearLayers();
+ S.points.forEach(p=>{const col=p.type==='obs'?PTC.obs[p.cls]:PTC[p.type];
+  L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:`<div class="pt" style="background:${col}">${esc(p.id)}</div>`,iconSize:null,iconAnchor:[14,10]})}).bindTooltip(`${esc(p.id)} ${esc(p.txt||'')}`,{className:'lt'}).addTo(lyr.pts)});
+}
+function drawAll(){drawRings();drawTeiger();drawPts()}
+
+/* ---------- beregning ---------- */
+function blur(a,N,r){
+ const t=new Float64Array(N*N);
+ for(let j=0;j<N;j++)for(let i=0;i<N;i++){let s=0,n=0;for(let k=-r;k<=r;k++){const q=i+k;if(q>=0&&q<N){s+=a[j*N+q];n++}}t[j*N+i]=s/n}
+ for(let j=0;j<N;j++)for(let i=0;i<N;i++){let s=0,n=0;for(let k=-r;k<=r;k++){const q=j+k;if(q>=0&&q<N){s+=t[q*N+i];n++}}a[j*N+i]=s/n}
+}
+function raster(N,cell,half,draw){
+ const cv=document.createElement('canvas');cv.width=cv.height=N;const c=cv.getContext('2d');
+ const P=(la,ln)=>{const [x,y]=xy(la,ln);return [(x+half)/cell,(half-y)/cell]};
+ draw(c,P);const d=c.getImageData(0,0,N,N).data,m=new Uint8Array(N*N);
+ for(let k=0;k<N*N;k++)m[k]=d[k*4+3]>40?1:0;return m;
+}
+const rasterWays=(N,cell,half,buf)=>raster(N,cell,half,(c,P)=>{c.lineWidth=Math.max(1.2,2*buf/cell);c.lineCap=c.lineJoin='round';c.beginPath();WAYS.forEach(w=>w.pts.forEach((q,k)=>{const [px,py]=P(q[0],q[1]);k?c.lineTo(px,py):c.moveTo(px,py)}));c.stroke()});
+const rasterPoly=(N,cell,half,pts)=>raster(N,cell,half,(c,P)=>{c.beginPath();pts.forEach((q,k)=>{const [px,py]=P(q[0],q[1]);k?c.lineTo(px,py):c.moveTo(px,py)});c.closePath();c.fill()});
+const norm=p=>{let s=0;for(const v of p)s+=v;for(let k=0;k<p.length;k++)p[k]/=s;return s};
+
+function compute(){
+ lyr.heat.clearLayers();lyr.hot.clearLayers();lyr.top.clearLayers();
+ if(!S.ipp){G=null;renderSide();return}
+ const st=S.stats[S.cat],P=S.params,N=P.N||300;
+ const R=[st.r25,st.r50,st.r75,st.r95].map(v=>Math.max(.02,+v||0)*1000).sort((a,b)=>a-b);
+ const rout=R[3]*1.6,radii=[0,...R,rout],mass=[.25,.25,.25,.20,.04];
+ const dens=mass.map((m,k)=>m/(Math.PI*(radii[k+1]**2-radii[k]**2)));
+ const {el,reach}=timing();
+ const half=Math.min(30000,Math.max(R[3]*1.35,1500)),cell=2*half/N;
+ const p=new Float64Array(N*N),X=i=>-half+(i+.5)*cell,Y=j=>half-(j+.5)*cell;
+ for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+  const d=Math.hypot(X(i),Y(j));let v;
+  if(d>=rout)v=dens[4]*Math.exp(-(d-rout)/(0.3*R[3]));else{let k=0;while(d>=radii[k+1])k++;v=dens[k]}
+  p[j*N+i]=v;
+ }
+ blur(p,N,1);blur(p,N,1);
+ if(reach)for(let j=0;j<N;j++)for(let i=0;i<N;i++){const d=Math.hypot(X(i),Y(j));if(d>reach)p[j*N+i]*=Math.exp(-(((d-reach)/(0.2*reach+150))**2))}
+ let near=null,mid=null;
+ if(WAYS.length){near=rasterWays(N,cell,half,P.buf1);mid=rasterWays(N,cell,half,P.buf2);for(let k=0;k<N*N;k++)p[k]*=near[k]?P.lin1:(mid[k]?P.lin2:1)}
+ const now=Date.now();
+ S.points.filter(q=>q.type==='obs'&&OBSW[q.cls]>0).forEach(q=>{
+  const [ox,oy]=xy(q.lat,q.lng),h=Math.max(0,(now-new Date(q.t).getTime())/3.6e6);
+  const sg=Math.min(R[3],Math.max(150,st.v*1000*P.eff*Math.min(h,st.mob)*0.6)),w=OBSW[q.cls];
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){const dx=X(i)-ox,dy=Y(j)-oy;p[j*N+i]*=1+w*Math.exp(-(dx*dx+dy*dy)/(2*sg*sg))}
+ });
+ norm(p);const prior=Float64Array.from(p);
+ const masks=S.teiger.map(t=>rasterPoly(N,cell,half,t.pts));
+ S.teiger.forEach((t,k)=>{const a=accPOD(t);if(a>0){const m=masks[k];for(let q=0;q<N*N;q++)if(m[q])p[q]*=1-a}});
+ const rem=norm(p);
+ G={N,cell,half,p,prior,masks,mid,R,reach,el,pos:1-rem};
+ renderHeat();hotspots();rankWays();renderSide();
+}
+function renderHeat(){
+ const {N,p}=G,order=Array.from({length:N*N},(_,k)=>k).sort((a,b)=>p[b]-p[a]);
+ const band=new Int8Array(N*N).fill(-1),lim=[.25,.5,.75,.95],cnt=[0,0,0,0];let cum=0,b=0;
+ for(const k of order){if(b>3)break;band[k]=b;cnt[b]++;cum+=p[k];while(b<=3&&cum>=lim[b])b++}
+ G.order=order;G.band=band;
+ G.area=cnt.map((_,i)=>cnt.slice(0,i+1).reduce((a,v)=>a+v,0)*G.cell*G.cell/1e6);
+ const cv=document.createElement('canvas');cv.width=cv.height=N;const c=cv.getContext('2d'),im=c.createImageData(N,N);
+ const cols=[[127,0,0,155],[215,48,31,125],[252,141,89,100],[253,204,138,80]];
+ for(let k=0;k<N*N;k++)if(band[k]>=0)im.data.set(cols[band[k]],k*4);
+ c.putImageData(im,0,0);
+ L.imageOverlay(cv.toDataURL(),[ll(-G.half,-G.half),ll(G.half,G.half)],{interactive:false,className:'heat'}).addTo(lyr.heat);
+}
+function cellXY(k){const i=k%G.N,j=Math.floor(k/G.N);return [-G.half+(i+.5)*G.cell,G.half-(j+.5)*G.cell]}
+function hotspots(){
+ const sep=Math.max(G.R[0],300),out=[];
+ for(const k of G.order){if(out.length>=5)break;const [x,y]=cellXY(k);if(out.every(o=>Math.hypot(o.x-x,o.y-y)>=sep))out.push({x,y,k,p:G.p[k]})}
+ G.hot=out.map((o,n)=>{const [la,ln]=ll(o.x,o.y),d=Math.hypot(o.x,o.y);
+  L.marker([la,ln],{icon:L.divIcon({className:'hot',html:String(n+1),iconSize:[26,26]})}).bindTooltip(`Punkt ${n+1}: ${fmtUTM(la,ln)}`,{className:'lt'}).addTo(lyr.hot);
+  return {n:n+1,la,ln,d,onLine:G.mid?!!G.mid[o.k]:null}});
+}
+function rankWays(){
+ G.ways=[];if(!WAYS.length)return;
+ const {N,cell,half,p}=G;
+ const sc=WAYS.map(w=>{const seen=new Set();let s=0;
+  for(let k=1;k<w.pts.length;k++){const [x0,y0]=xy(...w.pts[k-1]),[x1,y1]=xy(...w.pts[k]),L2=Math.hypot(x1-x0,y1-y0),n=Math.max(1,Math.ceil(L2/(cell/2)));
+   for(let q=0;q<=n;q++){const x=x0+(x1-x0)*q/n,y=y0+(y1-y0)*q/n,i=Math.floor((x+half)/cell),j=Math.floor((half-y)/cell);
+    if(i>=0&&j>=0&&i<N&&j<N){const id=j*N+i;if(!seen.has(id)){seen.add(id);s+=p[id]}}}}
+  return {w,s,len:lenM(w.pts)}});
+ sc.sort((a,b)=>b.s-a.s);
+ G.ways=sc.slice(0,20).map((o,n)=>({...o,id:'L'+pad(n+1)}));
+ G.ways.forEach((o,n)=>{const k=KIND[o.w.kind];
+  L.polyline(o.w.pts,{color:'#fde047',weight:9,opacity:.75,renderer:cvR,interactive:false}).addTo(lyr.top);
+  L.polyline(o.w.pts,{color:k.c,weight:3.5,renderer:cvR}).bindTooltip(o.id,{permanent:n<6,className:'lt'}).addTo(lyr.top)});
+ let corr=0;for(let k=0;k<N*N;k++)if(G.mid[k])corr+=p[k];G.corr=corr;
+}
+
+/* ---------- Overpass (OSM) ---------- */
+function kindOf(t){
+ if(t.waterway)return 'vann';if(t.power)return 'kraft';
+ if(/^(path|footway|bridleway|steps|cycleway)$/.test(t.highway))return 'sti';
+ if(t.highway==='track')return 'traktorvei';return 'vei';
+}
+async function fetchWays(){
+ if(!S.ipp)return toast('Sett IPP først.');
+ const st=S.stats[S.cat],R=Math.round(Math.min(st.r95*1000*1.2,S.params.qR*1000)),{lat,lng}=S.ipp;
+ const a=`(around:${R},${lat.toFixed(6)},${lng.toFixed(6)})`;
+ const q=`[out:json][timeout:90];(way${a}[highway~"^(path|footway|bridleway|steps|track|cycleway|unclassified|residential|service|tertiary|secondary|primary|trunk|living_street|road)$"];way${a}[waterway~"^(river|stream|ditch|canal|drain)$"];way${a}[power=line];);out geom tags;`;
+ const b=$('#bWays');b.disabled=true;b.textContent='Henter …';let err;
+ for(const url of ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']){
+  try{const r=await fetch(url,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+   if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();
+   WAYS=j.elements.filter(e=>e.type==='way'&&e.geometry).map(e=>{const t=e.tags||{};return {id:e.id,kind:kindOf(t),name:t.name||t.ref||'',pts:e.geometry.map(g=>[+g.lat.toFixed(6),+g.lon.toFixed(6)])}});
+   saveWays();drawWays();compute();b.disabled=false;b.textContent='Hent stier og veier';
+   toast(`${WAYS.length} ledelinjer hentet innen ${fmtKm(R/1000)}.`);return}
+  catch(e){err=e}
+ }
+ b.disabled=false;b.textContent='Hent stier og veier';toast('Klarte ikke hente fra OpenStreetMap/Overpass: '+(err&&err.message));
+}
+
+/* ---------- punkter og teiger ---------- */
+const PRE={obs:'OBS',sp:'SP',poi:'R',funn:'F'};
+function addPoint(lat,lng){
+ const type=$('#ptType').value,pre=PRE[type];S.seq[pre]=(S.seq[pre]||0)+1;
+ S.points.push({id:pre+pad(S.seq[pre]),type,cls:$('#ptCls').value,t:$('#ptTime').value||localNow(),txt:$('#ptTxt').value.trim(),lat,lng});
+ $('#ptTxt').value='';save();drawPts();compute();
+}
+function finishTeig(){
+ if(tmp.length<3)return toast('En teig trenger minst tre hjørner.');
+ S.seq.T++;S.teiger.push({id:'T'+pad(S.seq.T),pts:tmp.slice(),status:'planlagt',searches:[]});
+ setMode(null);save();drawTeiger();compute();
+}
+function localNow(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
+
+/* ---------- sidepanel ---------- */
+function renderSide(){
+ const st=S.stats[S.cat];
+ $('#statWarn').innerHTML=st.ok?'':`<div class="warn">Statistikken for «${esc(st.n)}» er ikke kontrollert mot Lost Person Behavior. Se fanen Statistikk.</div>`;
+ const sb=$('#sumBox');
+ if(!S.ipp){sb.innerHTML='<h3>Kom i gang</h3>1. Velg kategori og når personen sist ble sett.<br>2. Sett IPP.<br>3. Hent stier og veier.<br>4. Tegn teiger og registrer søk etter hvert.';}
+ else{
+  const {el,reach}=timing(),u=fmtUTM(S.ipp.lat,S.ipp.lng);
+  sb.innerHTML=`<h3>Situasjon</h3><div class="kv">
+   <b>IPP</b><span class="mono">${u}</span>
+   <b>Kategori</b><span>${esc(st.n)}</span>
+   <b>Ringer</b><span>R25 ${fmtKm(st.r25)} · R50 ${fmtKm(st.r50)} · R75 ${fmtKm(st.r75)} · R95 ${fmtKm(st.r95)}</span>
+   <b>Siden sist sett</b><span>${el==null?'ikke oppgitt':fmtH(el)}</span>
+   <b>Mulig rekkevidde</b><span>${reach?fmtKm(reach/1000)+(el>st.mob?' (maks mobilitet nådd)':''):'–'}</span>
+   ${G&&G.area?`<b>50 % ligger i</b><span>${G.area[1].toFixed(2).replace('.',',')} km² (mørkerødt + rødt)</span><b>75 % ligger i</b><span>${G.area[2].toFixed(1).replace('.',',')} km²</span>`:''}
+   ${G&&G.corr!=null&&WAYS.length?`<b>Nær ledelinjer</b><span>${pct(G.corr)} innen ${S.params.buf2} m</span>`:''}
+   ${G&&G.pos>0?`<b>Søkt bort (POS)</b><span>${pct(G.pos)} av sannsynligheten</span>`:''}
+  </div>`;
+ }
+ $('#hotList').innerHTML=G&&G.hot?G.hot.map(h=>`<li><div class="t"><b>${h.n}. <span class="mono">${fmtUTM(h.la,h.ln)}</span></b><button class="btn sm" data-zoom="${h.la},${h.ln}">Vis</button></div><div class="s">${fmtKm(h.d/1000)} fra IPP${h.onLine===true?' · ved ledelinje':h.onLine===false?' · utenfor ledelinjer':''}</div></li>`).join(''):'<li class="s">Sett IPP for å beregne.</li>';
+ $('#wheel').innerHTML=WHEEL.map(([k,t])=>`<li><input type="checkbox" data-wheel="${k}" ${S.wheel[k]?'checked':''} id="w-${k}"><label for="w-${k}" style="margin:0;color:var(--ink);font-size:14px">${t}</label></li>`).join('');
+ // ledelinjer
+ $('#wayInfo').innerHTML=WAYS.length?`<p style="font-size:13px">${WAYS.length} linjer hentet fra OpenStreetMap. Topp 20 vises gult i kartet.</p>`:'<div class="warn">Ingen ledelinjer hentet ennå. Sett IPP og trykk «Hent stier og veier» (krever internett).</div>';
+ $('#wayList').innerHTML=G&&G.ways?G.ways.map(o=>{const k=KIND[o.w.kind];return `<li><div class="t"><b><span class="chip" style="background:${k.c}"></span>${o.id} ${esc(o.w.name||k.n)}</b><button class="btn sm" data-way="${o.w.id}">Vis</button></div><div class="s">${k.n} · ${fmtKm(o.len/1000)} · ${pct(o.s)} av sannsynligheten langs linja</div></li>`}).join(''):'';
+ // teiger
+ $('#teigList').innerHTML=S.teiger.map((t,k)=>{
+  let poa=null,prior=null,area=null;
+  if(G&&G.masks[k]){const m=G.masks[k];let a=0,b=0,n=0;for(let q=0;q<m.length;q++)if(m[q]){a+=G.p[q];b+=G.prior[q];n++}poa=a;prior=b;area=n*G.cell*G.cell/1e6}
+  const acc=accPOD(t);
+  return `<li><div class="t"><b><span class="chip" style="background:${teigCol(t)}"></span>${t.id}</b><span><button class="btn sm" data-tzoom="${k}">Vis</button> <button class="btn sm" data-tdel="${k}">Slett</button></span></div>
+  <div class="s">${area!=null?area.toFixed(2).replace('.',',')+' km² · ':''}POA nå ${poa!=null?pct(poa):'–'}${prior!=null&&t.searches.length?' (før søk '+pct(prior)+')':''} · akk. POD ${pct(acc)} · ${t.searches.length} søk</div>
+  ${t.searches.map(s=>`<div class="s">· ${esc(s.res)}, POD ${s.pod} %, ${esc(s.t.replace('T',' '))}</div>`).join('')}
+  <div class="row" style="margin-top:6px">
+   <select data-tstat="${k}" aria-label="Status"><option value="planlagt" ${t.status==='planlagt'?'selected':''}>Planlagt</option><option value="utdelt" ${t.status==='utdelt'?'selected':''}>Utdelt / startet</option></select>
+   <select id="tres-${k}" aria-label="Ressurs">${RES.map(r=>`<option>${r}</option>`).join('')}</select>
+   <select id="tpod-${k}" aria-label="POD">${PODS.map(([v,n])=>`<option value="${v}" ${v===60?'selected':''}>${n}</option>`).join('')}</select>
+   <button class="btn sm" data-tsearch="${k}">Registrer søk</button>
+  </div></li>`}).join('')||'<li class="s">Ingen teiger ennå.</li>';
+ // punkter
+ const TN={obs:'Observasjon',sp:'Sperrepost',poi:'Refleks/POI',funn:'Funn'};
+ $('#ptList').innerHTML=S.points.slice().reverse().map(p=>{const k=S.points.indexOf(p);return `<li><div class="t"><b>${esc(p.id)} · ${TN[p.type]}${p.type==='obs'?' ('+p.cls+')':''}</b><span><button class="btn sm" data-pzoom="${k}">Vis</button> <button class="btn sm" data-pdel="${k}">Slett</button></span></div><div class="s mono">${fmtUTM(p.lat,p.lng)} · ${esc((p.t||'').replace('T',' '))}</div>${p.txt?`<div class="s">${esc(p.txt)}</div>`:''}</li>`}).join('')||'<li class="s">Ingen punkter ennå.</li>';
+}
+function renderStats(){
+ $('#statTab').innerHTML='<tr><th>Kategori</th><th>R25</th><th>R50</th><th>R75</th><th>R95</th><th>v</th><th>Mob</th><th>OK</th></tr>'+
+  Object.entries(S.stats).map(([k,s])=>`<tr><td>${esc(s.n)}</td>${['r25','r50','r75','r95','v','mob'].map(f=>`<td><input type="number" step="0.1" min="0" data-st="${k}" data-f="${f}" value="${s[f]}" aria-label="${esc(s.n)} ${f}"></td>`).join('')}<td><input type="checkbox" data-st="${k}" data-f="ok" ${s.ok?'checked':''} aria-label="${esc(s.n)} kontrollert"></td></tr>`).join('');
+ ['lin1','buf1','lin2','buf2','eff','qR'].forEach(f=>$('#p'+f[0].toUpperCase()+f.slice(1)).value=S.params[f]);
+}
+function renderForm(){
+ $('#aCat').innerHTML=Object.entries(S.stats).map(([k,s])=>`<option value="${k}" ${k===S.cat?'selected':''}>${esc(s.n)}</option>`).join('');
+ $('#aName').value=S.name;$('#aSeen').value=S.lastSeen;$('#aZone').value=S.zone;$('#ptTime').value=localNow();
+}
+
+/* ---------- hendelser ---------- */
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+ document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.tab));
+});
+$('#aName').oninput=e=>{S.name=e.target.value;save()};
+$('#aCat').onchange=e=>{S.cat=e.target.value;save();drawRings();compute()};
+$('#aSeen').onchange=e=>{S.lastSeen=e.target.value;save();drawRings();compute()};
+$('#aZone').onchange=e=>{S.zone=e.target.value;save();drawRings();renderSide()};
+$('#bIpp').onclick=()=>setMode('ipp');
+$('#bWays').onclick=fetchWays;
+$('#bTeig').onclick=()=>setMode('teig');
+$('#bPt').onclick=()=>setMode('punkt');
+$('#bIppTxt').onclick=()=>{
+ const v=$('#aIppTxt').value.trim();let m;
+ if((m=v.match(/^(\d{1,2})\s*[A-Za-z]?\s+(\d{5,7})\s+(\d{6,7})$/))){const [la,ln]=fromUTM(+m[1],+m[2],+m[3]);setIpp(la,ln)}
+ else if((m=v.match(/^(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)$/))){setIpp(+m[1].replace(',','.'),+m[2].replace(',','.'))}
+ else toast('Forstod ikke posisjonen. Bruk «33 0597123 7632456» eller «61.12, 9.45».');
+};
+$('#side').addEventListener('click',e=>{
+ const t=e.target.closest('[data-zoom],[data-way],[data-tzoom],[data-tdel],[data-tsearch],[data-pzoom],[data-pdel]');if(!t)return;
+ const d=t.dataset;
+ if(d.zoom){const [a,b]=d.zoom.split(',').map(Number);map.setView([a,b],15)}
+ else if(d.way){const w=WAYS.find(x=>String(x.id)===d.way);if(w)map.fitBounds(L.latLngBounds(w.pts),{padding:[30,30]})}
+ else if(d.tzoom){map.fitBounds(L.latLngBounds(S.teiger[+d.tzoom].pts),{padding:[40,40]})}
+ else if(d.tdel){if(confirm('Slette '+S.teiger[+d.tdel].id+'?')){S.teiger.splice(+d.tdel,1);save();drawTeiger();compute()}}
+ else if(d.tsearch){const k=+d.tsearch,t=S.teiger[k];t.searches.push({pod:+$('#tpod-'+k).value,res:$('#tres-'+k).value,t:localNow()});save();drawTeiger();compute()}
+ else if(d.pzoom){const p=S.points[+d.pzoom];map.setView([p.lat,p.lng],15)}
+ else if(d.pdel){if(confirm('Slette '+S.points[+d.pdel].id+'?')){S.points.splice(+d.pdel,1);save();drawPts();compute()}}
+});
+$('#side').addEventListener('change',e=>{
+ const d=e.target.dataset;
+ if(d.wheel){S.wheel[d.wheel]=e.target.checked;save()}
+ else if(d.tstat){S.teiger[+d.tstat].status=e.target.value;save();drawTeiger();renderSide()}
+ else if(d.st){const s=S.stats[d.st];if(d.f==='ok')s.ok=e.target.checked;else s[d.f]=Math.max(0,parseFloat(e.target.value)||0);save();drawRings();compute()}
+});
+[['pLin1','lin1'],['pBuf1','buf1'],['pLin2','lin2'],['pBuf2','buf2'],['pEff','eff'],['pQR','qR']].forEach(([id,f])=>$('#'+id).onchange=e=>{S.params[f]=parseFloat(e.target.value)||DEF_PARAMS[f];save();drawRings();compute()});
+$('#bReset').onclick=()=>{if(confirm('Tilbakestille statistikk og parametre til plassholderverdiene?')){S.stats=JSON.parse(JSON.stringify(DEF_STATS));S.params={...DEF_PARAMS};save();renderStats();renderForm();drawRings();compute()}};
+function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+const fname=()=>(S.name||'aksjon').replace(/[^\wæøåÆØÅ-]+/g,'_');
+$('#bExp').onclick=()=>download(fname()+'.json',JSON.stringify({state:S,ways:WAYS}),'application/json');
+$('#fImp').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const j=JSON.parse(await f.text());S=Object.assign(fresh(),j.state||j);WAYS=j.ways||[];save();saveWays();boot();toast('Aksjon åpnet.')}catch(err){toast('Kunne ikke lese fila.')}e.target.value=''};
+$('#bNew').onclick=()=>{if(confirm('Starte ny aksjon? Lagre den gamle først hvis du trenger den.')){const st=S.stats,pa=S.params;S=fresh();S.stats=st;S.params=pa;WAYS=[];save();saveWays();boot()}};
+$('#bGpx').onclick=()=>{
+ const trk=(n,pts,close)=>`<trk><name>${esc(n)}</name><trkseg>${(close?[...pts,pts[0]]:pts).map(p=>`<trkpt lat="${p[0]}" lon="${p[1]}"/>`).join('')}</trkseg></trk>`;
+ const wpt=(n,la,ln)=>`<wpt lat="${la}" lon="${ln}"><name>${esc(n)}</name></wpt>`;
+ let g=`<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Sokskart" xmlns="http://www.topografix.com/GPX/1/1">`;
+ if(S.ipp)g+=wpt('IPP',S.ipp.lat,S.ipp.lng);
+ S.points.forEach(p=>g+=wpt(p.id,p.lat,p.lng));
+ S.teiger.forEach(t=>g+=trk(t.id,t.pts,true));
+ (G&&G.ways||[]).forEach(o=>g+=trk(o.id+(o.w.name?' '+o.w.name:''),o.w.pts,false));
+ download(fname()+'.gpx',g+'</gpx>','application/gpx+xml');
+};
+function boot(){renderForm();renderStats();drawWays();drawAll();compute();if(S.ipp)map.setView([S.ipp.lat,S.ipp.lng],13)}
+setInterval(()=>{if(S.ipp&&S.lastSeen){drawRings();compute()}},300000);
+boot();
+}
+</script>
+</body>
+</html>
