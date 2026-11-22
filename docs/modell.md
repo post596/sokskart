@@ -185,6 +185,53 @@ kategoriens gangfart) med tiden mellom sist sett og observasjonen. Krever observ
 enn 5 % raskere fremdrift enn mulig, får den en gul markering, og appen ber om ny vurdering
 av observasjonen, IPP eller tidspunktet.
 
+## 8f. Teigforslag, søketid og droneområder (fase 3)
+
+**Søketid** for et fotlag: areal / (antall mannskap × avstand × søkefart × terrengfaktor).
+
+- Terrengfaktoren er gangfarten i cella i forhold til åpent terreng, ganget med 0,7 i skog
+  (`skogSokefaktor`).
+- Helningen virker gjennom Toblers funksjon, som snitt av opp, ned og to ganger på tvers.
+  Et søkslag går mest langs kotene.
+- Bratt terreng over 35° kan ikke søkes til fots.
+- Veilederen sier ikke noe om maks søketid. 2 timer og 0,9 km² er Norsk Folkehjelps praksis.
+
+**Generatoren** (`src/model/teiggenerator.ts`):
+
+1. Fint rutenett på 25 m.
+2. Grenser fra ledelinjer, stup og skifte i arealtype.
+3. Sammenhengende områder mellom grensene.
+4. For store eller for tidkrevende områder deles med geodetisk k-means, der kostnaden er høy
+   over rygger og i dalbunner (laplace av høydemodellen). Delelinjene legger seg dermed i
+   terrengformer. Det er 15 % margin for grensecellene.
+5. Biter under `minTeigKm2` slås sammen med en nabo bare når grensene fortsatt holdes.
+   Kun biter under 0,01 km² slås alltid sammen.
+6. Polygon langs cellekantene, forenklet (Douglas–Peucker) og glattet (Chaikin).
+
+**Søksfase** (`src/domain/fase.ts`): Førsteinnsats varer til første grense (6 t), overgang
+til andre grense (12 t), deretter formell søksplanlegging. Veilederen sier at førsteinnsatsen
+normalt varer opptil 12 timer og at formell planlegging kommer etter 6–24 timer.
+
+**Droneeffekt per arealtype** (modellantakelse):
+
+| Arealtype | Effekt |
+|---|---|
+| Åpent, myr, bre | 1 |
+| Strandsone, og terreng brattere enn 30° | 1 |
+| Dyrket | 0,9 |
+| Vann | 0,8 |
+| Ukjent | 0,7 |
+| Kratt | 0,6 |
+| Skog | 0,2 |
+| Bebygd | 0,1 |
+
+Droneområder lages av celler med effekt på minst 0,5 innenfor 75 %-sonen, er 1–3 km² og
+rangeres etter POA × effekt.
+
+**Interessepunkter** (`src/data/interessepunkter.ts`): vekt per punkttype per kategori,
+blandet med kategorivektene. Score = POA innen 150 m × vekt. Punktene ligger minst 150 m fra
+hverandre og fra eksisterende R-punkter.
+
 ## 9. Fargebånd og mest sannsynlige punkter
 
 - Cellene sorteres etter POA nå. Båndene viser **minste areal** som dekker 25, 50, 75

@@ -221,9 +221,50 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
 - **Turrutebasen:** «Hent stier og veier» henter også merkede ruter fra Kartverket og legger
   til dem som mangler i OSM. Skiløyper tas med når en skikategori er valgt.
 
+## Fase 3 – bruk
+
+- **Anbefaling etter søksfase** (øverst i fanen Teiger). Tiden regnes fra «Søket startet» i
+  fanen Aksjon. Grensene på 6 og 12 timer kan endres.
+
+  | Fase | Anbefaling |
+  |---|---|
+  | Førsteinnsats, under 6 t | Ledelinjer og interessepunkter. Teiger bare for finsøk av nærområdet når R25 er under 300 m. |
+  | Overgang, 6–12 t | Neste teiger der det er mest sannsynlighet igjen, like mange som fotlag (fotmannskap delt på lagstørrelse). |
+  | Formell, over 12 t | Teigsett for 75 %-sonen. |
+
+  Under «Andre forslag» kan du også be om nærområdet, neste teiger, hele teigsettet eller å
+  dele en region.
+- **Teiggeneratoren** lager teiger langs naturlige grenser: stier, veier, bekker, kraftgater,
+  jernbane, stup og skog- og myrkanter. Der det ikke finnes slike grenser, deles området langs
+  rygger og dalbunner fra høydedata.
+  - Hver teig tar maks 2 timer med valgt søketeknikk og er maks 0,9 km² (Norsk Folkehjelps
+    praksis, kan endres).
+  - Søketeknikkene er modellantakelser: grovsøk (3 pers, 25 m, 1,5 km/t), finsøk (6 pers,
+    10 m, 1,0 km/t) og kompasskurssøk (3 pers, 75 m, 2,5 km/t).
+  - Søkefarten senkes i skog, myr og bratt terreng.
+  - Forslagene vises stiplet og blir faste T-nummer når de godkjennes.
+- **Droneområder** (D###) på 1–3 km², der drone virker best: åpent terreng, myr, vann og
+  strandsone, bre og bratt terreng. Tett skog og bebyggelse unngås.
+- **Interessepunkter per kategori** (fanen Punkter): appen søker i nærområdet etter typer
+  steder som er aktuelle for kategorien, f.eks. bruer, stup, utsiktspunkter, kaier og
+  strandsone ved økt selvmordsrisiko. Den rangerer dem etter sannsynlighet og legger dem til
+  som R### med ett trykk. Listen ([src/data/interessepunkter.ts](src/data/interessepunkter.ts))
+  er en modellantakelse som bør kvalitetssikres av fagfolk.
+- **Eksport for FAKS:** KML og GeoJSON med IPP, R25–R95, teiger i HRS-farger, punkter og
+  prioriterte ledelinjer, i tillegg til GPX. Hvilket format FAKS tar imot, må testes.
+- **OpenStreetMap-henting:** stier og vann hentes først. Arealtyper og småbygg hentes i en
+  egen forespørsel. Tre Overpass-servere prøves én gang hver, og svarer ingen, beholdes
+  forrige henting.
+
+Oppfølging:
+
+- **Norsk reservekilde for stier, vann og arealtyper** når Overpass er nede, f.eks. N50 fra
+  Geonorge. `wfs.geonorge.no/skwms1/wfs.n50` finnes ikke, så riktig tjeneste må finnes.
+- **Fagfolk bør kvalitetssikre** lista over interessepunkter og søketeknikkene.
+
 ## Status
 
-Fase 1 og fase 2 er på plass, og i tillegg:
+Fase 1, 2 og 3 er på plass (fase 3 uten sanntidsdeling og droneapp, som er utsatt etter avtale), og i tillegg:
 
 - tidslinje med voksende ledelinjer
 - ressursforslag

@@ -63,6 +63,7 @@ export function Kart() {
   const redigererTeig = useStore((s) => s.redigererTeig);
   const visKvalitet = useStore((s) => s.visKvalitet);
   const teigforslag = useStore((s) => s.teigforslag);
+  const fane = useStore((s) => s.fane);
   const droneforslag = useStore((s) => s.droneforslag);
 
   // ------------------------------------------------------------ init
@@ -409,6 +410,21 @@ export function Kart() {
         .addTo(g);
     });
   }, [teigforslag, droneforslag]);
+
+  // ------------------------------------------------------------ suggested points of interest (Punkter tab)
+  useEffect(() => {
+    const g = grupper.current.teigforslag;
+    if (!g || fane !== 'punkter' || !resultat) return;
+    const lag = L.layerGroup().addTo(g);
+    resultat.poiforslag.slice(0, 12).forEach((p, i) => {
+      L.marker(toLL(p.pos), { icon: divIkon(`<span>?${i + 1}</span>`, 'poiforslagikon') })
+        .bindTooltip(`Forslag: ${esc(p.navn)}`)
+        .addTo(lag);
+    });
+    return () => {
+      lag.remove();
+    };
+  }, [fane, resultat]);
 
   // ------------------------------------------------------------ quality assurance highlight
   useEffect(() => {

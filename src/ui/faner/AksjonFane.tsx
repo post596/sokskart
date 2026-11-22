@@ -3,6 +3,7 @@ import { GRUPPENAVN, type Kategorigruppe } from '../../data/lpb-stats';
 import { aksjonsfilnavn, lagAksjonsfil, lokalTid, timerMellom } from '../../domain/aksjon';
 import { parsePosition } from '../../domain/coords';
 import { lagGpx, type GpxPunkt, type GpxSpor } from '../../domain/gpx';
+import { lagGeoJson, lagKml, type EksportInput, type EksportLinje } from '../../domain/eksport';
 import { prosent } from '../../domain/pod';
 import type { ZoneChoice } from '../../domain/utm';
 import { byggKomponenter, blandingRinger, vektetFart } from '../../model/lpb';
@@ -95,6 +96,27 @@ export function lagMannskapsGpx(): void {
     }
   }
   lastNed(aksjonsfilnavn(a, 'gpx'), lagGpx(a.navn || a.sarNr || 'Søkskart', pkt, spor), 'application/gpx+xml');
+}
+
+function eksportInput(): EksportInput {
+  const s = useStore.getState();
+  const a = s.aksjon;
+  const ledelinjer: EksportLinje[] = [];
+  if (s.resultat && s.osm) {
+    for (const l of s.resultat.linjer.slice(0, a.modell.antallLedelinjer)) {
+      const ol = s.osm.linjer[l.i];
+      const nr = a.lnummer[l.id];
+      if (ol && nr) ledelinjer.push({ nr, navn: ol.navn, type: LINJETYPE_NAVN[ol.type], pts: ol.pts });
+    }
+  }
+  return { aksjon: a, ringer: s.resultat?.ringer ?? null, ledelinjer };
+}
+
+function eksporter(format: 'geojson' | 'kml'): void {
+  const i = eksportInput();
+  if (format === 'geojson') lastNed(aksjonsfilnavn(i.aksjon, 'geojson'), lagGeoJson(i), 'application/geo+json');
+  else lastNed(aksjonsfilnavn(i.aksjon, 'kml'), lagKml(i), 'application/vnd.google-earth.kml+xml');
+  useStore.getState().endreAksjon(() => {}, `Eksportert som ${format === 'kml' ? 'KML' : 'GeoJSON'} (teiger, punkter, ledelinjer)`);
 }
 
 export function AksjonFane() {
@@ -404,6 +426,12 @@ export function AksjonFane() {
         />
         <button type="button" className="knapp" onClick={lagMannskapsGpx} disabled={!a.ipp}>
           GPX til mannskap
+        </button>
+        <button type="button" className="knapp" onClick={() => eksporter('kml')} disabled={!a.ipp} title="For import i FAKS eller andre kartverktøy">
+          KML (FAKS)
+        </button>
+        <button type="button" className="knapp" onClick={() => eksporter('geojson')} disabled={!a.ipp} title="For import i FAKS eller andre kartverktøy">
+          GeoJSON (FAKS)
         </button>
         <button
           type="button"

@@ -4,6 +4,7 @@ import type { Observasjonsklasse } from '../../data/modellantakelser';
 import { hentPunktUtkast, leggTilPunkt, PUNKTNAVN, settPunktUtkast, slettPunkt } from '../../state/handlinger';
 import { useStore } from '../../state/store';
 import { Utm, VisKnapp } from '../felles';
+import { Poiforslag } from '../Poiforslag';
 import { fmtTid } from '../format';
 
 const KLASSER: Array<[Observasjonsklasse, string]> = [
@@ -81,6 +82,7 @@ export function PunkterFane() {
           Bruk min posisjon
         </button>
       </div>
+      <Poiforslag />
       <ul className="liste">
         {a.punkter
           .slice()

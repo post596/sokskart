@@ -981,3 +981,15 @@ table.mattson tfoot td {
 .leaflet-tooltip.forslagetikett::before {
   display: none;
 }
+
+.poiforslagikon span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  background: #fff;
+  color: #7c3aed;
+  border: 2px dashed #7c3aed;
+  border-radius: 10px;
+  padding: 0 5px;
+  font: 800 11px/16px system-ui, sans-serif;
+}
