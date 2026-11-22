@@ -1,7 +1,7 @@
 import type { LatLng } from '../domain/coords';
 
 /** Ledelinje types from OSM (veileder 7.2.4: stier, veier, elver, bekker, grøfter, kraftlinjer …). */
-export type LinjeType = 'sti' | 'traktorvei' | 'vei' | 'vann' | 'kraft';
+export type LinjeType = 'sti' | 'traktorvei' | 'vei' | 'vann' | 'kraft' | 'jernbane';
 
 export interface OsmLinje {
   /** Stable id built from the OSM way ids in the chain, e.g. "w123+w456". */
@@ -15,7 +15,8 @@ export interface OsmLinje {
   kilde?: 'osm' | 'turrutebasen';
 }
 
-export type OmradeType = 'vann' | 'myr' | 'bre';
+/** vann/myr/bre affect walking; the rest is land cover for search time and drone effect. */
+export type OmradeType = 'vann' | 'myr' | 'bre' | 'skog' | 'kratt' | 'apent' | 'dyrket' | 'bebygd';
 
 export interface OsmOmrade {
   id: string;
@@ -25,7 +26,7 @@ export interface OsmOmrade {
   ringer: LatLng[][];
 }
 
-export type PoiType = 'hytte' | 'gapahuk' | 'utsikt' | 'topp';
+export type PoiType = 'hytte' | 'gapahuk' | 'utsikt' | 'topp' | 'bru' | 'kai' | 'parkering' | 'lekeplass' | 'uthus' | 'kirke' | 'demning';
 
 export interface OsmPunkt {
   id: string;
@@ -62,6 +63,7 @@ export const LINJETYPE_NAVN: Record<LinjeType, string> = {
   vei: 'Vei',
   vann: 'Elv/bekk/grøft',
   kraft: 'Kraftgate',
+  jernbane: 'Jernbane',
 };
 
 export const LINJETYPE_FARGE: Record<LinjeType, string> = {
@@ -70,6 +72,7 @@ export const LINJETYPE_FARGE: Record<LinjeType, string> = {
   vei: '#374151',
   vann: '#1d4ed8',
   kraft: '#6d28d9',
+  jernbane: '#111827',
 };
 
 export const POI_NAVN: Record<PoiType, string> = {
@@ -77,4 +80,11 @@ export const POI_NAVN: Record<PoiType, string> = {
   gapahuk: 'Gapahuk/skjul',
   utsikt: 'Utsiktspunkt',
   topp: 'Topp',
+  bru: 'Bru',
+  kai: 'Kai/brygge',
+  parkering: 'Parkering',
+  lekeplass: 'Lekeplass',
+  uthus: 'Uthus/låve',
+  kirke: 'Kirke/gravplass',
+  demning: 'Demning',
 };

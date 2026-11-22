@@ -14,16 +14,31 @@ export const OVERPASS_ENDEPUNKTER = [
 
 export function byggSporring(senter: LatLng, radiusM: number): string {
   const a = `(around:${Math.round(radiusM)},${senter.lat.toFixed(6)},${senter.lng.toFixed(6)})`;
+  // land cover and small buildings closer to the IPP to keep the response small
+  const n = `(around:${Math.round(Math.min(radiusM, 6000))},${senter.lat.toFixed(6)},${senter.lng.toFixed(6)})`;
+  const b = `(around:${Math.round(Math.min(radiusM, 3000))},${senter.lat.toFixed(6)},${senter.lng.toFixed(6)})`;
   return (
-    '[out:json][timeout:90];(' +
+    '[out:json][timeout:120];(' +
     `way${a}[highway~"^(path|footway|bridleway|steps|track|cycleway|unclassified|residential|service|tertiary|secondary|primary|trunk|living_street|road)$"];` +
     `way${a}[waterway~"^(river|stream|ditch|canal|drain)$"];` +
     `way${a}[power=line];` +
+    `way${a}[railway=rail];` +
     `way${a}[natural~"^(water|wetland|glacier|cliff)$"];` +
     `relation${a}[natural~"^(water|wetland|glacier)$"];` +
     `nwr${a}[tourism~"^(alpine_hut|wilderness_hut|viewpoint)$"];` +
     `nwr${a}[amenity=shelter];` +
     `node${a}[natural=peak];` +
+    `nwr${a}[man_made=pier];` +
+    `nwr${a}[waterway~"^(dam|weir)$"];` +
+    `nwr${n}[amenity=parking];` +
+    `nwr${n}[leisure=playground];` +
+    `nwr${n}[amenity=place_of_worship];` +
+    `nwr${n}[landuse=cemetery];` +
+    `way${b}[building~"^(barn|shed|farm_auxiliary|hut)$"];` +
+    `way${n}[natural~"^(wood|scrub|heath|bare_rock|scree|grassland)$"];` +
+    `relation${n}[natural~"^(wood|scrub|heath|bare_rock|scree|grassland)$"];` +
+    `way${n}[landuse~"^(forest|residential|industrial|commercial|farmland|meadow)$"];` +
+    `relation${n}[landuse~"^(forest|residential|farmland)$"];` +
     ');out geom tags qt;'
   );
 }
@@ -43,7 +58,8 @@ interface OverpassElement {
 }
 
 export function linjetype(t: Record<string, string>): LinjeType | null {
-  if (t.waterway) return 'vann';
+  if (t.railway === 'rail') return 'jernbane';
+  if (t.waterway && /^(river|stream|ditch|canal|drain)$/.test(t.waterway)) return 'vann';
   if (t.power === 'line') return 'kraft';
   const h = t.highway;
   if (!h) return null;
@@ -52,18 +68,29 @@ export function linjetype(t: Record<string, string>): LinjeType | null {
   return 'vei';
 }
 
-function omradetype(t: Record<string, string>): OmradeType | null {
+export function omradetype(t: Record<string, string>): OmradeType | null {
   if (t.natural === 'water') return 'vann';
   if (t.natural === 'wetland') return 'myr';
   if (t.natural === 'glacier') return 'bre';
+  if (t.natural === 'wood' || t.landuse === 'forest') return 'skog';
+  if (t.natural === 'scrub') return 'kratt';
+  if (/^(heath|bare_rock|scree|grassland)$/.test(t.natural ?? '') || t.landuse === 'meadow') return 'apent';
+  if (t.landuse === 'farmland') return 'dyrket';
+  if (/^(residential|industrial|commercial)$/.test(t.landuse ?? '')) return 'bebygd';
   return null;
 }
 
-function poitype(t: Record<string, string>): PoiType | null {
+export function poitype(t: Record<string, string>): PoiType | null {
   if (t.tourism === 'alpine_hut' || t.tourism === 'wilderness_hut') return 'hytte';
   if (t.amenity === 'shelter') return 'gapahuk';
   if (t.tourism === 'viewpoint') return 'utsikt';
   if (t.natural === 'peak') return 'topp';
+  if (t.man_made === 'pier') return 'kai';
+  if (t.waterway === 'dam' || t.waterway === 'weir') return 'demning';
+  if (t.amenity === 'parking') return 'parkering';
+  if (t.leisure === 'playground') return 'lekeplass';
+  if (t.amenity === 'place_of_worship' || t.landuse === 'cemetery') return 'kirke';
+  if (/^(barn|shed|farm_auxiliary|hut)$/.test(t.building ?? '')) return 'uthus';
   return null;
 }
 
@@ -198,6 +225,9 @@ export function tolkSvar(json: { elements?: OverpassElement[] }, senter: LatLng,
         continue;
       }
       const lt = linjetype(t);
+      if (lt && t.bridge && t.bridge !== 'no' && (lt !== 'vann')) {
+        punkter.push({ id: `b${e.id}`, type: 'bru', navn, pos: pts[Math.floor(pts.length / 2)] });
+      }
       if (lt) linjer.push({ id: `w${e.id}`, type: lt, navn, elv: t.waterway === 'river' || t.waterway === 'canal', pts });
     } else if (e.type === 'relation') {
       const ot = omradetype(t);

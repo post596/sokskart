@@ -58,7 +58,7 @@ export function egnethet(r: RessursType, k: Kandidat): number {
       return k.type === 'ledelinje' && k.linjeType === 'traktorvei' ? 1 : 0;
     case 'drone':
       if (k.type === 'ipp') return 100;
-      if (k.type === 'ledelinje') return k.linjeType === 'vann' || k.linjeType === 'kraft' ? 2 : 1.5;
+      if (k.type === 'ledelinje') return k.linjeType === 'vann' || k.linjeType === 'kraft' || k.linjeType === 'jernbane' ? 2 : 1.5;
       if (k.type === 'risiko') return 1.2;
       if (k.type === 'omrade') return 0.6;
       return 0;
@@ -68,7 +68,7 @@ export function egnethet(r: RessursType, k: Kandidat): number {
       return 0;
     case 'fotmannskap':
       if (k.type === 'ipp') return 100;
-      if (k.type === 'ledelinje') return k.linjeType === 'sti' ? 1.3 : k.linjeType === 'vann' || k.linjeType === 'kraft' ? 0.8 : 0;
+      if (k.type === 'ledelinje') return k.linjeType === 'sti' ? 1.3 : k.linjeType === 'vann' || k.linjeType === 'kraft' || k.linjeType === 'jernbane' ? 0.8 : 0;
       if (k.type === 'poi') return 1.1;
       if (k.type === 'omrade') return 1;
       if (k.type === 'risiko') return 0.7;

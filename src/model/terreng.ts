@@ -17,7 +17,14 @@ export interface TerrengLag {
   linjeXY: XY[][];
   brattCeller: number;
   harHoyde: boolean;
+  /** land cover class per cell, see AREALKLASSE */
+  arealtype: Uint8Array;
+  /** slope in degrees (NaN without elevation) */
+  helning: Float32Array | null;
 }
+
+/** Land cover classes in TerrengLag.arealtype. */
+export const AREALKLASSE = { ukjent: 0, skog: 1, kratt: 2, apent: 3, dyrket: 4, bebygd: 5, myr: 6, bre: 7, vann: 8 } as const;
 
 /** Elevation per grid cell from a raster in the same UTM zone (bilinear). NaN where unknown. */
 export function hoydePaGrid(g: Grid, r: HoydeRaster): Float32Array {
@@ -56,15 +63,20 @@ export function byggTerreng(g: Grid, osm: OsmData | null, hoyde: HoydeRaster | n
   const xy = (pts: { lat: number; lng: number }[]): XY[] => pts.map((p) => tilGrid(g, p));
   const linjeXY = osm ? osm.linjer.map((l) => xy(l.pts)) : [];
 
+  const arealtype = new Uint8Array(N);
   if (osm) {
-    // areas: lakes are barriers, wetland and glacier are slow
-    for (const o of osm.omrader) {
+    // land cover first (broad classes), then wetland/glacier, then water on top
+    const rekkefolge: Record<string, number> = { skog: 0, kratt: 0, apent: 0, dyrket: 0, bebygd: 0, myr: 1, bre: 1, vann: 2 };
+    const omrader = [...osm.omrader].sort((a, b) => (rekkefolge[a.type] ?? 0) - (rekkefolge[b.type] ?? 0));
+    for (const o of omrader) {
       const rings = o.ringer.map(xy);
+      const klasse = AREALKLASSE[o.type];
       forCellsInPolygon(g, rings, (idx) => {
+        arealtype[idx] = klasse;
         if (o.type === 'vann') {
           vann[idx] = 1;
           fart[idx] = 0;
-        } else if (fart[idx] > 0) fart[idx] = Math.min(fart[idx], m.myrfaktor);
+        } else if ((o.type === 'myr' || o.type === 'bre') && fart[idx] > 0) fart[idx] = Math.min(fart[idx], m.myrfaktor);
       });
     }
     const tmp = new Uint8Array(N);
@@ -80,7 +92,7 @@ export function byggTerreng(g: Grid, osm: OsmData | null, hoyde: HoydeRaster | n
     tmp.fill(0);
     rasterLinjer(
       g,
-      linjeXY.filter((_, i) => ['sti', 'traktorvei', 'vei'].includes(osm.linjer[i].type)),
+      linjeXY.filter((_, i) => ['sti', 'traktorvei', 'vei', 'jernbane'].includes(osm.linjer[i].type)),
       0,
       tmp,
       1,
@@ -96,12 +108,15 @@ export function byggTerreng(g: Grid, osm: OsmData | null, hoyde: HoydeRaster | n
     rasterLinjer(g, linjeXY, m.naerM, naer, 1);
   }
 
+  for (let k = 0; k < N; k++) if (hav[k]) arealtype[k] = AREALKLASSE.vann;
   const terreng: Terreng = { fart, sti, hoyde: h };
   let brattCeller = 0;
+  let sl: Float32Array | null = null;
   if (h) {
     // unknown elevation: treat as flat for the slope
     const hh = h.map((v) => (Number.isFinite(v) ? v : 0));
-    brattCeller = brattMaske(terreng, helning(g, hh), m.maksHelning);
+    sl = helning(g, hh);
+    brattCeller = brattMaske(terreng, sl, m.maksHelning);
   }
-  return { terreng, vann, hav, naer, korridor, linjeXY, brattCeller, harHoyde: !!h };
+  return { terreng, vann, hav, naer, korridor, linjeXY, brattCeller, harHoyde: !!h, arealtype, helning: sl };
 }

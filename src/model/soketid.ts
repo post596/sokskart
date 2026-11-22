@@ -1,0 +1,37 @@
+import type { Modellantakelser, Teknikk } from '../data/modellantakelser';
+import { toblerFaktor } from './gangtid';
+import { AREALKLASSE, type TerrengLag } from './terreng';
+
+/**
+ * Search time for foot teams. A team covers (persons × spacing × speed) per hour in easy,
+ * open terrain; the speed is lowered in heavy terrain:
+ *  - terrain speed relative to open terrain (myr/bre slower, paths a bit faster)
+ *  - forest (skogSokefaktor)
+ *  - slope (mean of Tobler up and down the gradient)
+ * Steep cells (barriers) cannot be searched on foot (factor 0).
+ * All numbers are model assumptions; the veileder only says teiger must suit a crew team.
+ */
+export const arealPerTime = (t: Teknikk) => t.mannskap * t.avstandM * t.fartKmt * 1000; // m²/h
+
+export function sokefaktorer(terr: TerrengLag, m: Modellantakelser): Float32Array {
+  const { fart } = terr.terreng;
+  const N = fart.length;
+  const ut = new Float32Array(N);
+  for (let k = 0; k < N; k++) {
+    if (fart[k] <= 0) continue;
+    let f = Math.min(1.2, fart[k] / Math.max(0.05, m.terrengfaktor));
+    if (terr.arealtype[k] === AREALKLASSE.skog) f *= m.skogSokefaktor;
+    const h = terr.helning?.[k];
+    if (h != null && Number.isFinite(h)) {
+      const S = Math.tan((h * Math.PI) / 180);
+      f *= (toblerFaktor(S) + toblerFaktor(-S)) / 2;
+    }
+    ut[k] = f;
+  }
+  return ut;
+}
+
+/** Hours for one team to search a cell of the given ground area (m²). Infinity if impossible. */
+export function cellSoketid(arealM2: number, faktor: number, t: Teknikk): number {
+  return faktor > 0 ? arealM2 / (arealPerTime(t) * faktor) : Number.POSITIVE_INFINITY;
+}

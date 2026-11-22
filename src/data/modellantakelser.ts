@@ -8,6 +8,19 @@
 
 export type Observasjonsklasse = 'sikker' | 'sannsynlig' | 'mulig' | 'usikker';
 
+/** Search techniques used to size teiger (veileder 6.3.2). Numbers are model assumptions. */
+export type SokTeknikk = 'grovsok' | 'finsok' | 'kompasskurs';
+
+export interface Teknikk {
+  navn: string;
+  /** persons in the team */
+  mannskap: number;
+  /** spacing between persons (m) */
+  avstandM: number;
+  /** search speed in easy, open terrain (km/h) */
+  fartKmt: number;
+}
+
 /** Resource types for imported GPS tracks (colours per veileder 10.6 where given). */
 export type SporRessurs = 'fotmannskap' | 'hund' | 'hundefører' | 'drone' | 'helikopter' | 'motorisert';
 
@@ -78,6 +91,24 @@ export interface Modellantakelser {
   /** Effektiv søkebredde (m) per spor og ressurstype, for dekning C = W·L/A og POD = 1 − e^(−C). */
   sokebredde: Record<SporRessurs, number>;
 
+  /** Search techniques for sizing teiger and search time. */
+  teknikker: Record<SokTeknikk, Teknikk>;
+  /** Technique the generated teiger are sized for. */
+  standardTeknikk: SokTeknikk;
+  /** Max search time per teig (h) – Norsk Folkehjelp practice, not from HRS. */
+  maksSoketid: number;
+  /** Max teig area (km²) – Norsk Folkehjelp practice. */
+  maksTeigKm2: number;
+  /** Teiger smaller than this (km²) are merged with a neighbour. */
+  minTeigKm2: number;
+  /** Search in forest is slower by this factor. */
+  skogSokefaktor: number;
+  /** Hours from start: before the first value only ledelinjer/POI (and navet), then teiger for available teams, after the second the full teigsett. */
+  fasegrenser: [number, number];
+  /** Drone areas (km²). */
+  droneMinKm2: number;
+  droneMaksKm2: number;
+
   /** Tak på søkeradius for stier og veier (km). */
   ledelinjeTakKm: number;
   /** Antall ledelinjer som får L-nummer. */
@@ -117,6 +148,20 @@ export const STANDARD_MODELL: Modellantakelser = {
 
   sokebredde: { fotmannskap: 30, hund: 80, hundefører: 30, drone: 60, helikopter: 150, motorisert: 20 },
 
+  teknikker: {
+    grovsok: { navn: 'Grovsøk (kombinert mannskapssøk)', mannskap: 3, avstandM: 25, fartKmt: 1.5 },
+    finsok: { navn: 'Finsøk / søkekjede', mannskap: 6, avstandM: 10, fartKmt: 1.0 },
+    kompasskurs: { navn: 'Kompasskurssøk', mannskap: 3, avstandM: 75, fartKmt: 2.5 },
+  },
+  standardTeknikk: 'grovsok',
+  maksSoketid: 2,
+  maksTeigKm2: 0.9,
+  minTeigKm2: 0.05,
+  skogSokefaktor: 0.7,
+  fasegrenser: [6, 12],
+  droneMinKm2: 1,
+  droneMaksKm2: 3,
+
   ledelinjeTakKm: 10,
   antallLedelinjer: 20,
   antallPunkter: 8,
@@ -129,12 +174,18 @@ export function medStandard(p: Partial<Modellantakelser> | undefined): Modellant
     ...(p ?? {}),
     obsVekt: { ...STANDARD_MODELL.obsVekt, ...(p?.obsVekt ?? {}) },
     sokebredde: { ...STANDARD_MODELL.sokebredde, ...(p?.sokebredde ?? {}) },
+    teknikker: {
+      grovsok: { ...STANDARD_MODELL.teknikker.grovsok, ...(p?.teknikker?.grovsok ?? {}) },
+      finsok: { ...STANDARD_MODELL.teknikker.finsok, ...(p?.teknikker?.finsok ?? {}) },
+      kompasskurs: { ...STANDARD_MODELL.teknikker.kompasskurs, ...(p?.teknikker?.kompasskurs ?? {}) },
+    },
+    fasegrenser: (p?.fasegrenser ?? STANDARD_MODELL.fasegrenser).slice(0, 2) as [number, number],
   };
 }
 
 /** Labels for the settings screen. */
 export const MODELL_FELT: Array<{
-  felt: Exclude<keyof Modellantakelser, 'obsVekt' | 'elvErBarriere' | 'sokebredde'>;
+  felt: Exclude<keyof Modellantakelser, 'obsVekt' | 'elvErBarriere' | 'sokebredde' | 'teknikker' | 'standardTeknikk' | 'fasegrenser'>;
   navn: string;
   steg: number;
   min: number;
@@ -168,6 +219,12 @@ export const MODELL_FELT: Array<{
   { felt: 'omradeFaktor', navn: 'Beregningsområde (× R95)', steg: 0.1, min: 1.1, max: 3 },
   { felt: 'glatting', navn: 'Glatting (antall pass)', steg: 1, min: 0, max: 6 },
   { felt: 'rutenett', navn: 'Rutenett (celler per side)', steg: 50, min: 100, max: 600 },
+  { felt: 'maksSoketid', navn: 'Maks søketid per teig (t)', steg: 0.25, min: 0.5, max: 8, hjelp: 'Norsk Folkehjelps praksis: 2 timer.' },
+  { felt: 'maksTeigKm2', navn: 'Maks teigstørrelse (km²)', steg: 0.05, min: 0.1, max: 3 },
+  { felt: 'minTeigKm2', navn: 'Minste teig før sammenslåing (km²)', steg: 0.01, min: 0.01, max: 0.5 },
+  { felt: 'skogSokefaktor', navn: 'Søkefart i skog (andel)', steg: 0.05, min: 0.2, max: 1 },
+  { felt: 'droneMinKm2', navn: 'Droneområde minst (km²)', steg: 0.1, min: 0.1, max: 10 },
+  { felt: 'droneMaksKm2', navn: 'Droneområde maks (km²)', steg: 0.1, min: 0.2, max: 20 },
   { felt: 'ledelinjeTakKm', navn: 'Tak på søkeradius for stier (km)', steg: 1, min: 1, max: 25 },
   { felt: 'antallLedelinjer', navn: 'Antall ledelinjer med L-nummer', steg: 1, min: 5, max: 60 },
   { felt: 'antallPunkter', navn: 'Antall mest sannsynlige punkter', steg: 1, min: 3, max: 20 },

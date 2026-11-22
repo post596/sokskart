@@ -9,7 +9,10 @@ import { cellerLangs, rangerLinjer, tidVedPunkter } from './rangering';
 import { forCellsInPolygon, forCellsNearLine } from './raster';
 import { fordelRessurser, kandidatIBesteCelle, type Forslag, type Kandidat, type Ressursantall } from './ressurser';
 import { beregnSannsynlighet, mestSannsynlige, sumCeller, UTGANGSPUNKT } from './sannsynlighet';
-import { byggTerreng, type TerrengLag } from './terreng';
+import { AREALKLASSE, byggTerreng, type TerrengLag } from './terreng';
+import { sokefaktorer } from './soketid';
+import { genererTeiger } from './teiggenerator';
+import type { SokTeknikk } from '../data/modellantakelser';
 import type { HoydeRaster, LinjeType, OsmData } from './typer';
 import { LINJETYPE_NAVN, POI_NAVN } from './typer';
 
@@ -34,6 +37,21 @@ export interface BeregningInput {
   /** hours walked used for the frontier along ledelinjer (time slider) */
   visningTimer: number | null;
   merkatorBredde: number;
+  /** requested suggestions for new teiger / drone areas */
+  forslagOnske?: ForslagOnske | null;
+}
+
+export interface ForslagOnske {
+  teig: { modus: 'navet' | 'neste' | 'sett' | 'region'; antall: number; teknikk: SokTeknikk; region?: LatLng[] } | null;
+  drone: { antall: number } | null;
+}
+
+export interface TeigForslag {
+  ring: LatLng[];
+  arealKm2: number;
+  timer: number;
+  poa: number;
+  score: number;
 }
 
 export interface LinjeInfo {
@@ -81,6 +99,8 @@ export interface BeregningResultat {
   linjeStart: Uint32Array;
   korridorAndel: number | null;
   forslag: Forslag[];
+  teigforslag: TeigForslag[];
+  droneforslag: TeigForslag[];
   harHoyde: boolean;
   brattCeller: number;
   ms: number;
@@ -260,7 +280,82 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     forslag = fordelRessurser(kand, inp.ressurser, Math.max(300, 2 * g.cell));
   }
 
+  // suggested teiger and drone areas (only when asked for)
+  let teigforslag: TeigForslag[] = [];
+  let droneforslag: TeigForslag[] = [];
+  const onske = inp.forslagOnske;
+  if (onske?.teig || onske?.drone) {
+    const N = g.n * g.n;
+    const linjer = [...terr.linjeXY, ...(inp.osm?.stup ?? []).map((l) => l.map((p) => tilGrid(g, p)))];
+    const tilLL = (t: { ring: Array<[number, number]>; arealKm2: number; timer: number; poa: number; score: number }): TeigForslag => ({
+      ...t,
+      ring: t.ring.map(([x, y]) => {
+        const p = fraGrid(g, x, y);
+        return { lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6) };
+      }),
+    });
+    if (onske.teig) {
+      const o = onske.teig;
+      const maal = new Uint8Array(N);
+      if (o.modus === 'navet') {
+        for (let j = 0; j < g.n; j++) for (let i = 0; i < g.n; i++) if (Math.hypot(cellX(g, i) - g.cx, cellY(g, j) - g.cy) / g.k <= ringer[0]) maal[j * g.n + i] = 1;
+      } else if (o.modus === 'region' && o.region) {
+        forCellsInPolygon(g, [o.region.map((p) => tilGrid(g, p))], (idx) => (maal[idx] = 1));
+      } else {
+        const grenseBand = o.modus === 'neste' ? 1 : 2;
+        for (let k = 0; k < N; k++) if (s.band[k] >= 0 && s.band[k] <= grenseBand) maal[k] = 1;
+      }
+      const opptatt = new Uint8Array(N);
+      inp.teiger.forEach((_, k) => {
+        for (const c of teigCeller[k]) opptatt[c] = 1;
+      });
+      const gen = genererTeiger({
+        g,
+        post: s.post,
+        maal,
+        opptatt,
+        sokefaktor: sokefaktorer(terr, m),
+        arealtype: terr.arealtype,
+        hoyde: terr.terreng.hoyde,
+        linjer,
+        teknikk: m.teknikker[o.teknikk],
+        maksTimer: m.maksSoketid,
+        maksKm2: m.maksTeigKm2,
+        minKm2: m.minTeigKm2,
+      });
+      teigforslag = (o.modus === 'neste' ? gen.slice(0, Math.max(1, o.antall)) : gen).filter((t) => t.poa > 0 || o.modus !== 'neste').map(tilLL);
+    }
+    if (onske.drone) {
+      const maal = new Uint8Array(N);
+      for (let k = 0; k < N; k++) if (s.band[k] >= 0 && s.band[k] <= 2) maal[k] = 1;
+      const opptatt = new Uint8Array(N);
+      inp.teiger.forEach((t, k) => {
+        if (t.id.startsWith('D')) for (const c of teigCeller[k]) opptatt[c] = 1;
+      });
+      const gen = genererTeiger({
+        g,
+        post: s.post,
+        maal,
+        opptatt,
+        sokefaktor: new Float32Array(N).fill(1),
+        arealtype: terr.arealtype,
+        hoyde: null,
+        linjer: [],
+        teknikk: m.teknikker.grovsok,
+        maksTimer: Infinity,
+        maksKm2: m.droneMaksKm2,
+        minKm2: m.droneMinKm2,
+        fin: 50,
+        modus: 'drone',
+        droneeffekt: droneeffekt(g, terr),
+      });
+      droneforslag = gen.slice(0, Math.max(1, onske.drone.antall)).map(tilLL);
+    }
+  }
+
   return {
+    teigforslag,
+    droneforslag,
     grid: g,
     ringer,
     fart: { v, mob },
@@ -284,6 +379,48 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     brattCeller: terr.brattCeller,
     ms: Date.now() - t0,
   };
+}
+
+/**
+ * How well a drone works per cell (0..1). MODELLANTAKELSE, after veileder 6.3.8: open areas,
+ * wetland, water and shore, glacier and steep terrain are good; forest and built-up are poor.
+ */
+export const DRONEEFFEKT: Record<number, number> = {
+  [AREALKLASSE.ukjent]: 0.7,
+  [AREALKLASSE.skog]: 0.2,
+  [AREALKLASSE.kratt]: 0.6,
+  [AREALKLASSE.apent]: 1,
+  [AREALKLASSE.dyrket]: 0.9,
+  [AREALKLASSE.bebygd]: 0.1,
+  [AREALKLASSE.myr]: 1,
+  [AREALKLASSE.bre]: 1,
+  [AREALKLASSE.vann]: 0.8,
+};
+
+export function droneeffekt(g: Grid, terr: TerrengLag): Float32Array {
+  const N = g.n * g.n;
+  const e = new Float32Array(N);
+  for (let k = 0; k < N; k++) {
+    let v = DRONEEFFEKT[terr.arealtype[k]] ?? 0.7;
+    const h = terr.helning?.[k];
+    if (h != null && h > 30) v = 1;
+    if (terr.arealtype[k] !== AREALKLASSE.vann) {
+      const i = k % g.n;
+      const j = (k - i) / g.n;
+      for (const [di, dj] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const a = i + di;
+        const b = j + dj;
+        if (a >= 0 && b >= 0 && a < g.n && b < g.n && terr.arealtype[b * g.n + a] === AREALKLASSE.vann) v = 1; // shore
+      }
+    }
+    e[k] = v;
+  }
+  return e;
 }
 
 function lagKandidater(
@@ -340,6 +477,7 @@ function lagKandidater(
     // risk areas: shore of lakes, wetland, glacier, cliffs – only where reachable
     const naaelig = (c: number) => T1[c] / v <= L * 1.2;
     for (const o of osm.omrader) {
+      if (o.type !== 'vann' && o.type !== 'myr' && o.type !== 'bre') continue;
       const inne = new Set<number>();
       forCellsInPolygon(
         g,

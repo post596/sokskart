@@ -214,6 +214,36 @@ describe('regioner og Mattson konsensus', () => {
   });
 });
 
+describe('teig- og droneforslag', () => {
+  it('foreslår teiger langs naturlige grenser innenfor maks søketid og areal', () => {
+    const r = beregn(input({ osm, osmVersjon: '1', forslagOnske: { teig: { modus: 'neste', antall: 4, teknikk: 'grovsok' }, drone: null } }));
+    expect(r.teigforslag).toHaveLength(4);
+    for (const t of r.teigforslag) {
+      expect(t.timer).toBeLessThanOrEqual(m.maksSoketid * 1.1);
+      expect(t.arealKm2).toBeLessThanOrEqual(m.maksTeigKm2);
+      expect(t.ring.length).toBeGreaterThan(4);
+    }
+    // sorted by probability
+    expect(r.teigforslag[0].poa).toBeGreaterThanOrEqual(r.teigforslag[3].poa);
+  });
+  it('finsøk av navet dekker R25', () => {
+    const r = beregn(input({ forslagOnske: { teig: { modus: 'navet', antall: 0, teknikk: 'finsok' }, drone: null } }));
+    const sum = r.teigforslag.reduce((s, t) => s + t.arealKm2, 0);
+    expect(sum).toBeGreaterThan(Math.PI * 0.7 ** 2 * 0.8);
+    expect(sum).toBeLessThan(Math.PI * 0.7 ** 2 * 1.3);
+  });
+  it('foreslår droneområder på 1–3 km²', () => {
+    const r = beregn(input({ forslagOnske: { teig: null, drone: { antall: 3 } } }));
+    expect(r.droneforslag.length).toBeGreaterThan(0);
+    for (const d of r.droneforslag) expect(d.arealKm2).toBeLessThanOrEqual(3.05);
+  });
+  it('lager ingen forslag når de ikke er bedt om', () => {
+    const r = beregn(input());
+    expect(r.teigforslag).toEqual([]);
+    expect(r.droneforslag).toEqual([]);
+  });
+});
+
 describe('ressursforslag', () => {
   it('gir like mange forslag som enheter når det finnes nok mål, og følger reglene', () => {
     const r = beregn(
