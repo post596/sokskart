@@ -6,8 +6,9 @@ import type { BeregningResultat } from '../model/beregning';
 import type { HoydeRaster, OsmData } from '../model/typer';
 import { hent, lagre, slettAlt } from '../services/lagring';
 
-export type Fane = 'aksjon' | 'ledelinjer' | 'teiger' | 'punkter' | 'ressurser' | 'statistikk';
-export type Modus = null | { type: 'ipp' } | { type: 'punkt' } | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' };
+export type Fane = 'aksjon' | 'savnet' | 'ledelinjer' | 'teiger' | 'regioner' | 'punkter' | 'ressurser' | 'tidslinje' | 'statistikk';
+export type Modus = null | { type: 'ipp' } | { type: 'punkt' } | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' } | { type: 'region' };
+export type OrdreFor = { type: 'teig' | 'linje' | 'punkt'; id: string };
 
 export interface Melding {
   tekst: string;
@@ -65,6 +66,10 @@ interface State {
   fokus: { pos: LatLng; zoom?: number; n: number } | { bounds: LatLng[]; n: number } | null;
   valgtTeig: string | null;
   redigererTeig: string | null;
+  ordreFor: OrdreFor | null;
+  /** photo of the missing person (data URL), only on this device, never exported */
+  bilde: string | null;
+  visKvalitet: boolean;
 
   endreAksjon: (fn: (a: Aksjon) => void, logg?: string) => void;
   settStatistikk: (s: LpbKategori[]) => void;
@@ -117,6 +122,9 @@ export const useStore = create<State>()((set, get) => ({
   fokus: null,
   valgtTeig: null,
   redigererTeig: null,
+  ordreFor: null,
+  bilde: null,
+  visKvalitet: false,
 
   endreAksjon: (fn, logg) =>
     set((s) => {
@@ -153,13 +161,14 @@ export const useStore = create<State>()((set, get) => ({
   set: (p) => set(p),
 
   lastInn: async () => {
-    const [aksjon, statistikk, osm, hoyde] = await Promise.all([
+    const [aksjon, statistikk, osm, hoyde, bilde] = await Promise.all([
       hent<Aksjon>('aksjon'),
       hent<LpbKategori[]>('statistikk'),
       hent<OsmData>('osm'),
       hent<HoydeRaster>('hoyde'),
+      hent<string>('bilde'),
     ]);
-    const p: Partial<State> = { lastet: true };
+    const p: Partial<State> = { lastet: true, bilde: bilde ?? null };
     if (aksjon) {
       // run through the importer to fill fields added in later versions
       const r = lesAksjonsfil(JSON.stringify({ format: 'sokskart-aksjon', versjon: 1, aksjon, statistikk: statistikk ?? [], osm: null }));
@@ -186,6 +195,7 @@ export const useStore = create<State>()((set, get) => ({
       });
       if (!ok) return false;
     }
+    void lagre('bilde', null);
     set({
       aksjon: r.fil.aksjon,
       statistikk: r.fil.statistikk,
@@ -193,6 +203,8 @@ export const useStore = create<State>()((set, get) => ({
       hoyde: null,
       resultat: null,
       visningTimer: null,
+      bilde: null,
+      ordreFor: null,
     });
     get().endreAksjon(() => {}, 'Aksjon åpnet fra fil');
     for (const a of r.advarsler) get().melding(a, 'info');
@@ -200,7 +212,10 @@ export const useStore = create<State>()((set, get) => ({
     return true;
   },
 
-  nyAksjon: () => set({ aksjon: nyAksjon(), osm: null, hoyde: null, resultat: null, visningTimer: null, valgtTeig: null, redigererTeig: null }),
+  nyAksjon: () => {
+    void lagre('bilde', null);
+    set({ aksjon: nyAksjon(), osm: null, hoyde: null, resultat: null, visningTimer: null, valgtTeig: null, redigererTeig: null, bilde: null, ordreFor: null });
+  },
 
   slettAksjonHelt: async () => {
     await slettAlt();
@@ -214,6 +229,8 @@ export const useStore = create<State>()((set, get) => ({
       egenposisjon: null,
       valgtTeig: null,
       redigererTeig: null,
+      bilde: null,
+      ordreFor: null,
     });
     // map tiles and the app itself stay cached: they hold no personal data
   },

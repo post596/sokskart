@@ -39,6 +39,7 @@ export function RessurserFane() {
                   y.ressurser[x.type as RessursType] = Math.max(0, Math.min(50, Math.floor(Number(e.target.value) || 0)));
                 })
               }
+              onBlur={(e) => endre(() => {}, `Ressurser: ${x.navn.toLowerCase()} satt til ${Math.max(0, Math.floor(Number(e.target.value) || 0))}`)}
             />
           </label>
         ))}

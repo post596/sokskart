@@ -5,13 +5,15 @@ import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
 import { useEffect, useRef } from 'react';
 import { teigAkkPod } from '../domain/aksjon';
 import type { LatLng } from '../domain/coords';
-import { formatLatLonUtm } from '../domain/utm';
+import { formatLatLonUtm, toUtm } from '../domain/utm';
 import { TEIGFARGER, teigfarge } from '../domain/pod';
 import { RESSURSER } from '../model/ressurser';
 import { LINJETYPE_FARGE, LINJETYPE_NAVN } from '../model/typer';
 import { KARTLAG } from '../services/kartfliser';
 import { mixRinger, standardVisning } from '../state/beregning';
-import { endreTeigRing, leggTilPunkt, leggTilTeig } from '../state/handlinger';
+import { endreTeigRing, leggTilPunkt, leggTilRegion, leggTilTeig } from '../state/handlinger';
+import { kvalitetssikring } from '../domain/kvalitet';
+import { SPORRESSURSER } from '../data/modellantakelser';
 import { useStore } from '../state/store';
 import { fmtAvstand, fmtTimer } from '../ui/format';
 import { divIkon, esc, lagCanvasOverlay, Rekkeviddelinjer, tegnGangtid, tegnSannsynlighet } from './lag';
@@ -59,6 +61,7 @@ export function Kart() {
   const egenpos = useStore((s) => s.egenposisjon);
   const valgtTeig = useStore((s) => s.valgtTeig);
   const redigererTeig = useStore((s) => s.redigererTeig);
+  const visKvalitet = useStore((s) => s.visKvalitet);
 
   // ------------------------------------------------------------ init
   useEffect(() => {
@@ -85,7 +88,7 @@ export function Kart() {
       if (p !== 'teiger') map.getPane(p)!.style.pointerEvents = p === 'linjer' ? 'auto' : 'none';
     }
     linjeRenderer.current = L.canvas({ pane: 'linjer', padding: 0.3 });
-    for (const g of ['ringer', 'alleLinjer', 'topp', 'teiger', 'plan', 'etterretning', 'punkter', 'forslag', 'egen']) {
+    for (const g of ['regioner', 'ringer', 'alleLinjer', 'spor', 'topp', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'forslag', 'egen']) {
       grupper.current[g] = L.layerGroup().addTo(map);
     }
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
@@ -128,6 +131,9 @@ export function Kart() {
       if (m?.type === 'teig' && ll.length >= 3) {
         const id = leggTilTeig(ll, m.avgrensning);
         s.melding(`${id} er tegnet. Registrer status og søk i fanen Teiger.`, 'ok');
+      } else if (m?.type === 'region' && ll.length >= 3) {
+        const id = leggTilRegion(ll);
+        s.melding(`${id} er tegnet. Gi regionen navn og legg inn vurderinger i fanen Regioner.`, 'ok');
       } else s.set({ modus: null });
     });
 
@@ -358,12 +364,64 @@ export function Kart() {
     }
   }, [aksjon.teiger, visning.plankart, visning.resultatkart, valgtTeig, redigererTeig]);
 
+  // ------------------------------------------------------------ regions (plankart, used in ILKO)
+  useEffect(() => {
+    const g = grupper.current.regioner;
+    if (!g) return;
+    g.clearLayers();
+    if (!visning.plankart) return;
+    for (const r of aksjon.regioner) {
+      L.polygon(r.ring.map(toLL), { color: '#111827', weight: 2.5, dashArray: '12 6', fill: false, pane: 'teiger', interactive: false })
+        .bindTooltip(`${r.id}${r.navn ? ` ${esc(r.navn)}` : ''}`, { permanent: true, direction: 'center', className: 'regionetikett' })
+        .addTo(g);
+    }
+  }, [aksjon.regioner, visning.plankart]);
+
+  // ------------------------------------------------------------ GPS tracks (resultatkart)
+  useEffect(() => {
+    const g = grupper.current.spor;
+    if (!g) return;
+    g.clearLayers();
+    if (!visning.resultatkart) return;
+    for (const s of aksjon.spor) {
+      const r = SPORRESSURSER.find((x) => x.type === s.ressurs);
+      L.polyline(s.pts.map(toLL), { color: r?.farge ?? '#dc2626', weight: 3, opacity: 0.9, renderer: linjeRenderer.current ?? undefined })
+        .bindTooltip(`${esc(s.navn)} (${r?.navn ?? s.ressurs})`, { sticky: true })
+        .addTo(g);
+    }
+  }, [aksjon.spor, visning.resultatkart]);
+
+  // ------------------------------------------------------------ quality assurance highlight
+  useEffect(() => {
+    const g = grupper.current.ks;
+    if (!g) return;
+    g.clearLayers();
+    if (!visKvalitet || !aksjon.ipp || !resultat) return;
+    const zone = resultat.grid.zone;
+    const xy = (p: LatLng): [number, number] => {
+      const u = toUtm(p.lat, p.lng, zone);
+      return [u.e, u.n];
+    };
+    const rap = kvalitetssikring(
+      aksjon.teiger.map((t) => ({ id: t.id, ring: t.ring.map(xy), akkPod: teigAkkPod(t), poa: resultat.teiger.find((x) => x.id === t.id)?.poaNa ?? 0 })),
+      xy(aksjon.ipp),
+      resultat.ringer[1],
+      resultat.ringer[2],
+    );
+    for (const k of rap.ikkeOppfylt) {
+      const t = aksjon.teiger.find((x) => x.id === k.id);
+      if (!t) continue;
+      L.polygon(t.ring.map(toLL), { color: '#b91c1c', weight: 6, dashArray: '4 6', fill: false, pane: 'teiger', interactive: false }).addTo(g);
+    }
+  }, [visKvalitet, aksjon.teiger, aksjon.ipp, resultat]);
+
   // ------------------------------------------------------------ drawing mode
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (modus?.type === 'teig') {
-      map.pm.enableDraw('Polygon', { snappable: true, finishOn: 'dblclick', templineStyle: { color: '#1d4ed8' }, hintlineStyle: { color: '#1d4ed8', dashArray: '5 5' }, pathOptions: { color: '#1d4ed8' } } as L.PM.DrawModeOptions);
+    if (modus?.type === 'teig' || modus?.type === 'region') {
+      const col = modus.type === 'region' ? '#111827' : '#1d4ed8';
+      map.pm.enableDraw('Polygon', { snappable: true, finishOn: 'dblclick', templineStyle: { color: col }, hintlineStyle: { color: col, dashArray: '5 5' }, pathOptions: { color: col } } as L.PM.DrawModeOptions);
       map.doubleClickZoom.disable();
     } else {
       map.pm.disableDraw();

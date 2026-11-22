@@ -18,6 +18,8 @@ export interface Sok {
   ressurstype: string;
   enhet: string;
   merknad: string;
+  /** GPS tracks the POD was based on (not counted again for this teig) */
+  spor?: string[];
 }
 
 export type Avgrensningstype = 'T' | 'H' | 'D';

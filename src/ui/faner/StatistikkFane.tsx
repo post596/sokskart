@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { eksporterCsv, importerCsv } from '../../data/csv';
 import { kopierStatistikk, valider, type LpbKategori, type Ringer, type Terreng } from '../../data/lpb-stats';
-import { MODELL_FELT, STANDARD_MODELL, type Observasjonsklasse } from '../../data/modellantakelser';
+import { MODELL_FELT, SPORRESSURSER, STANDARD_MODELL, type Observasjonsklasse } from '../../data/modellantakelser';
 import { useStore } from '../../state/store';
 import { Advarsel, lastNed, Modellmerke } from '../felles';
 
@@ -89,12 +89,13 @@ export function StatistikkFane() {
                       type="checkbox"
                       checked={s.verifisert}
                       aria-label={`${s.navn} verifisert`}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         oppdater(s.key, (c) => {
                           c.verifisert = e.target.checked;
                           if (e.target.checked && c.kilde.startsWith('Plassholder')) c.kilde = 'Kontrollert mot Lost Person Behavior i appen';
-                        })
-                      }
+                        });
+                        endre(() => {}, `Statistikk: «${s.navn}» merket ${e.target.checked ? 'verifisert' : 'ikke verifisert'}`);
+                      }}
                     />
                   </td>
                 </tr>
@@ -120,7 +121,10 @@ export function StatistikkFane() {
             const r = importerCsv(await f.text(), stats);
             if (r.endret.length) settStat(r.stats);
             const m = useStore.getState().melding;
-            if (r.endret.length) m(`Importert: ${r.endret.join(', ')}.`, 'ok');
+            if (r.endret.length) {
+              m(`Importert: ${r.endret.join(', ')}.`, 'ok');
+              endre(() => {}, `Statistikk importert fra CSV (${f.name}): ${r.endret.join(', ')}`);
+            }
             for (const x of r.feil.slice(0, 4)) m(x, 'feil');
           }}
         />
@@ -190,6 +194,26 @@ export function StatistikkFane() {
           <input type="checkbox" checked={a.modell.elvErBarriere} onChange={(e) => endre((x) => void (x.modell.elvErBarriere = e.target.checked))} />
           Elver er barrierer (bekker kan krysses)
         </label>
+      </div>
+      <h3>
+        Søkebredde for GPS-spor (m) <Modellmerke />
+      </h3>
+      <p className="liten-tekst dempet">Effektiv søkebredde per spor. Brukes i dekning C = bredde × lengde / areal og foreslått POD = 1 − e^(−C).</p>
+      <div className="modellfelt">
+        {SPORRESSURSER.map((r) => (
+          <label key={r.type}>
+            {r.navn}
+            <input
+              type="number"
+              step={5}
+              min={1}
+              max={1000}
+              value={a.modell.sokebredde[r.type]}
+              onChange={(e) => endre((x) => void (x.modell.sokebredde[r.type] = Math.max(1, Number(e.target.value) || 1)))}
+              onBlur={(e) => endre(() => {}, `Søkebredde for ${r.navn.toLowerCase()} satt til ${e.target.value} m`)}
+            />
+          </label>
+        ))}
       </div>
       <button
         type="button"

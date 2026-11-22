@@ -19,7 +19,7 @@ export function Modellmerke() {
 export async function kopier(tekst: string, hva = 'Kopiert'): Promise<void> {
   try {
     await navigator.clipboard.writeText(tekst);
-    useStore.getState().melding(`${hva}: ${tekst}`, 'ok');
+    useStore.getState().melding(tekst.length > 60 ? `${hva}.` : `${hva}: ${tekst}`, 'ok');
   } catch {
     useStore.getState().melding('Kunne ikke kopiere – merk teksten og kopier manuelt.', 'feil');
   }
@@ -64,6 +64,24 @@ export function Sammenleggbar({ tittel, children, start = false }: { tittel: str
       {apen && <div className="seksjon-innhold">{children}</div>}
     </section>
   );
+}
+
+/**
+ * Focus/blur handlers for text fields: writes one line to the aksjonslogg when the field
+ * is left with a different value than it had (instead of one line per keystroke).
+ */
+export function loggVedEndring(hva: string) {
+  return {
+    onFocus: (e: { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => {
+      e.currentTarget.dataset.start = e.currentTarget.value;
+    },
+    onBlur: (e: { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => {
+      const v = e.currentTarget.value;
+      if (v !== (e.currentTarget.dataset.start ?? '')) {
+        useStore.getState().endreAksjon(() => {}, `${hva} endret til «${v.length > 60 ? v.slice(0, 60) + '…' : v}»`);
+      }
+    },
+  };
 }
 
 export function lastNed(navn: string, tekst: string, type: string): void {

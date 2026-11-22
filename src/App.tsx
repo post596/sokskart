@@ -7,26 +7,41 @@ import { PunkterFane } from './ui/faner/PunkterFane';
 import { RessurserFane } from './ui/faner/RessurserFane';
 import { StatistikkFane } from './ui/faner/StatistikkFane';
 import { TeigerFane } from './ui/faner/TeigerFane';
+import { SavnetFane } from './ui/faner/SavnetFane';
+import { RegionerFane } from './ui/faner/RegionerFane';
+import { TidslinjeFane } from './ui/faner/TidslinjeFane';
+import { OrdreDialog } from './ui/Ordre';
 import { Kartkontroller } from './ui/Kartkontroller';
 import { Tidslinje } from './ui/Tidslinje';
 
 const FANER: Array<[Fane, string]> = [
   ['aksjon', 'Aksjon'],
+  ['savnet', 'Savnet'],
   ['ledelinjer', 'Ledelinjer'],
   ['teiger', 'Teiger'],
+  ['regioner', 'Regioner'],
   ['punkter', 'Punkter'],
   ['ressurser', 'Ressurser'],
+  ['tidslinje', 'Tidslinje'],
   ['statistikk', 'Statistikk'],
 ];
 
 const INNHOLD: Record<Fane, () => ReactNode> = {
   aksjon: () => <AksjonFane />,
+  savnet: () => <SavnetFane />,
   ledelinjer: () => <LedelinjerFane />,
   teiger: () => <TeigerFane />,
+  regioner: () => <RegionerFane />,
   punkter: () => <PunkterFane />,
   ressurser: () => <RessurserFane />,
+  tidslinje: () => <TidslinjeFane />,
   statistikk: () => <StatistikkFane />,
 };
+
+function Ordre() {
+  const f = useStore((s) => s.ordreFor);
+  return f ? <OrdreDialog key={`${f.type}:${f.id}`} /> : null;
+}
 
 function Modusbar() {
   const modus = useStore((s) => s.modus);
@@ -39,7 +54,9 @@ function Modusbar() {
       ? 'Klikk i kartet for å sette IPP'
       : modus?.type === 'punkt'
         ? 'Klikk der punktet skal stå'
-        : 'Klikk hjørnene i teigen – dobbeltklikk eller klikk første hjørne for å avslutte';
+        : modus?.type === 'region'
+          ? 'Klikk hjørnene i regionen – dobbeltklikk eller klikk første hjørne for å avslutte'
+          : 'Klikk hjørnene i teigen – dobbeltklikk eller klikk første hjørne for å avslutte';
   return (
     <div className="modusbar" role="status">
       <span>{tekst}</span>
@@ -161,6 +178,7 @@ export function App() {
         </section>
       </main>
       <Meldinger />
+      <Ordre />
       <DialogBoks />
     </div>
   );

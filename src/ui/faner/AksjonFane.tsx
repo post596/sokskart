@@ -7,9 +7,11 @@ import { prosent } from '../../domain/pod';
 import type { ZoneChoice } from '../../domain/utm';
 import { byggKomponenter, blandingRinger, vektetFart } from '../../model/lpb';
 import { LINJETYPE_NAVN } from '../../model/typer';
+import type { OsmData } from '../../model/typer';
 import { hentOsm } from '../../services/overpass';
+import { fjernDuplikater, hentTurruter } from '../../services/turrutebasen';
 import { useStore } from '../../state/store';
-import { Advarsel, lastNed, Modellmerke, Sammenleggbar, Utm, VisKnapp } from '../felles';
+import { Advarsel, lastNed, loggVedEndring, Modellmerke, Utm, VisKnapp } from '../felles';
 import { fmtAvstand, fmtFart, fmtKm2, fmtTid, fmtTimer } from '../format';
 
 const SYKKELHJUL: Array<[string, string, string]> = [
@@ -31,16 +33,32 @@ export async function hentStier(): Promise<void> {
   const R95 = komps.length ? blandingRinger(komps, a.modell.haleFaktor)[3] : 5000;
   const radius = Math.min(R95 * 1.2, a.modell.ledelinjeTakKm * 1000);
   s.set({ osmStatus: { henter: true, feil: null } });
-  try {
-    const osm = await hentOsm(a.ipp, radius);
-    useStore.getState().set({ osm, osmStatus: { henter: false, feil: null } });
-    useStore.getState().endreAksjon(() => {}, `Stier og veier hentet fra OpenStreetMap (${osm.linjer.length} ledelinjer innen ${fmtAvstand(radius)})`);
-    useStore.getState().melding(`${osm.linjer.length} ledelinjer, ${osm.omrader.length} områder og ${osm.punkter.length} punkter hentet innen ${fmtAvstand(radius)}.`, 'ok');
-  } catch (e) {
-    const feil = e instanceof Error ? e.message : String(e);
-    useStore.getState().set({ osmStatus: { henter: false, feil } });
-    useStore.getState().melding(feil, 'feil');
+  // ski tracks from Turrutebasen only when a ski category is chosen
+  const medSki = a.kategorier.some((k) => k.key === 'langrenn' || k.key === 'alpin');
+  const [osmR, trbR] = await Promise.allSettled([hentOsm(a.ipp, radius), hentTurruter(a.ipp, radius, medSki)]);
+  const st = useStore.getState();
+  if (osmR.status === 'rejected' && trbR.status === 'rejected') {
+    const feil = osmR.reason instanceof Error ? osmR.reason.message : String(osmR.reason);
+    st.set({ osmStatus: { henter: false, feil } });
+    st.melding(feil, 'feil');
+    return;
   }
+  const osm: OsmData =
+    osmR.status === 'fulfilled'
+      ? osmR.value
+      : { linjer: [], omrader: [], stup: [], punkter: [], senter: a.ipp, radiusM: radius, hentet: new Date().toISOString(), kilde: 'Turrutebasen' };
+  let trbTekst = '';
+  if (trbR.status === 'fulfilled') {
+    const { beholdt, duplikater } = fjernDuplikater(trbR.value, osm.linjer);
+    osm.linjer = [...osm.linjer, ...beholdt];
+    trbTekst = `, ${beholdt.length} nye merkede ruter fra Turrutebasen (${duplikater} fantes i OSM)`;
+  } else {
+    st.melding(`Turrutebasen svarte ikke (${trbR.reason instanceof Error ? trbR.reason.message : trbR.reason}). Bruker bare OpenStreetMap.`, 'info');
+  }
+  const feil = osmR.status === 'rejected' ? `OpenStreetMap svarte ikke: ${osmR.reason instanceof Error ? osmR.reason.message : osmR.reason}` : null;
+  st.set({ osm: { ...osm, hentet: new Date().toISOString() }, osmStatus: { henter: false, feil } });
+  st.endreAksjon(() => {}, `Stier og veier hentet (${osm.linjer.length} ledelinjer innen ${fmtAvstand(radius)}${trbTekst})`);
+  st.melding(`${osm.linjer.length} ledelinjer, ${osm.omrader.length} områder og ${osm.punkter.length} punkter hentet innen ${fmtAvstand(radius)}${trbTekst}.`, 'ok');
 }
 
 export function lagMannskapsGpx(): void {
@@ -110,11 +128,11 @@ export function AksjonFane() {
       <div className="rad">
         <label>
           Aksjon / sted
-          <input value={a.navn} onChange={(e) => endre((x) => void (x.navn = e.target.value))} placeholder="F.eks. Spiterstulen" />
+          <input value={a.navn} onChange={(e) => endre((x) => void (x.navn = e.target.value))} placeholder="F.eks. Spiterstulen" {...loggVedEndring('Aksjonsnavn')} />
         </label>
         <label>
           SAR-nummer
-          <input value={a.sarNr} onChange={(e) => endre((x) => void (x.sarNr = e.target.value))} placeholder="SAR-nr." />
+          <input value={a.sarNr} onChange={(e) => endre((x) => void (x.sarNr = e.target.value))} placeholder="SAR-nr." {...loggVedEndring('SAR-nummer')} />
         </label>
       </div>
 
@@ -396,19 +414,13 @@ export function AksjonFane() {
         </button>
       </div>
 
-      <Sammenleggbar tittel={`Aksjonslogg (${a.logg.length})`}>
-        <ol className="logg">
-          {a.logg
-            .slice()
-            .reverse()
-            .slice(0, 200)
-            .map((l, i) => (
-              <li key={i}>
-                <span className="mono dempet">{fmtTid(l.tid)}</span> {l.tekst}
-              </li>
-            ))}
-        </ol>
-      </Sammenleggbar>
+      <p className="liten-tekst dempet">
+        Aksjonsloggen ({a.logg.length} linjer) og tidslinja for observasjoner og søk ligger i fanen{' '}
+        <button type="button" className="lenkeknapp understrek" onClick={() => useStore.getState().set({ fane: 'tidslinje' })}>
+          Tidslinje
+        </button>
+        .
+      </p>
     </div>
   );
 }

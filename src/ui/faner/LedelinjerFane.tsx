@@ -15,7 +15,8 @@ export function LedelinjerFane() {
   return (
     <div className="fane">
       <p className="dempet">
-        Eikene i sykkelhjulet: stier, veier, elver, bekker, grøfter og kraftgater fra OpenStreetMap. Rangert etter hvor mye sannsynlighet linja går
+        Eikene i sykkelhjulet: stier, veier, elver, bekker, grøfter og kraftgater fra OpenStreetMap, og merkede ruter fra Turrutebasen
+        (Kartverket). Rangert etter hvor mye sannsynlighet linja går
         gjennom. <b>Søk ledelinjer helt ut – også forbi R95 når tid og scenario tilsier det.</b> L-nummeret beholdes selv om rekkefølgen endres.
       </p>
       <div className="knapperad">
@@ -51,14 +52,20 @@ export function LedelinjerFane() {
                   <b>
                     <i className="farge" style={{ background: LINJETYPE_FARGE[l.type] }} /> {nr} {l.navn || LINJETYPE_NAVN[l.type]}
                   </b>
-                  <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: ol.pts })}>
-                    Vis
-                  </button>
+                  <span className="knapperad">
+                    <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: ol.pts })}>
+                      Vis
+                    </button>
+                    <button type="button" className="knapp liten" onClick={() => useStore.getState().set({ ordreFor: { type: 'linje', id: l.id } })}>
+                      Ordre
+                    </button>
+                  </span>
                 </div>
                 <div className="dempet liten-tekst">
                   {LINJETYPE_NAVN[l.type]} · {fmtAvstand(l.lengdeM)} · {prosent(l.na)} av sannsynligheten langs linja
                   {l.for > l.na * 1.05 && ` (før søk ${prosent(l.for)})`}
                   {Number.isFinite(l.tMin) && ` · nås etter ${fmtTimer(l.tMin)}`}
+                  {ol.kilde === 'turrutebasen' && ' · Turrutebasen'}
                 </div>
               </li>
             );
