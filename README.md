@@ -3,6 +3,10 @@
 Planleggingsverktøy for søk etter savnet person på land, for frivillige i Norsk Folkehjelp
 og innsatsleders kommandoplass (ILKO).
 
+**Bruk appen:** https://post596.github.io/sokskart/. Den kan installeres som app på PC,
+nettbrett og mobil via nettleserens «Installer» eller «Legg til på startskjerm».
+Koden ligger på https://github.com/post596/sokskart.
+
 > **Søkskart er et støtteverktøy.** Søksledelsen tar beslutningene. HRS sitt felles system
 > for aksjonsstøtte er det offisielle systemet. Statistikken er plassholdere til den er
 > kontrollert mot *Lost Person Behavior* (fanen Statistikk).
