@@ -9,7 +9,7 @@ import type { ZoneChoice } from '../../domain/utm';
 import { byggKomponenter, blandingRinger, vektetFart } from '../../model/lpb';
 import { LINJETYPE_NAVN } from '../../model/typer';
 import type { OsmData } from '../../model/typer';
-import { hentOsm } from '../../services/overpass';
+import { hentOsm, OverpassFeil } from '../../services/overpass';
 import { fjernDuplikater, hentTurruter } from '../../services/turrutebasen';
 import { hentFraVektorfliser } from '../../services/vektorfliser';
 import { useStore } from '../../state/store';
@@ -34,7 +34,7 @@ export async function hentStier(): Promise<void> {
   const komps = byggKomponenter(s.statistikk, a.kategorier, a.terreng);
   const R95 = komps.length ? blandingRinger(komps, a.modell.haleFaktor)[3] : 5000;
   const radius = Math.min(R95 * 1.2, a.modell.ledelinjeTakKm * 1000);
-  s.set({ osmStatus: { henter: true, feil: null } });
+  s.set({ osmStatus: { henter: true, feil: null, merknad: null } });
   // ski tracks from Turrutebasen only when a ski category is chosen
   const medSki = a.kategorier.some((k) => k.key === 'langrenn' || k.key === 'alpin');
   const feilTekst = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -42,17 +42,18 @@ export async function hentStier(): Promise<void> {
   let osm: OsmData | null = null;
   let kilde = 'OpenStreetMap (Overpass)';
   let overpassFeil: string | null = null;
+  let vektorFeil: string | null = null;
   try {
     osm = await hentOsm(a.ipp, radius);
   } catch (e) {
-    overpassFeil = feilTekst(e);
+    overpassFeil = e instanceof OverpassFeil && e.detaljer.length ? e.detaljer.join('; ') : feilTekst(e);
     // automatic fallback: the same OSM data as ready-made vector tiles (no server, no queue)
     useStore.getState().melding('Overpass svarer ikke. Henter de samme OSM-dataene som vektorfliser fra OpenFreeMap …', 'info');
     try {
       osm = await hentFraVektorfliser(a.ipp, radius);
       kilde = 'OpenFreeMap-vektorfliser';
     } catch (e2) {
-      overpassFeil += ` Vektorfliser: ${feilTekst(e2)}`;
+      vektorFeil = feilTekst(e2);
     }
   }
   const [trbR] = await Promise.allSettled([trbP]);
@@ -60,14 +61,18 @@ export async function hentStier(): Promise<void> {
   const forrige = st.osm;
   if (!osm && (trbR.status === 'rejected' || forrige)) {
     // keep what we already have rather than replacing it with less
-    const feil = `Fikk ikke hentet stier og veier (${overpassFeil}).${forrige ? ' Beholder stiene og veiene fra forrige henting.' : ''}`;
-    st.set({ osmStatus: { henter: false, feil } });
+    const feil =
+      `Fikk ikke hentet stier og veier. Overpass: ${overpassFeil}. Vektorfliser: ${vektorFeil}.` +
+      (forrige ? ' Beholder stiene og veiene fra forrige henting.' : ' Appen fortsetter uten ledelinjer – prøv igjen om litt.');
+    st.set({ osmStatus: { henter: false, feil, merknad: null } });
     st.melding(feil, 'feil');
     return;
   }
+  let merknad: string | null = null;
   if (!osm) {
     osm = { linjer: [], omrader: [], stup: [], punkter: [], senter: a.ipp, radiusM: radius, hentet: new Date().toISOString(), kilde: 'Turrutebasen' };
     kilde = 'Turrutebasen';
+    merknad = `OpenStreetMap svarte ikke (Overpass: ${overpassFeil}. Vektorfliser: ${vektorFeil}). Bruker bare merkede ruter fra Turrutebasen – vanlige stier, veier og vann mangler. Prøv igjen om litt.`;
   }
   let trbTekst = '';
   if (trbR.status === 'fulfilled') {
@@ -77,14 +82,18 @@ export async function hentStier(): Promise<void> {
   } else {
     st.melding(`Turrutebasen svarte ikke (${feilTekst(trbR.reason)}). Bruker bare OpenStreetMap.`, 'info');
   }
-  const feil = kilde === 'OpenFreeMap-vektorfliser' ? `Overpass svarte ikke (${overpassFeil}). Brukte OpenFreeMap-vektorfliser (samme OSM-data, uten stup og kraftgater).` : null;
-  st.set({ osm: { ...osm, hentet: new Date().toISOString() }, osmStatus: { henter: false, feil } });
+  if (kilde === 'OpenFreeMap-vektorfliser') {
+    merknad =
+      `Overpass var nede eller overbelastet (${overpassFeil}). ${osm.linjer.length} ledelinjer ble i stedet hentet fra OpenFreeMap-vektorfliser – ` +
+      'samme OSM-data, men uten stup og kraftgater. Trykk «Hent på nytt» senere for å få dem med.';
+  }
+  st.set({ osm: { ...osm, hentet: new Date().toISOString() }, osmStatus: { henter: false, feil: null, merknad } });
   st.endreAksjon(() => {}, `Stier og veier hentet fra ${kilde} (${osm.linjer.length} ledelinjer innen ${fmtAvstand(radius)}${trbTekst})`);
   st.melding(`${osm.linjer.length} ledelinjer, ${osm.omrader.length} områder og ${osm.punkter.length} punkter hentet fra ${kilde} innen ${fmtAvstand(radius)}${trbTekst}.`, 'ok');
   if (kilde !== 'OpenStreetMap (Overpass)') return; // vector tiles already include land cover
 
   // land cover and small POIs in a separate, optional request (keeps the first one light)
-  st.set({ osmStatus: { henter: true, feil } });
+  st.set({ osmStatus: { henter: true, feil: null, merknad } });
   let areal: OsmData;
   let arealKilde = 'Overpass';
   try {
@@ -96,7 +105,7 @@ export async function hentStier(): Promise<void> {
       areal = { ...v, omrader: v.omrader.filter((o) => o.type !== 'vann'), punkter: [] };
       arealKilde = 'OpenFreeMap-vektorfliser';
     } catch (e) {
-      useStore.getState().set({ osmStatus: { henter: false, feil } });
+      useStore.getState().set({ osmStatus: { henter: false, feil: null, merknad } });
       useStore.getState().melding(`Arealtyper (skog/åpent) ble ikke hentet: ${feilTekst(e)}. Teigforslag bruker bare stier og vann som grenser.`, 'info');
       return;
     }
@@ -105,7 +114,7 @@ export async function hentStier(): Promise<void> {
   if (cur.osm && areal) {
     cur.set({
       osm: { ...cur.osm, omrader: [...cur.osm.omrader, ...areal.omrader], punkter: [...cur.osm.punkter, ...areal.punkter], hentet: new Date().toISOString() },
-      osmStatus: { henter: false, feil },
+      osmStatus: { henter: false, feil: null, merknad },
     });
     cur.endreAksjon(() => {}, `Arealtyper hentet fra ${arealKilde} (${areal.omrader.length} områder, ${areal.punkter.length} punkter)`);
   }
@@ -330,7 +339,8 @@ export function AksjonFane() {
           {osmStatus.henter ? 'Henter stier …' : osm ? 'Hent stier og veier på nytt' : 'Hent stier og veier'}
         </button>
       </div>
-      {osmStatus.feil && <Advarsel type="feil">{osmStatus.feil} Appen fortsetter uten ledelinjer.</Advarsel>}
+      {osmStatus.feil && <Advarsel type="feil">{osmStatus.feil}</Advarsel>}
+      {osmStatus.merknad && <Advarsel type="info">{osmStatus.merknad}</Advarsel>}
       {hoydeStatus.henter && <p className="dempet liten-tekst">Henter høydedata fra Kartverket …</p>}
       {hoydeStatus.feil && <Advarsel type="info">{hoydeStatus.feil}</Advarsel>}
 

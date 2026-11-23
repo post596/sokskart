@@ -261,11 +261,35 @@ export function tolkSvar(json: { elements?: OverpassElement[] }, senter: LatLng,
   };
 }
 
-export class OverpassFeil extends Error {}
+export class OverpassFeil extends Error {
+  /** One short Norwegian reason per endpoint, e.g. "overpass-api.de: HTTP 502 (overbelastet eller nede)". */
+  detaljer: string[];
+  constructor(melding: string, detaljer: string[] = []) {
+    super(melding);
+    this.detaljer = detaljer;
+  }
+}
 
-/** Fetches once from the first endpoint, falls back to the next on failure. */
-/** Tries the endpoints in order within a total deadline (ms), then gives up so a fallback can take over. */
-export async function hentOsm(senter: LatLng, radiusM: number, signal?: AbortSignal, del: 'linjer' | 'areal' = 'linjer', fristMs = 60_000): Promise<OsmData> {
+/** Short Norwegian reason for an HTTP status from Overpass. */
+export function statusTekst(status: number): string {
+  if (status === 429) return 'HTTP 429 (for mange forespørsler – vent litt)';
+  if (status === 502 || status === 503 || status === 504) return `HTTP ${status} (overbelastet eller nede)`;
+  return `HTTP ${status}`;
+}
+
+/**
+ * Tries the endpoints in order, each at most `perEndepunktMs` and all within `fristMs`,
+ * then gives up so the vector-tile fallback can take over. A slow server must not use
+ * up the whole deadline: the next endpoint always gets its turn.
+ */
+export async function hentOsm(
+  senter: LatLng,
+  radiusM: number,
+  signal?: AbortSignal,
+  del: 'linjer' | 'areal' = 'linjer',
+  fristMs = 50_000,
+  perEndepunktMs = 22_000,
+): Promise<OsmData> {
   const q = byggSporring(senter, radiusM, del);
   const slutt = Date.now() + fristMs;
   const feil: string[] = [];
@@ -273,9 +297,16 @@ export async function hentOsm(senter: LatLng, radiusM: number, signal?: AbortSig
   for (const url of OVERPASS_ENDEPUNKTER) {
     const igjen = slutt - Date.now();
     if (igjen < 3000) break;
+    const vent = Math.min(igjen, perEndepunktMs);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), igjen);
-    signal?.addEventListener('abort', () => ctrl.abort(), { once: true });
+    let tidUte = false;
+    const timer = setTimeout(() => {
+      tidUte = true;
+      ctrl.abort();
+    }, vent);
+    const avbryt = () => ctrl.abort();
+    signal?.addEventListener('abort', avbryt, { once: true });
+    const vert = new URL(url).hostname;
     try {
       const r = await fetch(url, {
         method: 'POST',
@@ -283,16 +314,25 @@ export async function hentOsm(senter: LatLng, radiusM: number, signal?: AbortSig
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         signal: ctrl.signal,
       });
-      if (r.status === 429) throw new OverpassFeil('for mange forespørsler (429) – vent litt');
-      if (!r.ok) throw new OverpassFeil(`HTTP ${r.status}`);
+      if (!r.ok) throw new OverpassFeil(statusTekst(r.status));
       const json = await r.json();
-      return tolkSvar(json, senter, radiusM, new URL(url).hostname);
+      return tolkSvar(json, senter, radiusM, vert);
     } catch (e) {
       if (signal?.aborted) throw e;
-      feil.push(`${new URL(url).hostname}: ${e instanceof Error ? e.message : String(e)}`);
+      const grunn = tidUte
+        ? `svarte ikke innen ${Math.round(vent / 1000)} s`
+        : e instanceof OverpassFeil
+          ? e.message
+          : e instanceof TypeError
+            ? 'fikk ikke kontakt'
+            : e instanceof Error
+              ? e.message
+              : String(e);
+      feil.push(`${vert}: ${grunn}`);
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener('abort', avbryt);
     }
   }
-  throw new OverpassFeil(`Fikk ikke hentet stier og veier fra OpenStreetMap (${feil.join('; ')}).`);
+  throw new OverpassFeil(`Fikk ikke hentet stier og veier fra OpenStreetMap (${feil.join('; ')}).`, feil);
 }

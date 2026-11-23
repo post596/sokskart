@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { OsmLinje } from '../model/typer';
-import { byggSporring, linjetype, settSammenRinger, slaSammenLinjer, tolkSvar } from './overpass';
+import { byggSporring, hentOsm, linjetype, OverpassFeil, settSammenRinger, slaSammenLinjer, statusTekst, tolkSvar } from './overpass';
 
 const p = (lat: number, lng: number) => ({ lat, lng });
 
@@ -126,5 +126,50 @@ describe('tolking av Overpass-svar', () => {
       ['topp', 'Toppen'],
       ['hytte', 'Hytta'],
     ]);
+  });
+});
+
+describe('hentOsm – flere endepunkter og frister', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** fetch that answers per host: a status code, 'heng' (never answers until aborted) or 'nett' (network error). */
+  const falskFetch = (svar: Record<string, number | 'heng' | 'nett'>) =>
+    vi.fn((url: string, init?: RequestInit) => {
+      const s = svar[new URL(url).hostname];
+      if (s === 'nett') return Promise.reject(new TypeError('Failed to fetch'));
+      if (s === 'heng') {
+        return new Promise<Response>((_, rej) =>
+          init?.signal?.addEventListener('abort', () => rej(new DOMException('signal is aborted without reason', 'AbortError'))),
+        );
+      }
+      const body = s === 200 ? JSON.stringify({ elements: [{ type: 'way', id: 1, tags: { highway: 'path' }, geometry: [{ lat: 61, lon: 8 }, { lat: 61.001, lon: 8.001 }] }] }) : 'feil';
+      return Promise.resolve(new Response(body, { status: s ?? 500 }));
+    });
+
+  it('går videre når én server henger, så neste får sin tur', async () => {
+    const f = falskFetch({ 'overpass-api.de': 502, 'overpass.private.coffee': 'heng', 'overpass.kumi.systems': 200 });
+    vi.stubGlobal('fetch', f);
+    const d = await hentOsm(p(61, 8), 1000, undefined, 'linjer', 10_000, 50);
+    expect(f).toHaveBeenCalledTimes(3);
+    expect(d.kilde).toBe('overpass.kumi.systems');
+    expect(d.linjer).toHaveLength(1);
+  });
+
+  it('gir norske grunner per server når alle feiler', async () => {
+    vi.stubGlobal('fetch', falskFetch({ 'overpass-api.de': 502, 'overpass.private.coffee': 'heng', 'overpass.kumi.systems': 'nett' }));
+    const e = await hentOsm(p(61, 8), 1000, undefined, 'linjer', 10_000, 50).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(OverpassFeil);
+    expect((e as OverpassFeil).detaljer).toEqual([
+      'overpass-api.de: HTTP 502 (overbelastet eller nede)',
+      'overpass.private.coffee: svarte ikke innen 0 s',
+      'overpass.kumi.systems: fikk ikke kontakt',
+    ]);
+    expect((e as Error).message).not.toMatch(/aborted/);
+  });
+
+  it('statusTekst forklarer vanlige koder', () => {
+    expect(statusTekst(429)).toMatch(/for mange/);
+    expect(statusTekst(504)).toMatch(/overbelastet/);
+    expect(statusTekst(400)).toBe('HTTP 400');
   });
 });

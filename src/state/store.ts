@@ -46,7 +46,8 @@ interface State {
   aksjon: Aksjon;
   statistikk: LpbKategori[];
   osm: OsmData | null;
-  osmStatus: { henter: boolean; feil: string | null };
+  /** feil: nothing usable was fetched; merknad: fetched, but with a caveat (e.g. fallback source). */
+  osmStatus: { henter: boolean; feil: string | null; merknad?: string | null };
   hoyde: HoydeRaster | null;
   hoydeStatus: { henter: boolean; feil: string | null };
   resultat: BeregningResultat | null;

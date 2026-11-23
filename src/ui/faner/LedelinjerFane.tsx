@@ -25,6 +25,7 @@ export function LedelinjerFane() {
         </button>
       </div>
       {status.feil && <Advarsel type="feil">{status.feil}</Advarsel>}
+      {status.merknad && <Advarsel type="info">{status.merknad}</Advarsel>}
       {!osm && !status.henter && (
         <Advarsel type="info">Ingen ledelinjer hentet ennå. Sett IPP og trykk «Hent stier og veier» (krever nett). Resultatet lagres i aksjonen.</Advarsel>
       )}
