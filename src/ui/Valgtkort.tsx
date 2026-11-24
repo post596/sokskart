@@ -6,6 +6,7 @@ import { useStore } from '../state/store';
 import { Utm } from './felles';
 import { fmtAvstand, fmtTid, fmtTimer } from './format';
 import { leggTilPoi, PoiGrunnlagListe, poiTittel } from './Poiforslag';
+import { Stisok, useStisok } from './Stisok';
 
 /**
  * Card over the map for the object clicked in the map: a point, a ledelinje or a suggested
@@ -18,6 +19,10 @@ export function Valgtkort() {
   const r = useStore((s) => s.resultat);
   const set = useStore((s) => s.set);
   const [av, setAv] = useState('');
+  const linjeValgt = valgt?.type === 'linje' ? valgt.id : null;
+  const linjeType = linjeValgt ? (osm?.linjer.find((x) => x.id === linjeValgt)?.type ?? a.linjestatus[linjeValgt]?.type) : undefined;
+  const linjeLengde = linjeValgt ? r?.linjer.find((x) => x.id === linjeValgt)?.lengdeM : undefined;
+  const stisok = useStisok(linjeType, linjeLengde);
 
   useEffect(() => {
     setAv('');
@@ -119,6 +124,7 @@ export function Valgtkort() {
           </div>
         )}
         {!nr && <p className="liten-tekst dempet">Linja er ikke blant de prioriterte ledelinjene (uten L-nummer).</p>}
+        {!st && stisok && <Stisok a={stisok} />}
         {st ? (
           <p className="liten-tekst ok-tekst">
             {st.kilde === 'spor'

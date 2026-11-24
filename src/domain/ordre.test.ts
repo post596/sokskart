@@ -66,3 +66,31 @@ describe('5-punktsordre (veileder 10.3.1)', () => {
     expect(standardOppdrag({ type: 'linje', nr: 'L002', navn: '', typeNavn: 'Sti', lengdeM: 1, pts: [], tNaadd: null, poa: null })).toContain('L002');
   });
 });
+
+describe('5-punktsordre for ledelinje med anbefalt ressurs', () => {
+  it('tar med anbefalt ressurs, alternativ og metode', async () => {
+    const { stisokAnbefaling } = await import('../data/stisok');
+    const { STANDARD_MODELL } = await import('../data/modellantakelser');
+    const a = nyAksjon();
+    const stisok = stisokAnbefaling('sti', 2400, ['suicid'], STANDARD_MODELL);
+    const kilde = {
+      type: 'linje' as const,
+      nr: 'L004',
+      navn: 'Preikestolstien',
+      typeNavn: 'Sti',
+      lengdeM: 2400,
+      pts: [
+        { lat: 61.62, lng: 8.4 },
+        { lat: 61.63, lng: 8.41 },
+      ],
+      tNaadd: 0.5,
+      poa: 0.05,
+      stisok,
+    };
+    expect(standardSokstype(kilde)).toBe('Søk langs ledelinje med flanke');
+    const t = lagFempunktsordre({ aksjon: a, kategorier: 'Økt selvmordsrisiko', ringer: null, fart: null, observasjoner: [], kilde, oppdrag: 'x', sokstype: standardSokstype(kilde), ressurs: '', naa: new Date() });
+    expect(t).toContain('Anbefalt ressurs: Fotlag 2–6 personer, søk med flanke');
+    expect(t).toContain('ca. 1 t 36 min helt ut');
+    expect(t).toContain('Alternativ: Hund');
+  });
+});

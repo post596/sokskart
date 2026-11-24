@@ -1,3 +1,4 @@
+import { STIRESSURS_NAVN, type StisokAnbefaling } from '../data/stisok';
 import { fmtAvstand, fmtFart, fmtKm2, fmtTid, fmtTimer } from '../ui/format';
 import type { Aksjon, Punkt, Teig } from './aksjon';
 import type { LatLng } from './coords';
@@ -23,7 +24,7 @@ export const SOKSTYPER = [
 
 export type OrdreKilde =
   | { type: 'teig'; teig: Teig; arealKm2: number; poa: number | null }
-  | { type: 'linje'; nr: string; navn: string; typeNavn: string; lengdeM: number; pts: LatLng[]; tNaadd: number | null; poa: number | null }
+  | { type: 'linje'; nr: string; navn: string; typeNavn: string; lengdeM: number; pts: LatLng[]; tNaadd: number | null; poa: number | null; stisok?: StisokAnbefaling }
   | { type: 'punkt'; punkt: Punkt };
 
 export interface OrdreInput {
@@ -93,6 +94,13 @@ export function lagFempunktsordre(i: OrdreInput): string {
     L.push(`   Fra: ${utm(k.pts[0], a.sone)}`);
     L.push(`   Til: ${utm(k.pts[k.pts.length - 1], a.sone)}`);
     if (k.tNaadd != null) L.push(`   Personen kan ha nådd linja etter ca. ${fmtTimer(k.tNaadd)} gange.`);
+    if (k.stisok) {
+      const st = k.stisok;
+      const tid = st.minutter < 60 ? `${Math.max(1, st.minutter)} min` : fmtTimer(st.minutter / 60);
+      L.push(`   Anbefalt ressurs: ${st.primar.tekst} (ca. ${tid} helt ut).`);
+      if (st.alternativ.length) L.push(`   Alternativ: ${st.alternativ.map((v) => STIRESSURS_NAVN[v.ressurs]).join(', ')}.`);
+      for (const t of st.merknader) L.push(`   ${t}`);
+    }
     L.push('   Søk ledelinja helt ut – også forbi R95 når tid og scenario tilsier det.');
   } else {
     const p = k.punkt;
@@ -122,7 +130,7 @@ export function standardOppdrag(k: OrdreKilde): string {
 }
 
 export function standardSokstype(k: OrdreKilde): string {
-  if (k.type === 'linje') return SOKSTYPER[0];
+  if (k.type === 'linje') return k.stisok?.metode ?? SOKSTYPER[0];
   if (k.type === 'punkt') return k.punkt.type === 'sp' ? SOKSTYPER[6] : SOKSTYPER[5];
   if (k.teig.type === 'H') return SOKSTYPER[11];
   if (k.teig.type === 'D') return SOKSTYPER[10];

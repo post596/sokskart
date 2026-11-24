@@ -4,6 +4,7 @@ import { areaM2 } from '../domain/geo';
 import { lagFempunktsordre, omradeNavn, SOKSTYPER, standardOppdrag, standardSokstype, type OrdreKilde } from '../domain/ordre';
 import { byggKomponenter, blandingRinger, vektetFart } from '../model/lpb';
 import { LINJETYPE_NAVN } from '../model/typer';
+import { stisokAnbefaling, valgteKategorier } from '../data/stisok';
 import { useStore } from '../state/store';
 import { kopier, lastNed, loggVedEndring } from './felles';
 
@@ -32,6 +33,7 @@ function useKilde(): OrdreKilde | null {
         pts: ol.pts,
         tNaadd: li && Number.isFinite(li.tMin) ? li.tMin : null,
         poa: li?.na ?? null,
+        stisok: stisokAnbefaling(ol.type, li?.lengdeM ?? 0, valgteKategorier(a.kategorier), a.modell),
       };
     }
     const p = a.punkter.find((x) => x.id === f.id);

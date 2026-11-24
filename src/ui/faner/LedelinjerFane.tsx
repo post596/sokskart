@@ -6,6 +6,8 @@ import { useStore } from '../../state/store';
 import { Advarsel } from '../felles';
 import { fmtAvstand, fmtTid, fmtTimer } from '../format';
 import { hentStier } from './AksjonFane';
+import { stisokAnbefaling, valgteKategorier } from '../../data/stisok';
+import { Stisok } from '../Stisok';
 
 export function LedelinjerFane() {
   const a = useStore((s) => s.aksjon);
@@ -20,6 +22,7 @@ export function LedelinjerFane() {
     if (valgtId) listeRef.current?.querySelector(`[data-id="${CSS.escape(valgtId)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [valgtId]);
   const sjekkede = Object.entries(a.linjestatus);
+  const kat = valgteKategorier(a.kategorier);
 
   return (
     <div className="fane">
@@ -27,6 +30,10 @@ export function LedelinjerFane() {
         Eikene i sykkelhjulet: stier, veier, elver, bekker, grøfter og kraftgater fra OpenStreetMap, og merkede ruter fra Turrutebasen
         (Kartverket). Rangert etter hvor mye sannsynlighet linja går
         gjennom. <b>Søk ledelinjer helt ut – også forbi R95 når tid og scenario tilsier det.</b> L-nummeret beholdes selv om rekkefølgen endres.
+      </p>
+      <p className="liten-tekst dempet">
+        Hver linje får anbefalt ressurs og metode for stisøk (veileder 6.3). Ressursstatus føres i FAKS. I mørke er hund og drone med
+        varmekamera lite påvirket, mens mannskapssøk bør gjentas i dagslys.
       </p>
       <div className="knapperad">
         <button type="button" className="knapp hoved" disabled={!a.ipp || status.henter} onClick={() => void hentStier()}>
@@ -95,6 +102,7 @@ export function LedelinjerFane() {
                   {ol.kilde === 'turrutebasen' && ' · Turrutebasen'}
                   {st && (st.kilde === 'spor' ? ` · søkt (GPS-spor ${prosent(st.andel ?? 1, 0)})` : ` · ferdig sjekket ${fmtTid(st.tid)}${st.av ? ` av ${st.av}` : ''}`)}
                 </div>
+                {!st && <Stisok a={stisokAnbefaling(l.type, l.lengdeM, kat, a.modell)} />}
               </li>
             );
           })}

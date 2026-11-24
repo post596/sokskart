@@ -123,6 +123,14 @@ export interface Modellantakelser {
   /** Tolerance (m) between track and ledelinje; at least half the sweep width is used. */
   sporLinjeToleranseM: number;
 
+  /** Stisøk (søk langs ledelinje): speed over the whole line (km/h) per resource, for the time estimate. */
+  stisokFotKmt: number;
+  stisokFlankeKmt: number;
+  stisokHundKmt: number;
+  stisokAtvKmt: number;
+  stisokBilKmt: number;
+  stisokSkuterKmt: number;
+
   /** Tak på søkeradius for stier og veier (km). */
   ledelinjeTakKm: number;
   /** Antall ledelinjer som får L-nummer. */
@@ -185,6 +193,13 @@ export const STANDARD_MODELL: Modellantakelser = {
   sjekketLinjeM: 30,
   sporLinjeAndel: 0.7,
   sporLinjeToleranseM: 25,
+
+  stisokFotKmt: 3,
+  stisokFlankeKmt: 1.5,
+  stisokHundKmt: 2.5,
+  stisokAtvKmt: 8,
+  stisokBilKmt: 15,
+  stisokSkuterKmt: 15,
 
   ledelinjeTakKm: 10,
   antallLedelinjer: 20,
@@ -271,6 +286,12 @@ export const MODELL_FELT: Array<{
     hjelp: 'Så stor del av linja må ligge nær et spor for at den merkes som søkt.',
   },
   { felt: 'sporLinjeToleranseM', navn: 'Avstand spor–ledelinje (m)', steg: 5, min: 5, max: 200 },
+  { felt: 'stisokFotKmt', navn: 'Stisøk: fotlag uten flanke (km/t)', steg: 0.5, min: 0.5, max: 10, hjelp: 'Brukes til tidsestimatet for søk langs ledelinje helt ut.' },
+  { felt: 'stisokFlankeKmt', navn: 'Stisøk: fotlag med flanke (km/t)', steg: 0.5, min: 0.5, max: 10 },
+  { felt: 'stisokHundKmt', navn: 'Stisøk: hund (km/t)', steg: 0.5, min: 0.5, max: 10 },
+  { felt: 'stisokAtvKmt', navn: 'Stisøk: ATV med stopp (km/t)', steg: 1, min: 1, max: 40 },
+  { felt: 'stisokBilKmt', navn: 'Stisøk: bil med stopp (km/t)', steg: 1, min: 1, max: 60 },
+  { felt: 'stisokSkuterKmt', navn: 'Stisøk: snøskuter med stopp (km/t)', steg: 1, min: 1, max: 60 },
   { felt: 'ledelinjeTakKm', navn: 'Tak på søkeradius for stier (km)', steg: 1, min: 1, max: 25 },
   { felt: 'antallLedelinjer', navn: 'Antall ledelinjer med L-nummer', steg: 1, min: 5, max: 60 },
   { felt: 'antallPunkter', navn: 'Antall mest sannsynlige punkter', steg: 1, min: 3, max: 20 },

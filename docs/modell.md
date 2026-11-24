@@ -293,6 +293,29 @@ hverandre og fra eksisterende R-punkter.
 Søkskart tar ikke imot ressurstall. Ressursstatus føres i FAKS. Appen anbefaler i stedet
 ressurs og metode for hvert stisøk (se §10b).
 
+## 10b. Anbefalt ressurs for stisøk
+
+Hver ledelinje får en anbefalt ressurs og metode for søk langs linja (src/data/stisok.ts).
+Reglene bygger på veileder kap. 6.3 og 7.3.10:
+
+| Linjetype | Anbefalt | Alternativ | Kilde |
+|---|---|---|---|
+| Sti | Fotlag 1–3, hurtigsøk langs linja | Hund, helst før andre har gått linja | 6.3.2, 6.3.1 |
+| Traktorvei | ATV med 2 personer, stopp og lytt | Fotlag, hund | 6.3.6 |
+| Vei | Bil med 2 eller flere, lav fart, stopp og lytt | Fotlag med flanke ved skråninger | 6.3.6, 6.3.2 |
+| Elv/bekk/grøft | Drone (elv- og strandsøk) | Fotlag langs bredden | 6.3.8, 7.3.10 |
+| Kraftgate | Drone langs ryddebeltet | Fotlag | 6.3.8 |
+| Jernbane | Drone | Fotlag (avklar med Bane NOR – praksis) | 6.3.8 |
+
+- **Flanke** (1–3 på hver side) når en valgt kategori er demens, økt selvmordsrisiko eller
+  barn (6.3.2: syke, selvmordsrisiko, barn som gjemmer seg).
+- **Skiløpere**: snøskuter på løyper og traktorveier (6.3.6).
+- **Tid**: hele linja delt på farten for anbefalt ressurs (modellantakelser
+  stisokFotKmt, stisokFlankeKmt, stisokHundKmt, stisokAtvKmt, stisokBilKmt,
+  stisokSkuterKmt; drone bruker droneFartKmt). Linja skal søkes helt ut (7.3.10).
+- Anbefalingen står i Ledelinjer-fanen, i kortet for valgt linje og i 5-punktsordren.
+  Søksleder vurderer. Søkskart registrerer ikke ressurser.
+
 ## Kjente begrensninger
 
 - Statistikken er plassholdere til den er kontrollert mot Lost Person Behavior.
