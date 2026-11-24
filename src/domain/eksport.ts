@@ -1,8 +1,13 @@
+import { fmtKm2, fmtTimer } from '../ui/format';
 import type { Aksjon } from './aksjon';
 import { teigAkkPod } from './aksjon';
 import type { LatLng } from './coords';
-import { escXml } from './gpx';
-import { TEIGFARGER, teigfarge } from './pod';
+import { motUrviser } from './geo';
+import { escXml, lagGpx } from './gpx';
+import { kortBegrunnelse } from './grunnlag';
+import { prosent, TEIGFARGER, teigfarge } from './pod';
+import { forenkle } from './sporimport';
+import { computeZone, formatLatLonUtm, toUtm, type ZoneChoice } from './utm';
 
 /**
  * Export for other tools (e.g. FAKS): GeoJSON and KML with IPP, R25–R95 rings, teiger
@@ -33,7 +38,11 @@ export function sirkel(senter: LatLng, radiusM: number, n = 72): LatLng[] {
   return ut;
 }
 
-const lukk = (ring: LatLng[]) => (ring.length && (ring[0].lat !== ring[ring.length - 1].lat || ring[0].lng !== ring[ring.length - 1].lng) ? [...ring, ring[0]] : ring);
+/** Closed and counter-clockwise (outer ring convention of KML and GeoJSON). */
+const lukk = (r: LatLng[]) => {
+  const ring = motUrviser(r);
+  return ring.length && (ring[0].lat !== ring[ring.length - 1].lat || ring[0].lng !== ring[ring.length - 1].lng) ? [...ring, ring[0]] : ring;
+};
 const xy = (p: LatLng) => [+p.lng.toFixed(6), +p.lat.toFixed(6)];
 
 const PUNKTTYPE: Record<string, string> = { obs: 'Observasjon', sp: 'Sperrepost', poi: 'Refleks/POI', funn: 'Funn' };
@@ -96,8 +105,9 @@ export function lagKml(i: EksportInput): string {
   }
   for (const t of a.teiger) {
     const f = teigfarge(t.status, t.sok.map((s) => s.pod));
+    const beskr = `Status: ${t.status}, akkumulert POD ${Math.round(teigAkkPod(t) * 100)} %, ${t.sok.length} søk${t.grunnlag ? `. Foreslått: ${kortBegrunnelse(t.grunnlag, a.lnummer)}` : ''}`;
     ut.push(
-      `<Placemark><name>${escXml(t.id)}</name><description>${escXml(`Status: ${t.status}, akkumulert POD ${Math.round(teigAkkPod(t) * 100)} %, ${t.sok.length} søk`)}</description><styleUrl>#teig-${f}</styleUrl>` +
+      `<Placemark><name>${escXml(t.id)}</name><description>${escXml(beskr)}</description><styleUrl>#teig-${f}</styleUrl>` +
         `<Polygon><outerBoundaryIs><LinearRing><coordinates>${koord(lukk(t.ring))}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>`,
     );
   }
@@ -111,4 +121,133 @@ export function lagKml(i: EksportInput): string {
   }
   ut.push('</Document></kml>');
   return ut.join('\n');
+}
+
+// ---------------------------------------------------------------- teiger and suggestions for FAKS
+
+export type TeigEksportType = 'teig' | 'helikoptersok' | 'droneomrade' | 'teigforslag' | 'droneforslag';
+
+/** One teig or suggestion with what a planner needs in FAKS: name, area, POA, time and why. */
+export interface TeigEksport {
+  navn: string;
+  type: TeigEksportType;
+  ring: LatLng[];
+  arealKm2: number;
+  poa: number | null;
+  /** search time for one foot team (h) */
+  timer: number | null;
+  /** drone areas: flight time and batteries */
+  flytid?: { minutter: number; batterier: number } | null;
+  begrunnelse: string;
+  status?: string;
+  akkPod?: number;
+}
+
+const TYPENAVN: Record<TeigEksportType, string> = {
+  teig: 'Teig',
+  helikoptersok: 'Helikoptersøk',
+  droneomrade: 'Droneområde',
+  teigforslag: 'Teigforslag',
+  droneforslag: 'Droneforslag',
+};
+
+/** Short text for <description>/<desc>. */
+export function teigBeskrivelse(t: TeigEksport): string {
+  return [
+    `${TYPENAVN[t.type]} ${fmtKm2(t.arealKm2)}`,
+    t.poa != null ? `POA ${prosent(t.poa)}` : '',
+    t.timer != null && t.timer > 0 ? `ca. ${fmtTimer(t.timer)} søk (ett lag)` : '',
+    t.flytid ? `ca. ${Math.round(t.flytid.minutter)} min flytid, ${t.flytid.batterier} ${t.flytid.batterier === 1 ? 'batteri' : 'batterier'}` : '',
+    t.status ? `status ${t.status}` : '',
+    t.akkPod != null && t.akkPod > 0 ? `akk. POD ${Math.round(t.akkPod * 100)} %` : '',
+    t.begrunnelse ? `Hvorfor: ${t.begrunnelse}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+const STIL: Record<TeigEksportType, [string, string]> = {
+  teig: ['#1d4ed8', '33'],
+  helikoptersok: ['#7c2d12', '33'],
+  droneomrade: ['#0e7490', '33'],
+  teigforslag: ['#6b7280', '22'],
+  droneforslag: ['#0e7490', '22'],
+};
+
+/** KML with one folder per group (e.g. Teiger, Teigforslag, Droneforslag) and ExtendedData per area. */
+export function lagTeigKml(tittel: string, grupper: Array<{ navn: string; teiger: TeigEksport[] }>): string {
+  const ut: string[] = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>',
+    `<name>${escXml(tittel)}</name>`,
+  ];
+  for (const [k, [hex, alfa]] of Object.entries(STIL)) {
+    ut.push(`<Style id="${k}"><LineStyle><color>${kmlFarge(hex)}</color><width>3</width></LineStyle><PolyStyle><color>${kmlFarge(hex, alfa)}</color></PolyStyle></Style>`);
+  }
+  const data = (navn: string, v: string | number | null | undefined) => (v == null || v === '' ? '' : `<Data name="${navn}"><value>${escXml(String(v))}</value></Data>`);
+  for (const g of grupper) {
+    if (!g.teiger.length) continue;
+    ut.push(`<Folder><name>${escXml(g.navn)}</name>`);
+    for (const t of g.teiger) {
+      ut.push(
+        `<Placemark><name>${escXml(t.navn)}</name><description>${escXml(teigBeskrivelse(t))}</description><styleUrl>#${t.type}</styleUrl>` +
+          '<ExtendedData>' +
+          data('type', TYPENAVN[t.type]) +
+          data('areal_km2', t.arealKm2.toFixed(3)) +
+          data('poa_prosent', t.poa != null ? (t.poa * 100).toFixed(1) : null) +
+          data('soketid_timer', t.timer != null && t.timer > 0 ? t.timer.toFixed(2) : null) +
+          data('flytid_min', t.flytid ? Math.round(t.flytid.minutter) : null) +
+          data('batterier', t.flytid?.batterier) +
+          data('status', t.status) +
+          data('akkumulert_pod', t.akkPod != null ? t.akkPod.toFixed(3) : null) +
+          data('begrunnelse', t.begrunnelse) +
+          '</ExtendedData>' +
+          `<Polygon><outerBoundaryIs><LinearRing><coordinates>${koord(lukk(t.ring))}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>`,
+      );
+    }
+    ut.push('</Folder>');
+  }
+  ut.push('</Document></kml>');
+  return ut.join('\n');
+}
+
+/** GPX with each area as a closed track (for GPS units and tools that read GPX only). */
+export function lagTeigGpx(tittel: string, teiger: TeigEksport[], tid = new Date()): string {
+  return lagGpx(
+    tittel,
+    [],
+    teiger.map((t) => ({ navn: t.navn, pts: motUrviser(t.ring), lukket: true, beskrivelse: teigBeskrivelse(t) })),
+    tid,
+  );
+}
+
+/**
+ * Corner list in UTM for reading out or typing into FAKS: the ring is simplified
+ * (Douglas–Peucker, tolerance raised until at most `maks` corners) and formatted like
+ * «32V 0526873 6785167».
+ */
+export function utmHjorner(ring: LatLng[], sone: ZoneChoice, maks = 12): string[] {
+  if (!ring.length) return [];
+  const z = computeZone(ring[0].lat, ring[0].lng, sone);
+  const xy = (p: LatLng): [number, number] => {
+    const u = toUtm(p.lat, p.lng, z);
+    return [u.e, u.n];
+  };
+  const r = ring.length > 1 && ring[0].lat === ring[ring.length - 1].lat && ring[0].lng === ring[ring.length - 1].lng ? ring.slice(0, -1) : ring;
+  if (r.length <= 3) return r.map((p) => formatLatLonUtm(p.lat, p.lng, sone));
+  // Douglas–Peucker needs two different end points: split the ring at the corner farthest
+  // from the first one and simplify both halves
+  const P = r.map(xy);
+  let far = 1;
+  for (let i = 1; i < P.length; i++) if (Math.hypot(P[i][0] - P[0][0], P[i][1] - P[0][1]) > Math.hypot(P[far][0] - P[0][0], P[far][1] - P[0][1])) far = i;
+  const halv1 = r.slice(0, far + 1);
+  const halv2 = [...r.slice(far), r[0]];
+  const forenklet = (tol: number) => [...forenkle(halv1, xy, tol), ...forenkle(halv2, xy, tol).slice(1, -1)];
+  let tol = 5;
+  let pts = forenklet(tol);
+  while (pts.length > maks && tol < 1e6) {
+    tol *= 1.5;
+    pts = forenklet(tol);
+  }
+  return pts.map((p) => formatLatLonUtm(p.lat, p.lng, sone));
 }

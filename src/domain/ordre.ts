@@ -1,6 +1,7 @@
 import { fmtAvstand, fmtFart, fmtKm2, fmtTid, fmtTimer } from '../ui/format';
 import type { Aksjon, Punkt, Teig } from './aksjon';
 import type { LatLng } from './coords';
+import { utmHjorner } from './eksport';
 import { prosent } from './pod';
 import { formatLatLonUtm, type ZoneChoice } from './utm';
 
@@ -83,8 +84,8 @@ export function lagFempunktsordre(i: OrdreInput): string {
   if (i.ressurs) L.push(`   Ressurs: ${i.ressurs}`);
   if (k.type === 'teig') {
     L.push(`   Område: ${k.teig.id} (${fmtKm2(k.arealKm2)}${k.poa != null ? `, POA nå ${prosent(k.poa)}` : ''})`);
-    L.push('   Hjørner (UTM):');
-    k.teig.ring.forEach((p, n) => L.push(`   ${n + 1}. ${utm(p, a.sone)}`));
+    L.push('   Hjørner (UTM, forenklet):');
+    utmHjorner(k.teig.ring, a.sone, 16).forEach((t, n) => L.push(`   ${n + 1}. ${t}`));
     const pods = k.teig.sok.map((x) => `${prosent(x.pod, 0)} (${[x.org, x.ressurstype, x.enhet].filter(Boolean).join('–')})`);
     if (pods.length) L.push(`   Tidligere søk i teigen: ${pods.join(', ')}`);
   } else if (k.type === 'linje') {

@@ -76,6 +76,17 @@ export function shoelace(xy: Array<[number, number]>): number {
 }
 
 /**
+ * The ring counter-clockwise (lng = x, lat = y), as KML and GeoJSON (RFC 7946) expect for
+ * outer rings. Generated teiger run clockwise; drawn ones can go either way.
+ */
+export function motUrviser(ring: LatLng[]): LatLng[] {
+  let s = 0;
+  // Σ (x₂ − x₁)(y₂ + y₁) over the edges is positive for a clockwise ring
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) s += (ring[i].lng - ring[j].lng) * (ring[i].lat + ring[j].lat);
+  return s > 0 ? ring.slice().reverse() : ring;
+}
+
+/**
  * True ground area of a polygon (m²). Projects to UTM, takes the planar area and
  * divides by the squared point scale factor at the centroid.
  */

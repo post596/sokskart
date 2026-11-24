@@ -259,6 +259,12 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
   er en modellantakelse som bør kvalitetssikres av fagfolk.
 - **Eksport for FAKS:** KML og GeoJSON med IPP, R25–R95, teiger i HRS-farger, punkter og
   prioriterte ledelinjer, i tillegg til GPX. Hvilket format FAKS tar imot, må testes.
+  - Fanen Teiger: «KML» og «GPX» for én teig eller alle teiger, og for alle teig- og
+    droneforslag. Hver teig får areal, POA, søketid eller flytid og begrunnelse (KML:
+    `ExtendedData` og beskrivelse, GPX: `desc`).
+  - «Kopier UTM-hjørner» / «UTM» gir en forenklet hjørneliste (maks 12 hjørner) for
+    opplesning eller inntasting. 5-punktsordren bruker samme forenkling (maks 16).
+  - Polygonene skrives mot klokka, slik KML og GeoJSON forventer.
 - **OpenStreetMap-henting:** stier og vann hentes først. Arealtyper og småbygg hentes i en
   egen forespørsel. Tre Overpass-servere prøves én gang hver, og svarer ingen, beholdes
   forrige henting.

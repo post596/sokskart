@@ -10,6 +10,7 @@ import { leggTilTeig } from '../state/handlinger';
 import { useStore } from '../state/store';
 import { Modellmerke } from './felles';
 import { Grunnlag } from './Grunnlag';
+import { forslagTilEksport, kopierHjorner, lastNedTeiger } from './teigeksport';
 import { fmtFlytid, fmtKm2, fmtTimer } from './format';
 
 export function Teigforslag() {
@@ -127,6 +128,32 @@ export function Teigforslag() {
       </details>
       {onske && <p className="liten-tekst">Lager forslag langs naturlige grenser …</p>}
 
+      {teigforslag.length + droneforslag.length > 0 && (
+        <div className="knapperad">
+          <span className="dempet liten-tekst">Forslagene til FAKS:</span>
+          {(['kml', 'gpx'] as const).map((fmt) => (
+            <button
+              key={fmt}
+              type="button"
+              className="knapp liten"
+              title="Alle teig- og droneforslag med areal, POA, søke-/flytid og begrunnelse"
+              onClick={() =>
+                lastNedTeiger(
+                  fmt,
+                  [
+                    { navn: 'Teigforslag', teiger: teigforslag.map((f, i) => forslagTilEksport(f, i, false)) },
+                    { navn: 'Droneforslag', teiger: droneforslag.map((f, i) => forslagTilEksport(f, i, true)) },
+                  ],
+                  'Forslag',
+                )
+              }
+            >
+              {fmt.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      )}
+
       {teigforslag.length > 0 && (
         <>
           <div className="linje">
@@ -157,6 +184,9 @@ export function Teigforslag() {
                   <span className="knapperad">
                     <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: f.ring })}>
                       Vis
+                    </button>
+                    <button type="button" className="knapp liten" title="Kopier forenklede hjørner i UTM" onClick={() => kopierHjorner(`Forslag ${i + 1}`, f.ring)}>
+                      UTM
                     </button>
                     <button type="button" className="knapp liten hoved" onClick={() => godkjenn(f, 'T', 'teigforslag')}>
                       Godkjenn
@@ -189,6 +219,9 @@ export function Teigforslag() {
                   <span className="knapperad">
                     <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: f.ring })}>
                       Vis
+                    </button>
+                    <button type="button" className="knapp liten" title="Kopier forenklede hjørner i UTM" onClick={() => kopierHjorner(`Drone ${i + 1}`, f.ring)}>
+                      UTM
                     </button>
                     <button type="button" className="knapp liten hoved" onClick={() => godkjenn(f, 'D', 'droneforslag')}>
                       Godkjenn

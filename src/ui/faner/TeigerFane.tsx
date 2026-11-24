@@ -14,6 +14,7 @@ import { useStore } from '../../state/store';
 import { Advarsel, Modellmerke } from '../felles';
 import { Teigforslag } from '../Teigforslag';
 import { Grunnlag } from '../Grunnlag';
+import { kopierHjorner, lastNedTeiger, teigTilEksport } from '../teigeksport';
 import { fmtAvstand, fmtFlytid, fmtKm2, fmtTid, fmtTimer, lesProsent } from '../format';
 import { droneFlytid } from '../../model/soketid';
 
@@ -336,6 +337,30 @@ export function TeigerFane() {
       <Teigforslag />
       <Kvalitetssikring />
       {!a.teiger.length && <p className="dempet">Ingen teiger ennå.</p>}
+      {a.teiger.length > 0 && (
+        <div className="linje">
+          <b>Teiger ({a.teiger.length})</b>
+          <span className="knapperad">
+            <span className="dempet liten-tekst">Alle til FAKS:</span>
+            <button
+              type="button"
+              className="knapp liten"
+              title="Alle teiger som KML med areal, POA, søketid og begrunnelse"
+              onClick={() => lastNedTeiger('kml', [{ navn: 'Teiger', teiger: a.teiger.map(teigTilEksport) }], 'Teiger')}
+            >
+              KML
+            </button>
+            <button
+              type="button"
+              className="knapp liten"
+              title="Alle teiger som GPX (lukkede spor med beskrivelse)"
+              onClick={() => lastNedTeiger('gpx', [{ navn: 'Teiger', teiger: a.teiger.map(teigTilEksport) }], 'Teiger')}
+            >
+              GPX
+            </button>
+          </span>
+        </div>
+      )}
       <ul className="liste">
         {a.teiger
           .slice()
@@ -438,6 +463,18 @@ export function TeigerFane() {
                       </ul>
                     )}
                     {t.grunnlag && <Grunnlag g={t.grunnlag} tittel="Hvorfor teigen ble foreslått" />}
+                    <div className="knapperad">
+                      <span className="dempet liten-tekst">Til FAKS:</span>
+                      <button type="button" className="knapp liten" onClick={() => kopierHjorner(t.id, t.ring)} title="Forenklede hjørner i UTM, for opplesning eller inntasting">
+                        Kopier UTM-hjørner
+                      </button>
+                      <button type="button" className="knapp liten" onClick={() => lastNedTeiger('kml', [{ navn: 'Teiger', teiger: [teigTilEksport(t)] }], t.id)}>
+                        KML
+                      </button>
+                      <button type="button" className="knapp liten" onClick={() => lastNedTeiger('gpx', [{ navn: 'Teiger', teiger: [teigTilEksport(t)] }], t.id)}>
+                        GPX
+                      </button>
+                    </div>
                     <SokSkjema key={t.id} teig={t} dekning={dekning} />
                   </div>
                 )}
