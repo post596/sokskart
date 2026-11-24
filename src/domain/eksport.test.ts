@@ -166,3 +166,33 @@ describe('KML og GPX for stier', () => {
     expect(gpx).toContain('Sti, 1,3 km');
   });
 });
+
+describe('sperrepostens dekning i eksport', () => {
+  it('tar med sirkel eller tegnet felt som polygon i KML og GeoJSON', async () => {
+    const { lagKml, lagGeoJson, sperreTekst } = await import('./eksport');
+    const { nyAksjon } = await import('./aksjon');
+    const a = nyAksjon();
+    a.punkter = [
+      { id: 'SP001', type: 'sp', klasse: 'mulig', tid: '', tekst: 'Brua', pos: { lat: 61, lng: 8 }, sperre: { radiusM: 150 } },
+      {
+        id: 'SP002',
+        type: 'sp',
+        klasse: 'mulig',
+        tid: '',
+        tekst: '',
+        pos: { lat: 61, lng: 8.1 },
+        sperre: { felt: [{ lat: 61, lng: 8.1 }, { lat: 61.01, lng: 8.1 }, { lat: 61.01, lng: 8.11 }] },
+      },
+    ];
+    expect(sperreTekst(a.punkter[0], 100)).toBe('sirkel 150 m');
+    expect(sperreTekst(a.punkter[1], 100)).toBe('tegnet sperrefelt');
+    const kml = lagKml({ aksjon: a, ringer: null, ledelinjer: [] });
+    expect(kml).toContain('<name>SP001 dekning</name>');
+    expect(kml).toContain('Sperrepost, sirkel 150 m');
+    expect(kml).toContain('<name>SP002 dekning</name>');
+    const geo = JSON.parse(lagGeoJson({ aksjon: a, ringer: null, ledelinjer: [] }));
+    const dekning = geo.features.filter((f: { properties: { kind: string } }) => f.properties.kind === 'sperredekning');
+    expect(dekning).toHaveLength(2);
+    expect(dekning[1].geometry.coordinates[0]).toHaveLength(4);
+  });
+});

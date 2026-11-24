@@ -51,6 +51,26 @@ export interface Punkt {
   begrunnelse?: { type: string; tekst: string; vurder?: string };
   /** marked as checked («ferdig sjekket») – lowers the probability around the point */
   sjekket?: { tid: string; av?: string };
+  /** sperrepost: coverage radius (m), or a drawn field that replaces the circle */
+  sperre?: Sperredekning;
+}
+
+export interface Sperredekning {
+  radiusM?: number;
+  felt?: LatLng[];
+}
+
+/** Limits for the coverage of a sperrepost. */
+export const SPERRE_RADIUS = { min: 25, maks: 1000 };
+
+/** Valid coverage, or undefined (default radius). Used when loading files. */
+export function rensSperre(s: unknown): Sperredekning | undefined {
+  if (!s || typeof s !== 'object') return undefined;
+  const o = s as Record<string, unknown>;
+  const ut: Sperredekning = {};
+  if (typeof o.radiusM === 'number' && Number.isFinite(o.radiusM)) ut.radiusM = Math.min(SPERRE_RADIUS.maks, Math.max(SPERRE_RADIUS.min, o.radiusM));
+  if (Array.isArray(o.felt) && o.felt.length >= 3 && o.felt.every(erLatLng)) ut.felt = o.felt as LatLng[];
+  return ut.radiusM != null || ut.felt ? ut : undefined;
 }
 
 /**
@@ -255,7 +275,13 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
     ipp: erLatLng(a.ipp) ? a.ipp : null,
     aksjonStart: typeof a.aksjonStart === 'string' ? a.aksjonStart : (a.ippSatt ?? null),
     teiger: Array.isArray(a.teiger) ? a.teiger.filter((t) => t && Array.isArray(t.ring) && t.ring.every(erLatLng)) : [],
-    punkter: Array.isArray(a.punkter) ? a.punkter.filter((p) => p && erLatLng(p.pos)) : [],
+    punkter: Array.isArray(a.punkter)
+      ? a.punkter.filter((p) => p && erLatLng(p.pos)).map((p) => {
+          const { sperre, ...rest } = p;
+          const ren = p.type === 'sp' ? rensSperre(sperre) : undefined;
+          return ren ? { ...rest, sperre: ren } : rest;
+        })
+      : [],
     kategorier: Array.isArray(a.kategorier) && a.kategorier.length ? a.kategorier : base.kategorier,
     modell: medStandard(a.modell),
     logg: Array.isArray(a.logg) ? a.logg : [],

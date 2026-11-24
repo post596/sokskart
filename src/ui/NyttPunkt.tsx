@@ -88,7 +88,7 @@ export function NyttPunktDialog() {
           />
         </label>
         <label>
-          Tidspunkt
+          {u.type === 'sp' ? 'Satt opp (tidspunkt)' : 'Tidspunkt'}
           <input type="datetime-local" value={u.tid} onChange={(e) => setU({ ...u, tid: e.target.value })} />
         </label>
         <div className="knapperad hoyre">

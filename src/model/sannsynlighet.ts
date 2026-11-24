@@ -45,6 +45,8 @@ export interface SannsynlighetInput {
   sok: SokMaske[];
   /** remaining share per cell after search effort outside teiger (checked points/lines, GPS tracks) */
   innsats?: Float32Array | null;
+  /** sperreposter: probability factor per cell for each category (aligned with komps) */
+  sperre?: Float32Array[] | null;
 }
 
 export interface SannsynlighetResultat {
@@ -88,7 +90,8 @@ export function beregnSannsynlighet(inp: SannsynlighetInput): SannsynlighetResul
     for (let i = 0; i < n; i++) dist[j * n + i] = Math.hypot(cellX(g, i) - g.cx, y) / g.k;
   }
 
-  for (const c of komps) {
+  komps.forEach((c, ci) => {
+    const sperre = inp.sperre?.[ci];
     for (let k = 0; k < N; k++) comp[k] = tetthet(c, dist[k], m.haleFaktor);
     glatt(comp, n, m.glatting);
     const tilgj = inp.timerSidenSistSett != null ? m.effektivFremdrift * Math.min(inp.timerSidenSistSett, c.mob) : null;
@@ -97,9 +100,10 @@ export function beregnSannsynlighet(inp: SannsynlighetInput): SannsynlighetResul
       const t1 = inp.T1 ? inp.T1[k] : dist[k] / 1000;
       if (!Number.isFinite(t1)) f = m.uoppnaaeligVekt;
       else if (tilgj != null) f = Math.max(rekkeviddeFaktor(t1 / c.v, tilgj, m.rekkeviddeMyk), 1e-9);
+      if (sperre) f *= sperre[k];
       p[k] += c.w * comp[k] * f;
     }
-  }
+  });
 
   const terrengvekt = (a: Float64Array) => {
     for (let k = 0; k < N; k++) {

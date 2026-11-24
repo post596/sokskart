@@ -1,6 +1,6 @@
 import { LINJETYPE_FARGE, LINJETYPE_NAVN, type LinjeType } from '../model/typer';
 import { fmtAvstand, fmtKm2, fmtTimer } from '../ui/format';
-import type { Aksjon } from './aksjon';
+import type { Aksjon, Punkt } from './aksjon';
 import { teigAkkPod } from './aksjon';
 import type { LatLng } from './coords';
 import { motUrviser } from './geo';
@@ -49,6 +49,16 @@ const xy = (p: LatLng) => [+p.lng.toFixed(6), +p.lat.toFixed(6)];
 const PUNKTTYPE: Record<string, string> = { obs: 'Observasjon/etterretning', sp: 'Sperrepost', poi: 'Interessepunkt (refleks)', funn: 'Funn av gjenstand' };
 const medKlasse = (t: string) => t === 'obs' || t === 'funn';
 
+/** Coverage of a sperrepost as a ring: the drawn field, or the circle (own or default radius). */
+export function sperreRing(p: Punkt, standardRadiusM: number): LatLng[] {
+  return p.sperre?.felt ?? sirkel(p.pos, p.sperre?.radiusM ?? standardRadiusM, 48);
+}
+
+/** «sirkel 150 m» / «tegnet felt» */
+export function sperreTekst(p: Punkt, standardRadiusM: number): string {
+  return p.sperre?.felt ? 'tegnet sperrefelt' : `sirkel ${Math.round(p.sperre?.radiusM ?? standardRadiusM)} m`;
+}
+
 export function lagGeoJson(i: EksportInput): string {
   const a = i.aksjon;
   const f: unknown[] = [];
@@ -85,6 +95,13 @@ export function lagGeoJson(i: EksportInput): string {
       },
       geometry: { type: 'Point', coordinates: xy(p.pos) },
     });
+    if (p.type === 'sp') {
+      f.push({
+        type: 'Feature',
+        properties: { name: `${p.id} dekning`, kind: 'sperredekning', description: sperreTekst(p, a.modell.sperrepostRadiusM), stroke: '#0f766e', fill: '#0f766e', 'fill-opacity': 0.1 },
+        geometry: { type: 'Polygon', coordinates: [lukk(sperreRing(p, a.modell.sperrepostRadiusM)).map(xy)] },
+      });
+    }
   }
   for (const l of i.ledelinjer) {
     f.push({ type: 'Feature', properties: { name: l.nr, kind: 'ledelinje', type: l.type, description: l.navn }, geometry: { type: 'LineString', coordinates: l.pts.map(xy) } });
@@ -108,6 +125,7 @@ export function lagKml(i: EksportInput): string {
   }
   ut.push('<Style id="ring"><LineStyle><color>ff1c1cb9</color><width>2</width></LineStyle></Style>');
   ut.push('<Style id="ledelinje"><LineStyle><color>ff47e0fd</color><width>4</width></LineStyle></Style>');
+  ut.push('<Style id="sperre"><LineStyle><color>ff76730f</color><width>2</width></LineStyle><PolyStyle><color>1a76730f</color></PolyStyle></Style>');
   if (a.ipp) {
     ut.push(`<Placemark><name>IPP</name><Point><coordinates>${koord([a.ipp])}</coordinates></Point></Placemark>`);
     i.ringer?.forEach((r, k) => {
@@ -126,6 +144,12 @@ export function lagKml(i: EksportInput): string {
     ut.push(
       `<Placemark><name>${escXml(p.id)}</name><description>${escXml(`${PUNKTTYPE[p.type]}${medKlasse(p.type) ? ` (${p.klasse})` : ''}${p.sjekket ? ', ferdig sjekket' : ''}${p.tekst ? ` – ${p.tekst}` : ''}${p.begrunnelse ? `. Hvorfor: ${p.begrunnelse.tekst}${p.begrunnelse.vurder ? ` Vurder: ${p.begrunnelse.vurder}` : ''}` : ''}`)}</description><Point><coordinates>${koord([p.pos])}</coordinates></Point></Placemark>`,
     );
+    if (p.type === 'sp') {
+      ut.push(
+        `<Placemark><name>${escXml(p.id)} dekning</name><description>${escXml(`Sperrepost, ${sperreTekst(p, a.modell.sperrepostRadiusM)}`)}</description><styleUrl>#sperre</styleUrl>` +
+          `<Polygon><outerBoundaryIs><LinearRing><coordinates>${koord(lukk(sperreRing(p, a.modell.sperrepostRadiusM)))}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>`,
+      );
+    }
   }
   for (const l of i.ledelinjer) {
     ut.push(`<Placemark><name>${escXml(l.nr)}</name><description>${escXml(`${l.type}${l.navn ? ` ${l.navn}` : ''}`)}</description><styleUrl>#ledelinje</styleUrl><LineString><coordinates>${koord(l.pts)}</coordinates></LineString></Placemark>`);

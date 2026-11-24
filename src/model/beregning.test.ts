@@ -345,3 +345,81 @@ describe('interessepunkter per kategori', () => {
     expect(r.poiforslag.some((p) => p.navn === 'Hytta')).toBe(false);
   });
 });
+
+describe('sperreposter', () => {
+  // two lakes form a wall north–south at 2–3 km east, with a gap where the trail goes through
+  const vegg = (gap: number): OsmData => ({
+    ...osm,
+    linjer: [osm.linjer[0]],
+    omrader: [
+      { id: 'n', type: 'vann', navn: '', ringer: [[at(2000, gap), at(3000, gap), at(3000, 17000), at(2000, 17000), at(2000, gap)]] },
+      { id: 's', type: 'vann', navn: '', ringer: [[at(2000, -17000), at(3000, -17000), at(3000, -gap), at(2000, -gap), at(2000, -17000)]] },
+    ],
+    punkter: [],
+  });
+  const ost = (r: ReturnType<typeof beregn>) => {
+    const g = r.grid;
+    let s = 0;
+    for (let j = 0; j < g.n; j++) for (let i = 0; i < g.n; i++) if (g.west + (i + 0.5) * g.cell > g.cx + 3200) s += r.post[j * g.n + i];
+    return s;
+  };
+  const odds = (p: number) => p / (1 - p);
+  const post = (over: Partial<{ timerEtter: number; radiusM: number; felt: Array<{ lat: number; lng: number }>; pos: { lat: number; lng: number } }> = {}) => ({
+    id: 'SP001',
+    pos: at(2500, 0),
+    timerEtter: 0,
+    radiusM: 300,
+    ...over,
+  });
+
+  it('senker sannsynligheten bak en post som var satt opp i tide med ca. 80 %', () => {
+    const uten = beregn(input({ osm: vegg(300), osmVersjon: 'v300' }));
+    const med = beregn(input({ osm: vegg(300), osmVersjon: 'v300', sperreposter: [post()] }));
+    const ratio = odds(ost(med)) / odds(ost(uten));
+    expect(ratio).toBeGreaterThan(0.18);
+    expect(ratio).toBeLessThan(0.26);
+    expect(med.sperreposter[0]).toMatchObject({ id: 'SP001', andel: 1 });
+    expect(med.sperreposter[0].bakAndel).toBeGreaterThan(0);
+    // the growth stops at the post: walking time behind it is not shown
+    const g = med.grid;
+    const k = Math.floor(g.n / 2) * g.n + Math.floor(g.n / 2) + Math.round(5000 / g.cell);
+    expect(Number.isFinite(uten.T1[k])).toBe(true);
+    expect(Number.isFinite(med.T1[k])).toBe(false);
+  });
+
+  it('virker ikke når den ble satt opp etter at personen kunne vært forbi', () => {
+    const uten = beregn(input({ osm: vegg(300), osmVersjon: 'v300' }));
+    const sent = beregn(input({ osm: vegg(300), osmVersjon: 'v300', sperreposter: [post({ timerEtter: 50 })] }));
+    expect(sent.sperreposter[0].merknad).toBe('sent');
+    expect(sent.sperreposter[0].naaTimer).toBeGreaterThan(0);
+    expect(ost(sent)).toBeCloseTo(ost(uten), 9);
+  });
+
+  it('har liten effekt der personen lett går utenom (åpent terreng, utenfor stien)', () => {
+    const uten = beregn(input({ osm: { ...osm, omrader: [] }, osmVersjon: 'aapen' }));
+    const med = beregn(input({ osm: { ...osm, omrader: [] }, osmVersjon: 'aapen', sperreposter: [post({ pos: at(2500, 2500), radiusM: 100 })] }));
+    expect(ost(med)).toBeGreaterThan(ost(uten) * 0.9);
+  });
+
+  it('en sikker observasjon bak posten virker fortsatt', () => {
+    const obs = [{ pos: at(6000, 0), timerSiden: 1, klasse: 'sikker' as const }];
+    const bare = beregn(input({ osm: vegg(300), osmVersjon: 'v300', sperreposter: [post()] }));
+    const medObs = beregn(input({ osm: vegg(300), osmVersjon: 'v300', sperreposter: [post()], observasjoner: obs }));
+    expect(ost(medObs)).toBeGreaterThan(ost(bare) * 2);
+  });
+
+  it('et tegnet felt tvers over dalen sperrer også der en liten sirkel gir omvei', () => {
+    const sirkel = beregn(input({ osm: vegg(800), osmVersjon: 'v800', sperreposter: [post({ radiusM: 100 })] }));
+    const felt = beregn(
+      input({ osm: vegg(800), osmVersjon: 'v800', sperreposter: [post({ felt: [at(2000, -900), at(3000, -900), at(3000, 900), at(2000, 900)] })] }),
+    );
+    expect(ost(felt)).toBeLessThan(ost(sirkel) * 0.7);
+  });
+
+  it('en post ved IPP endrer ingenting', () => {
+    const uten = beregn(input({ osm: vegg(300), osmVersjon: 'v300' }));
+    const ved = beregn(input({ osm: vegg(300), osmVersjon: 'v300', sperreposter: [post({ pos: at(50, 0) })] }));
+    expect(ved.sperreposter[0].merknad).toBe('ipp');
+    expect(ost(ved)).toBeCloseTo(ost(uten), 9);
+  });
+});

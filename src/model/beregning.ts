@@ -18,6 +18,7 @@ import type { SokTeknikk, SporRessurs } from '../data/modellantakelser';
 import { PUNKTBEGRUNNELSE, punktgrunn, PUNKTTYPENAVN, punktvekterMedBidrag, vurderPunkt, type PunktTypeKandidat } from '../data/interessepunkter';
 import type { HoydeRaster, LinjeType, OsmData } from './typer';
 import { POI_NAVN } from './typer';
+import { beregnSperrer, type SperrepostResultat } from './sperre';
 
 export interface BeregningInput {
   ipp: LatLng;
@@ -42,6 +43,8 @@ export interface BeregningInput {
     linjer: LatLng[][];
     spor?: Array<{ id: string; ressurs: SporRessurs; pts: LatLng[]; utelat: string[] }>;
   };
+  /** sperreposter: when set up (hours after last seen) and their coverage */
+  sperreposter?: Array<{ id: string; pos: LatLng; timerEtter: number; radiusM: number; felt?: LatLng[] }>;
   /** hours walked used for the frontier along ledelinjer (time slider) */
   visningTimer: number | null;
   merkatorBredde: number;
@@ -143,6 +146,8 @@ export interface BeregningResultat {
   droneforslag: TeigForslag[];
   /** suggested points of interest for the chosen categories, best first */
   poiforslag: PoiForslag[];
+  /** how each sperrepost works in the model */
+  sperreposter: SperrepostResultat[];
   harHoyde: boolean;
   brattCeller: number;
   ms: number;
@@ -161,6 +166,8 @@ export interface BeregningCache {
   terr?: TerrengLag;
   T1?: Float32Array;
   obsT1?: Map<string, Float32Array>;
+  /** walking time with each sperrepost coverage as a barrier */
+  sperreT1?: Map<string, Float32Array>;
   /** swept area per cell for each GPS track (sparse), keyed by grid, track and sweep width */
   spor?: Map<string, Map<number, number>>;
 }
@@ -222,6 +229,23 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
   });
   for (const k of [...cache.obsT1.keys()]) if (!brukt.has(k)) cache.obsT1.delete(k);
 
+  // sperreposter: barrier in the walking time, lower probability behind them
+  cache.sperreT1 ??= new Map();
+  const sperrer = beregnSperrer(
+    g,
+    terr.terreng,
+    T1,
+    komps,
+    m,
+    (inp.sperreposter ?? []).map((p) => {
+      const [x, y] = tilGrid(g, p.pos);
+      return { id: p.id, x, y, timerEtter: p.timerEtter, radiusM: p.radiusM, felt: p.felt?.map((q) => tilGrid(g, q)) };
+    }),
+    cellIndex(g, g.cx, g.cy),
+    cache.sperreT1,
+    tk,
+  );
+
   const teigCellerPerId = new Map(inp.teiger.map((t, k) => [t.id, teigCeller[k]]));
   const { igjen: innsats, sporAndel } = lagInnsats(g, gk, inp, teigCellerPerId, cache);
 
@@ -238,7 +262,15 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     observasjoner: obs,
     sok: inp.teiger.map((t, k) => ({ celler: teigCeller[k], pod: t.pod })),
     innsats,
+    sperre: sperrer.faktor,
   });
+  const sperreposter: SperrepostResultat[] = sperrer.poster.map(({ bak, ...p }) => {
+    let bakAndel = 0;
+    if (bak) for (let k = 0; k < bak.length; k++) if (bak[k]) bakAndel += s.post[k];
+    return { ...p, bakAndel };
+  });
+  // walking time shown in the map (shading and growing lines) stops behind posts that work
+  const T1vis = sperrer.bakSterk ? Float32Array.from(T1, (t, k) => (sperrer.bakSterk![k] ? Number.POSITIVE_INFINITY : t)) : T1;
 
   const ringer = s.ringer;
   const sep = Math.max(ringer[0], 300);
@@ -268,7 +300,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     for (let k = 1; k < l.pts.length; k++) len += distanceM(l.pts[k - 1], l.pts[k]);
     return { i: r.i, id: l.id, type: l.type, navn: l.navn, na: r.na, for: r.for, lengdeM: len, tMin: tMin / v };
   });
-  const { tider, start } = tidVedPunkter(g, T1, terr.linjeXY);
+  const { tider, start } = tidVedPunkter(g, T1vis, terr.linjeXY);
   let korridorAndel: number | null = null;
   if (inp.osm && osmLinjer.length) {
     korridorAndel = 0;
@@ -401,6 +433,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
 
   return {
     poiforslag,
+    sperreposter,
     teigforslag,
     droneforslag,
     grid: g,
@@ -408,7 +441,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     fart: { v, mob },
     merc: cache.merc!,
     band: s.band,
-    T1,
+    T1: T1vis,
     post: Float32Array.from(s.post),
     arealKm2: s.arealKm2,
     sokt: s.sokt,

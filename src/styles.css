@@ -1066,3 +1066,26 @@ details.grunnlag li {
   padding: 0 5px;
   font: 800 11px/16px system-ui, sans-serif;
 }
+/* drag handle on the coverage circle of a selected sperrepost */
+.sperrehandtak {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 2px solid #0f766e;
+  border-radius: 50%;
+  color: #0f766e;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: ew-resize;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.kort-felt-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+.kort-felt-label .kort-felt {
+  width: 5.5em;
+}

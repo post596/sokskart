@@ -48,7 +48,9 @@ function Modusbar() {
       ? 'Klikk i kartet for å sette IPP'
       : modus?.type === 'punkt'
         ? 'Klikk der punktet skal stå'
-        : 'Klikk hjørnene i teigen – dobbeltklikk eller klikk første hjørne for å avslutte';
+        : modus?.type === 'sperrefelt'
+          ? `Tegn sperrefeltet for ${modus.id}: klikk hjørnene, f.eks. tvers over dalen – dobbeltklikk eller klikk første hjørne for å avslutte`
+          : 'Klikk hjørnene i teigen – dobbeltklikk eller klikk første hjørne for å avslutte';
   return (
     <div className="modusbar" role="status">
       <span>{tekst}</span>

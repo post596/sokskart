@@ -9,7 +9,13 @@ import { hent, lagre, slett, slettAlt } from '../services/lagring';
 
 export type Fane = 'aksjon' | 'ledelinjer' | 'teiger' | 'punkter' | 'tidslinje' | 'statistikk';
 /** punkt.hurtig: place first, then choose type and text in a dialog («+ Punkt» in the map) */
-export type Modus = null | { type: 'ipp' } | { type: 'punkt'; hurtig?: boolean } | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' };
+export type Modus =
+  | null
+  | { type: 'ipp' }
+  | { type: 'punkt'; hurtig?: boolean }
+  | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' }
+  /** drawing the coverage field of a sperrepost */
+  | { type: 'sperrefelt'; id: string };
 export type OrdreFor = { type: 'teig' | 'linje' | 'punkt'; id: string };
 /** what is selected in the map (shown in a card over the map) */
 export type Valgt = { type: 'punkt' | 'linje' | 'poiforslag'; id: string };

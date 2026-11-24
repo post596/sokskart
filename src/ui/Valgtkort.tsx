@@ -8,6 +8,7 @@ import { fmtAvstand, fmtTid, fmtTimer } from './format';
 import { leggTilPoi, PoiGrunnlagListe, poiTittel } from './Poiforslag';
 import { Stisok, useStisok } from './Stisok';
 import { lastNedLinjer } from './linjeeksport';
+import { SperreKontroller, SperreStatus } from './Sperre';
 
 /**
  * Card over the map for the object clicked in the map: a point, a ledelinje or a suggested
@@ -54,7 +55,13 @@ export function Valgtkort() {
         </h3>
         {p.tekst && <p className="liten-tekst">{p.tekst}</p>}
         <Utm pos={p.pos} sone={a.sone} kompakt />
-        <div className="dempet liten-tekst">{fmtTid(p.tid)}</div>
+        <div className="dempet liten-tekst">{p.type === 'sp' ? `Satt opp ${fmtTid(p.tid)}` : fmtTid(p.tid)}</div>
+        {p.type === 'sp' && (
+          <>
+            <SperreStatus p={p} />
+            <SperreKontroller p={p} />
+          </>
+        )}
         {p.begrunnelse && (
           <p className="liten-tekst">
             <b>Hvorfor foreslått:</b> {p.begrunnelse.tekst} {p.begrunnelse.vurder && <i>Vurder: {p.begrunnelse.vurder}</i>}

@@ -123,6 +123,10 @@ export interface Modellantakelser {
   /** Tolerance (m) between track and ledelinje; at least half the sweep width is used. */
   sporLinjeToleranseM: number;
 
+  /** Sperrepost: POD for someone passing through its coverage, and the default coverage radius (m). */
+  sperrepostPod: number;
+  sperrepostRadiusM: number;
+
   /** Stisøk (søk langs ledelinje): speed over the whole line (km/h) per resource, for the time estimate. */
   stisokFotKmt: number;
   stisokFlankeKmt: number;
@@ -193,6 +197,9 @@ export const STANDARD_MODELL: Modellantakelser = {
   sjekketLinjeM: 30,
   sporLinjeAndel: 0.7,
   sporLinjeToleranseM: 25,
+
+  sperrepostPod: 0.8,
+  sperrepostRadiusM: 100,
 
   stisokFotKmt: 3,
   stisokFlankeKmt: 1.5,
@@ -286,6 +293,15 @@ export const MODELL_FELT: Array<{
     hjelp: 'Så stor del av linja må ligge nær et spor for at den merkes som søkt.',
   },
   { felt: 'sporLinjeToleranseM', navn: 'Avstand spor–ledelinje (m)', steg: 5, min: 5, max: 200 },
+  {
+    felt: 'sperrepostPod',
+    navn: 'Sperrepost: sannsynlighet for å bli sett (0–1)',
+    steg: 0.05,
+    min: 0,
+    max: 1,
+    hjelp: 'Senker sannsynligheten bak en sperrepost som var satt opp før personen kunne nå den.',
+  },
+  { felt: 'sperrepostRadiusM', navn: 'Sperrepost: standard dekning (m)', steg: 5, min: 25, max: 1000, hjelp: 'Kan endres per post ved å dra i sirkelen i kartet.' },
   { felt: 'stisokFotKmt', navn: 'Stisøk: fotlag uten flanke (km/t)', steg: 0.5, min: 0.5, max: 10, hjelp: 'Brukes til tidsestimatet for søk langs ledelinje helt ut.' },
   { felt: 'stisokFlankeKmt', navn: 'Stisøk: fotlag med flanke (km/t)', steg: 0.5, min: 0.5, max: 10 },
   { felt: 'stisokHundKmt', navn: 'Stisøk: hund (km/t)', steg: 0.5, min: 0.5, max: 10 },

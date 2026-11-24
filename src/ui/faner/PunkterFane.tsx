@@ -6,6 +6,7 @@ import { useStore } from '../../state/store';
 import { Utm, VisKnapp } from '../felles';
 import { KLASSER } from '../NyttPunkt';
 import { Poiforslag } from '../Poiforslag';
+import { SperreStatus } from '../Sperre';
 import { fmtTid } from '../format';
 
 export function PunkterFane() {
@@ -56,7 +57,7 @@ export function PunkterFane() {
       </div>
       <div className="rad">
         <label className="bred">
-          Tidspunkt
+          {u.type === 'sp' ? 'Satt opp (tidspunkt)' : 'Tidspunkt'}
           <input type="datetime-local" value={u.tid} onChange={(e) => setU({ ...u, tid: e.target.value })} />
         </label>
         <button type="button" className="knapp" onClick={() => setU({ ...u, tid: lokalTid() })}>
@@ -132,7 +133,9 @@ export function PunkterFane() {
                 </span>
               </div>
               <Utm pos={p.pos} sone={a.sone} />
+              {p.type === 'sp' && <SperreStatus p={p} />}
               <div className="dempet liten-tekst">
+                {p.type === 'sp' ? 'Satt opp ' : ''}
                 {fmtTid(p.tid)}
                 {p.sjekket && ` · ferdig sjekket ${fmtTid(p.sjekket.tid)}${p.sjekket.av ? ` av ${p.sjekket.av}` : ''}`}
               </div>

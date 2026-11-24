@@ -11,7 +11,8 @@ import { LINJETYPE_FARGE, LINJETYPE_NAVN, type LinjeType } from '../model/typer'
 import { KARTLAG } from '../services/kartfliser';
 import { VEKTOR_ATTRIBUSJON } from '../services/vektorfliser';
 import { mixRinger, standardVisning } from '../state/beregning';
-import { endreTeigRing, leggTilPunkt, leggTilTeig } from '../state/handlinger';
+import { endreTeigRing, leggTilPunkt, leggTilTeig, settSperrefelt, settSperreRadius } from '../state/handlinger';
+import { SPERRE_RADIUS } from '../domain/aksjon';
 import { kvalitetssikring } from '../domain/kvalitet';
 import { SPORRESSURSER } from '../data/modellantakelser';
 import { useStore, type Valgt } from '../state/store';
@@ -146,7 +147,7 @@ export function Kart() {
     const grov = window.matchMedia?.('(pointer: coarse)').matches;
     // thin lines must be easy to tap: the canvas renderer hit-tests within `tolerance` px
     linjeRenderer.current = L.canvas({ pane: 'linjer', padding: 0.3, tolerance: grov ? 12 : 5 });
-    for (const g of ['ringer', 'alleLinjer', 'spor', 'topp', 'sjekket', 'teigforslag', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'valgt', 'egen']) {
+    for (const g of ['ringer', 'alleLinjer', 'spor', 'topp', 'sjekket', 'teigforslag', 'teiger', 'ks', 'sperre', 'plan', 'etterretning', 'punkter', 'valgt', 'egen']) {
       grupper.current[g] = L.layerGroup().addTo(map);
     }
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
@@ -202,6 +203,10 @@ export function Kart() {
       if (m?.type === 'teig' && ll.length >= 3) {
         const id = leggTilTeig(ll, m.avgrensning);
         s.melding(`${id} er tegnet. Registrer status og søk i fanen Teiger.`, 'ok');
+      } else if (m?.type === 'sperrefelt' && ll.length >= 3) {
+        settSperrefelt(m.id, ll);
+        s.set({ modus: null, valgt: { type: 'punkt', id: m.id } });
+        s.melding(`Sperrefeltet for ${m.id} er tegnet. Dra i hjørnene for å justere.`, 'ok');
       } else s.set({ modus: null });
     });
 
@@ -567,8 +572,8 @@ export function Kart() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (modus?.type === 'teig') {
-      const col = '#1d4ed8';
+    if (modus?.type === 'teig' || modus?.type === 'sperrefelt') {
+      const col = modus.type === 'sperrefelt' ? '#0f766e' : '#1d4ed8';
       map.pm.enableDraw('Polygon', { snappable: true, finishOn: 'dblclick', templineStyle: { color: col }, hintlineStyle: { color: col, dashArray: '5 5' }, pathOptions: { color: col } } as L.PM.DrawModeOptions);
       map.doubleClickZoom.disable();
     } else {
@@ -577,6 +582,62 @@ export function Kart() {
     }
     map.getContainer().classList.toggle('sikte', !!modus);
   }, [modus]);
+
+  // ------------------------------------------------------------ sperrepost coverage: circle with a drag handle, or a drawn field
+  useEffect(() => {
+    const map = mapRef.current;
+    const g = grupper.current.sperre;
+    if (!map || !g) return;
+    g.clearLayers();
+    if (!visning.plankart) return;
+    const standard = aksjon.modell.sperrepostRadiusM;
+    const virker = new Map((resultat?.sperreposter ?? []).map((x) => [x.id, x]));
+    for (const p of aksjon.punkter) {
+      if (p.type !== 'sp') continue;
+      const valgtNa = valgt?.type === 'punkt' && valgt.id === p.id && !modus;
+      const st = virker.get(p.id);
+      const aktiv = !!st && st.andel > 0;
+      // solid when it works in the model, dashed when set up too late (or not computed yet)
+      const stil: L.PathOptions = {
+        color: '#0f766e',
+        weight: valgtNa ? 3 : 2,
+        dashArray: aktiv ? undefined : '6 6',
+        fillColor: '#0f766e',
+        fillOpacity: aktiv ? 0.12 : 0.04,
+        pane: 'teiger',
+      };
+      if (p.sperre?.felt) {
+        const poly = L.polygon(p.sperre.felt.map(toLL), { ...stil, interactive: valgtNa }).addTo(g);
+        if (valgtNa) {
+          // drag the corners; each change is saved
+          poly.pm.enable({ allowSelfIntersection: false, snappable: false });
+          poly.on('pm:edit', () => settSperrefelt(p.id, (poly.getLatLngs()[0] as L.LatLng[]).map((q) => ({ lat: q.lat, lng: q.lng }))));
+        }
+      } else {
+        const r = p.sperre?.radiusM ?? standard;
+        const sirkel = L.circle(toLL(p.pos), { ...stil, radius: r, interactive: false }).addTo(g);
+        if (valgtNa) {
+          const kx = 111320 * Math.cos((p.pos.lat * Math.PI) / 180);
+          const handtak = L.marker([p.pos.lat, p.pos.lng + r / kx], {
+            icon: divIkon('<span>↔</span>', 'sperrehandtak', [24, 24]),
+            draggable: true,
+            zIndexOffset: 1000,
+            title: 'Dra for å endre dekningen',
+            keyboard: false,
+          }).addTo(g);
+          handtak.bindTooltip(`Dekning ${Math.round(r)} m`, { permanent: true, direction: 'right', offset: [14, 0], className: 'linjeetikett' });
+          const radius = () => Math.min(SPERRE_RADIUS.maks, Math.max(SPERRE_RADIUS.min, Math.round(map.distance(toLL(p.pos), handtak.getLatLng()) / 5) * 5));
+          handtak.on('drag', () => {
+            const rr = radius();
+            sirkel.setRadius(rr);
+            handtak.setTooltipContent(`Dekning ${rr} m`);
+          });
+          handtak.on('dragend', () => settSperreRadius(p.id, radius()));
+          handtak.on('click', (e) => L.DomEvent.stopPropagation(e));
+        }
+      }
+    }
+  }, [aksjon.punkter, aksjon.modell.sperrepostRadiusM, visning.plankart, valgt, modus, resultat]);
 
   // ------------------------------------------------------------ points: plankart (SP, R) and etterretningskart (OBS, F)
   useEffect(() => {

@@ -2,7 +2,7 @@ import { STIRESSURS_NAVN, type StisokAnbefaling } from '../data/stisok';
 import { fmtAvstand, fmtFart, fmtKm2, fmtTid, fmtTimer } from '../ui/format';
 import type { Aksjon, Punkt, Teig } from './aksjon';
 import type { LatLng } from './coords';
-import { utmHjorner } from './eksport';
+import { sperreTekst, utmHjorner } from './eksport';
 import { prosent } from './pod';
 import { formatLatLonUtm, type ZoneChoice } from './utm';
 
@@ -107,7 +107,11 @@ export function lagFempunktsordre(i: OrdreInput): string {
     L.push(`   Punkt: ${p.id}${p.tekst ? ` – ${p.tekst}` : ''}`);
     L.push(`   Posisjon: ${utm(p.pos, a.sone)}`);
     if (p.begrunnelse) L.push(`   Hvorfor: ${p.begrunnelse.tekst}${p.begrunnelse.vurder ? ` Vurdering: ${p.begrunnelse.vurder}` : ''}`);
-    if (p.type === 'sp') L.push('   Sperrepost: hindre at den savnede tar seg forbi punktet. Meld alle observasjoner av personer til ILKO.');
+    if (p.type === 'sp') {
+      L.push('   Sperrepost: hindre at den savnede tar seg forbi punktet. Meld alle observasjoner av personer til ILKO.');
+      L.push(`   Hold oppsyn med området: ${sperreTekst(p, a.modell.sperrepostRadiusM)} rundt posten.`);
+      if (p.sperre?.felt) utmHjorner(p.sperre.felt, a.sone, 8).forEach((t, n) => L.push(`   ${n + 1}. ${t}`));
+    }
   }
   L.push('   Ved funn: meld nøyaktig posisjon (14-sifret UTM), savnedes tilstand og bistandsbehov til ILKO.');
   L.push('   Ressurser i søk avventer i terrenget til det er verifisert at det er savnede som er funnet.');

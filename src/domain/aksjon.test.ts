@@ -197,3 +197,30 @@ describe('GPX', () => {
     expect(escXml(`a<b>&"c'`)).toBe('a&lt;b&gt;&amp;&quot;c&apos;');
   });
 });
+
+describe('dekning for sperreposter', () => {
+  it('lagres, valideres og strammes inn ved innlasting', async () => {
+    const { rensSperre } = await import('./aksjon');
+    expect(rensSperre({ radiusM: 5000 })).toEqual({ radiusM: 1000 });
+    expect(rensSperre({ radiusM: 3 })).toEqual({ radiusM: 25 });
+    expect(rensSperre({ felt: [{ lat: 1, lng: 2 }] })).toBeUndefined();
+    expect(rensSperre('tull')).toBeUndefined();
+    const felt = [
+      { lat: 61, lng: 8 },
+      { lat: 61.01, lng: 8 },
+      { lat: 61.01, lng: 8.01 },
+    ];
+    const a = nyAksjon();
+    a.punkter = [
+      { id: 'SP001', type: 'sp', klasse: 'mulig', tid: '2026-11-22T10:00', tekst: '', pos: { lat: 61, lng: 8 }, sperre: { radiusM: 250, felt } },
+      { id: 'R001', type: 'poi', klasse: 'mulig', tid: '2026-11-22T10:00', tekst: '', pos: { lat: 61, lng: 8 }, sperre: { radiusM: 250 } },
+    ];
+    const r = lesAksjonsfil(JSON.stringify(lagAksjonsfil(a, kopierStatistikk(), null)));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.fil.aksjon.punkter[0].sperre).toEqual({ radiusM: 250, felt });
+      // only sperreposter keep a coverage
+      expect(r.fil.aksjon.punkter[1].sperre).toBeUndefined();
+    }
+  });
+});

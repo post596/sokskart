@@ -72,6 +72,19 @@ export function lagInput(): BeregningInput | null {
     },
     teiger: a.teiger.map((t) => ({ id: t.id, ringer: [t.ring], pod: 1 - t.sok.reduce((acc, x) => acc * (1 - x.pod), 1) })),
     reflekser: a.punkter.filter((p) => p.type === 'poi').map((p) => ({ id: p.id, navn: p.tekst, pos: p.pos })),
+    // sperreposter: set up (the point time) relative to last seen; unknown last seen → from the start
+    sperreposter: a.punkter
+      .filter((p) => p.type === 'sp')
+      .map((p) => {
+        const t = a.sistSett && p.tid ? timerMellom(a.sistSett, new Date(p.tid)) : null;
+        return {
+          id: p.id,
+          pos: p.pos,
+          timerEtter: Math.max(0, Math.round((t ?? 0) * 20) / 20),
+          radiusM: p.sperre?.radiusM ?? a.modell.sperrepostRadiusM,
+          ...(p.sperre?.felt ? { felt: p.sperre.felt } : {}),
+        };
+      }),
     visningTimer: s.visningTimer ?? standardVisning(),
     forslagOnske: s.forslagOnske,
     merkatorBredde: Math.min(1100, Math.max(400, Math.round(g.n * 2.2))),

@@ -290,6 +290,28 @@ Begrunnelsen lagres på teigen når forslaget godkjennes, og vises i fanen Teige
 blandet med kategorivektene. Score = POA innen 150 m × vekt. Punktene ligger minst 150 m fra
 hverandre og fra eksisterende R-punkter.
 
+## 8h. Sperreposter
+
+En sperrepost (SP###) skal hindre at den savnede tar seg forbi (veileder 6.3.2) og er også
+en utkikkspost. **Modellantakelse:**
+
+- **Dekning**: en sirkel rundt posten (standard `sperrepostRadiusM` = 100 m, kan dras i kartet,
+  25 m–1 km), eller et tegnet sperrefelt, f.eks. tvers over en dal.
+- **I tide**: posten virker bare for den delen av kategoriblandingen som ikke kan ha passert
+  før den ble satt opp. Satt opp t timer etter sist sett, når personen (fart v, effektiv
+  fremdrift e) posten etter T1(post) / (v · e) timer. Andelen er summen av vektene for
+  kategoriene der t er mindre enn denne tiden.
+- **Bak posten**: gangtiden regnes på nytt med dekningen som sperre. Celler der den nye
+  gangtiden er mer enn 1 % lengre (eller uendelig), og selve dekningen, ligger bak posten:
+  raskeste vei dit går gjennom dekningen.
+- **Virkning**: sannsynligheten bak posten ganges med 1 − `sperrepostPod` (standard 0,8) for
+  kategoriene posten var i tide for. Sikre og sannsynlige observasjoner bak posten virker
+  fortsatt, siden de viser at personen har passert.
+- **Vekst i kartet**: for poster som virker for minst halve blandingen, stopper gangtidslaget
+  og de voksende ledelinjene ved posten.
+- En post der dekningen omfatter IPP, virker ikke. Høyst 8 poster tas med (én gangtid hver).
+- Begrensning: posten regnes som bemannet fra «satt opp» og ut aksjonen.
+
 ## 9. Fargebånd og mest sannsynlige punkter
 
 - Cellene sorteres etter POA nå. Båndene viser **minste areal** som dekker 25, 50, 75

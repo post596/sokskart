@@ -1,4 +1,6 @@
-import { lokalTid, nyId, type Avgrensningstype, type Punkt, type PunktType, type Sok, type Spor } from '../domain/aksjon';
+import { lokalTid, nyId, SPERRE_RADIUS, type Avgrensningstype, type Punkt, type PunktType, type Sok, type Spor } from '../domain/aksjon';
+import { areaM2 } from '../domain/geo';
+import { fmtKm2 } from '../ui/format';
 import type { LatLng } from '../domain/coords';
 import { medLnummer, type ForslagGrunnlag } from '../domain/grunnlag';
 import { nesteId, type Prefiks } from '../domain/naming';
@@ -216,4 +218,39 @@ export function slettSpor(id: string): void {
   useStore.getState().endreAksjon((a) => {
     a.spor = a.spor.filter((s) => s.id !== id);
   }, `GPS-spor «${navn}» slettet`);
+}
+
+/** Coverage radius of a sperrepost (m), rounded to 5 m within the limits. */
+export function settSperreRadius(id: string, radiusM: number): void {
+  const s = useStore.getState();
+  const p = s.aksjon.punkter.find((x) => x.id === id);
+  if (!p || p.type !== 'sp') return;
+  const ny = Math.min(SPERRE_RADIUS.maks, Math.max(SPERRE_RADIUS.min, Math.round(radiusM / 5) * 5));
+  const gammel = p.sperre?.radiusM ?? s.aksjon.modell.sperrepostRadiusM;
+  if (ny === gammel && !p.sperre?.felt) return;
+  s.endreAksjon(
+    (a) => {
+      const q = a.punkter.find((x) => x.id === id);
+      if (q) q.sperre = { radiusM: ny };
+    },
+    `${id}: dekning ${p.sperre?.felt ? 'tegnet felt' : `${Math.round(gammel)} m`} → ${ny} m`,
+  );
+}
+
+/** Drawn coverage field of a sperrepost, or null to go back to the circle. */
+export function settSperrefelt(id: string, ring: LatLng[] | null): void {
+  const s = useStore.getState();
+  const p = s.aksjon.punkter.find((x) => x.id === id);
+  if (!p || p.type !== 'sp') return;
+  const felt = ring && ring.length >= 3 ? ring.map((q) => ({ lat: +q.lat.toFixed(6), lng: +q.lng.toFixed(6) })) : null;
+  s.endreAksjon(
+    (a) => {
+      const q = a.punkter.find((x) => x.id === id);
+      if (!q) return;
+      if (felt) q.sperre = { ...(q.sperre?.radiusM != null ? { radiusM: q.sperre.radiusM } : {}), felt };
+      else if (q.sperre?.radiusM != null) q.sperre = { radiusM: q.sperre.radiusM };
+      else delete q.sperre;
+    },
+    felt ? `${id}: sperrefelt ${p.sperre?.felt ? 'endret' : 'tegnet'} (${fmtKm2(areaM2(felt) / 1e6)})` : `${id}: tilbake til sirkel som dekning`,
+  );
 }
