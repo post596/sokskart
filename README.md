@@ -15,7 +15,8 @@ Appen setter IPP i kartet og viser statistiske søksringer (R25–R95). Den regn
 **gangtid i terrenget**, det vil si hvor langt personen kan ha gått langs stier og over
 terreng på tiden siden sist sett. Den henter og rangerer ledelinjer fra OpenStreetMap,
 viser et sannsynlighetskart, og oppdateres når teiger søkes og observasjoner kommer inn.
-Den foreslår også punkter å sjekke for tilgjengelige ressurser.
+For hver ledelinje anbefaler den ressurs og metode for stisøk (veileder kap. 6.3).
+Ressursstatus føres i FAKS, ikke i Søkskart.
 
 Begreper, navngiving og fargekoder følger *Nasjonal veileder for redningstjenesten ved søk
 etter savnet person på land* (HRS, 2022). Modellen er beskrevet i
@@ -188,7 +189,7 @@ få alle kategoriene.
 src/
   domain/     UTM, koordinattolking, avstand/areal, POD/POS, navngiving, aksjonsfil, GPX
   data/       LPB-statistikk, modellantakelser, CSV-import
-  model/      rutenett, gangtid (Tobler), sannsynlighet, rangering, ressursforslag, worker
+  model/      rutenett, gangtid (Tobler), sannsynlighet, rangering, worker
   services/   Overpass, Kartverket høydedata, kartfliser, lokal lagring
   state/      tilstand (Zustand), handlinger, kobling til worker
   map/        Leaflet-kart og egne kartlag
@@ -318,7 +319,7 @@ Oppfølging:
 Fase 1, 2 og 3 er på plass (fase 3 uten sanntidsdeling og droneapp, som er utsatt etter avtale), og i tillegg:
 
 - tidslinje med voksende ledelinjer
-- ressursforslag
+- anbefalt ressurs for stisøk per ledelinje
 - observasjoner som nytt utgangspunkt
 
 Fase 3 startes ikke uten avklaring.

@@ -23,6 +23,9 @@ export function Teigforslag() {
   const set = useStore((s) => s.set);
   const m = a.modell;
   const [teknikk, setTeknikk] = useState<SokTeknikk>(m.standardTeknikk);
+  // how many suggestions to make now (teams/drones available – resource status itself is kept in FAKS)
+  const [antallTeiger, setAntallTeiger] = useState(3);
+  const [antallDrone, setAntallDrone] = useState(3);
   if (!a.ipp) return null;
 
   const R = r?.ringer ?? mixRinger();
@@ -31,15 +34,14 @@ export function Teigforslag() {
     timer,
     grenser: m.fasegrenser,
     r25: R?.[0] ?? 1000,
-    fotmannskap: a.ressurser.fotmannskap,
-    mannskapPerLag: m.teknikker[m.standardTeknikk].mannskap,
+    antallTeiger,
     standardTeknikk: m.standardTeknikk,
   });
   const be = (teig: TeigOnske | null, drone: boolean) => {
     set({
       forslagOnske: {
         teig,
-        drone: drone ? { antall: Math.max(1, a.ressurser.drone || 3) } : null,
+        drone: drone ? { antall: Math.max(1, antallDrone) } : null,
       },
       ...(teig ? { teigforslag: [] } : {}),
       ...(drone ? { droneforslag: [] } : {}),
@@ -68,6 +70,16 @@ export function Teigforslag() {
         {timer != null && <span className="dempet"> ({fmtTimer(Math.max(0, timer))} siden start)</span>}
       </h3>
       <p className="liten-tekst">{anb.tekst}</p>
+      <div className="rad">
+        <label>
+          Antall teiger
+          <input type="number" min={1} max={30} inputMode="numeric" value={antallTeiger} onChange={(e) => setAntallTeiger(Math.max(1, Math.min(30, Math.floor(Number(e.target.value) || 1))))} />
+        </label>
+        <label>
+          Antall droneområder
+          <input type="number" min={1} max={30} inputMode="numeric" value={antallDrone} onChange={(e) => setAntallDrone(Math.max(1, Math.min(30, Math.floor(Number(e.target.value) || 1))))} />
+        </label>
+      </div>
       <div className="knapperad">
         {anb.knapp && anb.teig && (
           <button type="button" className="knapp hoved" disabled={!!onske} onClick={() => be(anb.teig, false)}>
@@ -110,8 +122,8 @@ export function Teigforslag() {
             className="knapp liten"
             disabled={!!onske}
             onClick={() => {
-              const lag = Math.max(1, Math.floor(a.ressurser.fotmannskap / t.mannskap) || 3);
-              be({ modus: 'neste', antall: lag, teknikk, fase: manuelt(`de ${lag} teigene med mest sannsynlighet igjen i 50 %-sonen (ett per fotlag).`) }, false);
+              const lag = Math.max(1, antallTeiger);
+              be({ modus: 'neste', antall: lag, teknikk, fase: manuelt(`de ${lag} teigene med mest sannsynlighet igjen i 50 %-sonen (ett per lag).`) }, false);
             }}
           >
             Neste teiger for fotlagene

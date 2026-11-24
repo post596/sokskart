@@ -62,6 +62,23 @@ describe('aksjonsfil', () => {
       expect(igjen.ok && igjen.advarsler.length).toBe(0);
     }
   });
+  it('fjerner ressurstall (føres i FAKS) med ett varsel', () => {
+    const f = lagAksjonsfil(nyAksjon(), kopierStatistikk(), null) as unknown as { aksjon: Record<string, unknown> };
+    f.aksjon.ressurser = { fotmannskap: 10, hundefører: 0, drone: 2, atv: 0, bil: 0 };
+    const r = lesAksjonsfil(JSON.stringify(f));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect('ressurser' in (r.fil.aksjon as unknown as Record<string, unknown>)).toBe(false);
+      expect(r.advarsler).toHaveLength(1);
+      expect(r.advarsler[0]).toContain('FAKS');
+      const igjen = lesAksjonsfil(JSON.stringify(r.fil));
+      expect(igjen.ok && igjen.advarsler.length).toBe(0);
+    }
+    // only zeros: removed silently
+    f.aksjon.ressurser = { fotmannskap: 0, hundefører: 0, drone: 0, atv: 0, bil: 0 };
+    const null0 = lesAksjonsfil(JSON.stringify(f));
+    expect(null0.ok && null0.advarsler.length).toBe(0);
+  });
   it('fjerner savnetprofil og logglinjene fra Savnet-fanen, men beholder annen logg', () => {
     const f = lagAksjonsfil(nyAksjon(), kopierStatistikk(), null) as unknown as { aksjon: Record<string, unknown> };
     f.aksjon.savnet = { navn: 'Ola', alder: '72', scenario: 'mobil' };

@@ -6,7 +6,7 @@ import type { BeregningResultat, ForslagOnske, TeigForslag } from '../model/bere
 import type { HoydeRaster, OsmData } from '../model/typer';
 import { hent, lagre, slett, slettAlt } from '../services/lagring';
 
-export type Fane = 'aksjon' | 'ledelinjer' | 'teiger' | 'punkter' | 'ressurser' | 'tidslinje' | 'statistikk';
+export type Fane = 'aksjon' | 'ledelinjer' | 'teiger' | 'punkter' | 'tidslinje' | 'statistikk';
 /** punkt.hurtig: place first, then choose type and text in a dialog («+ Punkt» in the map) */
 export type Modus = null | { type: 'ipp' } | { type: 'punkt'; hurtig?: boolean } | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' };
 export type OrdreFor = { type: 'teig' | 'linje' | 'punkt'; id: string };
@@ -35,7 +35,6 @@ export interface Visning {
   plankart: boolean;
   resultatkart: boolean;
   etterretningskart: boolean;
-  forslag: boolean;
 }
 
 export interface Egenposisjon {
@@ -186,7 +185,6 @@ export const useStore = create<State>()((set, get) => ({
     plankart: true,
     resultatkart: true,
     etterretningskart: true,
-    forslag: true,
   },
   grunnkart: 'topo',
   meldinger: [],

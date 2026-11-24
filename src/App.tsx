@@ -4,7 +4,6 @@ import { useStore, type Fane } from './state/store';
 import { AksjonFane } from './ui/faner/AksjonFane';
 import { LedelinjerFane } from './ui/faner/LedelinjerFane';
 import { PunkterFane } from './ui/faner/PunkterFane';
-import { RessurserFane } from './ui/faner/RessurserFane';
 import { StatistikkFane } from './ui/faner/StatistikkFane';
 import { TeigerFane } from './ui/faner/TeigerFane';
 import { TidslinjeFane } from './ui/faner/TidslinjeFane';
@@ -20,7 +19,6 @@ const FANER: Array<[Fane, string]> = [
   ['ledelinjer', 'Ledelinjer'],
   ['teiger', 'Teiger'],
   ['punkter', 'Punkter'],
-  ['ressurser', 'Ressurser'],
   ['tidslinje', 'Tidslinje'],
   ['statistikk', 'Statistikk'],
 ];
@@ -30,7 +28,6 @@ const INNHOLD: Record<Fane, () => ReactNode> = {
   ledelinjer: () => <LedelinjerFane />,
   teiger: () => <TeigerFane />,
   punkter: () => <PunkterFane />,
-  ressurser: () => <RessurserFane />,
   tidslinje: () => <TidslinjeFane />,
   statistikk: () => <StatistikkFane />,
 };

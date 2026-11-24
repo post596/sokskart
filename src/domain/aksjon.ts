@@ -1,7 +1,6 @@
 import { kopierStatistikk, type LpbKategori, type Terreng } from '../data/lpb-stats';
 import { medStandard, STANDARD_MODELL, type Modellantakelser, type Observasjonsklasse, type SporRessurs } from '../data/modellantakelser';
 import type { ValgtKategori } from '../model/lpb';
-import { INGEN_RESSURSER, type Ressursantall } from '../model/ressurser';
 import type { LinjeType, OsmData } from '../model/typer';
 import type { LatLng } from './coords';
 import type { ForslagGrunnlag } from './grunnlag';
@@ -119,7 +118,6 @@ export interface Aksjon {
   teiger: Teig[];
   punkter: Punkt[];
   sykkelhjul: Record<string, boolean>;
-  ressurser: Ressursantall;
   /** OSM chain id → fixed L number */
   lnummer: Record<string, string>;
   /** OSM chain id → searched status */
@@ -170,7 +168,6 @@ export function nyAksjon(): Aksjon {
     teiger: [],
     punkter: [],
     sykkelhjul: {},
-    ressurser: { ...INGEN_RESSURSER },
     lnummer: {},
     linjestatus: {},
     seq: {},
@@ -260,7 +257,6 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
     teiger: Array.isArray(a.teiger) ? a.teiger.filter((t) => t && Array.isArray(t.ring) && t.ring.every(erLatLng)) : [],
     punkter: Array.isArray(a.punkter) ? a.punkter.filter((p) => p && erLatLng(p.pos)) : [],
     kategorier: Array.isArray(a.kategorier) && a.kategorier.length ? a.kategorier : base.kategorier,
-    ressurser: { ...INGEN_RESSURSER, ...(a.ressurser ?? {}) },
     modell: medStandard(a.modell),
     logg: Array.isArray(a.logg) ? a.logg : [],
     lnummer: a.lnummer && typeof a.lnummer === 'object' ? a.lnummer : {},
@@ -292,6 +288,13 @@ function fjernUtgatteFelt(raw: Record<string, unknown>, advarsler: string[]): vo
   }
   delete raw.regioner;
   delete raw.mattson;
+
+  // resource counts: resource status is kept in FAKS; Søkskart recommends a resource per ledelinje
+  const ressurser = raw.ressurser as Record<string, unknown> | undefined;
+  if (ressurser && typeof ressurser === 'object' && Object.values(ressurser).some((v) => typeof v === 'number' && v > 0)) {
+    advarsler.push('Ressurstall er fjernet fra Søkskart – ressursstatus føres i FAKS. Fanen Ledelinjer anbefaler i stedet ressurs for hvert stisøk.');
+  }
+  delete raw.ressurser;
   if (raw.seq && typeof raw.seq === 'object') {
     const seq = { ...(raw.seq as Record<string, unknown>) };
     delete seq.REG;

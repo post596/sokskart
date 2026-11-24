@@ -5,9 +5,8 @@ import type { Modellantakelser, Observasjonsklasse } from '../data/modellantakel
 import { gangtid } from './gangtid';
 import { cellAreaKm2, cellIndex, cellX, cellY, fraGrid, lagGrid, lagMercatorIndeks, tilGrid, type Grid, type MercatorIndeks } from './grid';
 import { blandingRinger, vektetFart, type Komponent } from './lpb';
-import { cellerLangs, rangerLinjer, tidVedPunkter } from './rangering';
+import { rangerLinjer, tidVedPunkter } from './rangering';
 import { cellerIPolygon, forCellsInPolygon, forCellsNearLine } from './raster';
-import { fordelRessurser, kandidatIBesteCelle, type Forslag, type Kandidat, type Ressursantall } from './ressurser';
 import { beregnSannsynlighet, mestSannsynlige, sumCeller, UTGANGSPUNKT } from './sannsynlighet';
 import { AREALKLASSE, byggTerreng, type TerrengLag } from './terreng';
 import { cellSoketid, droneFlytid, sokefaktorer } from './soketid';
@@ -18,7 +17,7 @@ import { genererTeiger } from './teiggenerator';
 import type { SokTeknikk, SporRessurs } from '../data/modellantakelser';
 import { PUNKTBEGRUNNELSE, punktgrunn, PUNKTTYPENAVN, punktvekterMedBidrag, vurderPunkt, type PunktTypeKandidat } from '../data/interessepunkter';
 import type { HoydeRaster, LinjeType, OsmData } from './typer';
-import { LINJETYPE_NAVN, POI_NAVN } from './typer';
+import { POI_NAVN } from './typer';
 
 export interface BeregningInput {
   ipp: LatLng;
@@ -43,7 +42,6 @@ export interface BeregningInput {
     linjer: LatLng[][];
     spor?: Array<{ id: string; ressurs: SporRessurs; pts: LatLng[]; utelat: string[] }>;
   };
-  ressurser: Ressursantall;
   /** hours walked used for the frontier along ledelinjer (time slider) */
   visningTimer: number | null;
   merkatorBredde: number;
@@ -141,7 +139,6 @@ export interface BeregningResultat {
   linjeTider: Float32Array;
   linjeStart: Uint32Array;
   korridorAndel: number | null;
-  forslag: Forslag[];
   teigforslag: TeigForslag[];
   droneforslag: TeigForslag[];
   /** suggested points of interest for the chosen categories, best first */
@@ -312,15 +309,6 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
         ).map((r) => ({ id: osmLinjer[r.i].id, andel: r.andel, spor: r.spor }))
       : [];
 
-  // resource suggestions
-  const total = Object.values(inp.ressurser).reduce((a, b) => a + (b || 0), 0);
-  let forslag: Forslag[] = [];
-  if (total > 0) {
-    const L = inp.visningTimer ?? (inp.timerSidenSistSett != null ? Math.min(inp.timerSidenSistSett, mob) : mob);
-    const kand = lagKandidater(g, inp, terr, T1, s.post, s.orden, v, L, rang.slice(0, 60).map((r) => r.i), sep);
-    forslag = fordelRessurser(kand, inp.ressurser, Math.max(300, 2 * g.cell));
-  }
-
   // suggested teiger and drone areas (only when asked for)
   let teigforslag: TeigForslag[] = [];
   let droneforslag: TeigForslag[] = [];
@@ -428,7 +416,6 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     linjeTider: tider,
     linjeStart: start,
     korridorAndel,
-    forslag,
     harHoyde: terr.harHoyde,
     brattCeller: terr.brattCeller,
     ms: Date.now() - t0,
@@ -648,153 +635,4 @@ function lagPoiForslag(g: Grid, inp: BeregningInput, terr: TerrengLag, T1: Float
     if (valgt.every((q) => distanceM(q.pos, p.pos) > 150)) valgt.push(p);
   }
   return valgt;
-}
-
-function lagKandidater(
-  g: Grid,
-  inp: BeregningInput,
-  terr: TerrengLag,
-  T1: Float32Array,
-  post: Float64Array,
-  orden: Uint32Array,
-  v: number,
-  L: number,
-  linjeIdx: number[],
-  sep: number,
-): Kandidat[] {
-  const out: Kandidat[] = [];
-  const [cx, cy] = [g.cx, g.cy];
-  out.push({ type: 'ipp', pos: inp.ipp, x: cx, y: cy, score: 1, tekst: 'IPP – søk grundig (akslingen)', timer: 0 });
-
-  // ledelinjer: out to where the person could have reached within L hours
-  const osm = inp.osm;
-  if (osm) {
-    for (const i of linjeIdx) {
-      const l = osm.linjer[i];
-      const xy = terr.linjeXY[i];
-      let bestK = -1;
-      let bestT = -1;
-      xy.forEach(([x, y], k) => {
-        const c = cellIndex(g, x, y);
-        const t = c >= 0 ? T1[c] / v : Infinity;
-        if (t <= L && t > bestT) {
-          bestT = t;
-          bestK = k;
-        }
-      });
-      if (bestK < 0) continue;
-      const celler = cellerLangs(g, xy);
-      let score = 0;
-      for (const c of celler) if (T1[c] / v <= L) score += post[c];
-      const [x, y] = xy[bestK];
-      const navn = l.navn ? ` «${l.navn}»` : '';
-      out.push({
-        type: 'ledelinje',
-        pos: l.pts[bestK],
-        x,
-        y,
-        score,
-        linjeType: l.type,
-        linjeId: l.id,
-        timer: bestT,
-        tekst: `${LINJETYPE_NAVN[l.type]}${navn}: søk ut til punktet`,
-      });
-    }
-
-    // risk areas: shore of lakes, wetland, glacier, cliffs – only where reachable
-    const naaelig = (c: number) => T1[c] / v <= L * 1.2;
-    for (const o of osm.omrader) {
-      if (o.type !== 'vann' && o.type !== 'myr' && o.type !== 'bre') continue;
-      const inne = new Set<number>();
-      forCellsInPolygon(
-        g,
-        o.ringer.map((r) => r.map((p) => tilGrid(g, p))),
-        (idx) => inne.add(idx),
-      );
-      if (!inne.size) continue;
-      let celler: number[];
-      if (o.type === 'vann') {
-        const kyst = new Set<number>();
-        for (const c of inne) {
-          const i = c % g.n;
-          const j = (c - i) / g.n;
-          for (const [di, dj] of [
-            [1, 0],
-            [-1, 0],
-            [0, 1],
-            [0, -1],
-          ]) {
-            const a = i + di;
-            const b = j + dj;
-            if (a < 0 || b < 0 || a >= g.n || b >= g.n) continue;
-            const q = b * g.n + a;
-            if (!inne.has(q) && !terr.hav[q]) kyst.add(q);
-          }
-        }
-        celler = [...kyst];
-      } else celler = [...inne];
-      celler = celler.filter(naaelig);
-      const navn = o.navn ? ` «${o.navn}»` : '';
-      const tekst =
-        o.type === 'vann' ? `Risiko: vann${navn} – sjekk strandsonen` : o.type === 'myr' ? `Risiko: myr${navn}` : `Risiko: bre${navn}`;
-      const k = kandidatIBesteCelle(g, post, celler, 'risiko', tekst, T1, v);
-      if (k) out.push(k);
-    }
-    for (const st of osm.stup) {
-      const celler: number[] = [];
-      forCellsNearLine(
-        g,
-        st.map((p) => tilGrid(g, p)),
-        g.cell,
-        (idx) => {
-          if (naaelig(idx)) celler.push(idx);
-        },
-      );
-      const k = kandidatIBesteCelle(g, post, celler, 'risiko', 'Risiko: stup/bratt – sjekk under', T1, v);
-      if (k) out.push(k);
-    }
-
-    // points of interest
-    const pois = [
-      ...osm.punkter.map((p) => ({ pos: p.pos, tekst: `${POI_NAVN[p.type]}${p.navn ? ` «${p.navn}»` : ''}` })),
-      ...inp.reflekser.map((r) => ({ pos: r.pos, tekst: `${r.id}${r.navn ? ` – ${r.navn}` : ''}` })),
-    ];
-    for (const p of pois) {
-      const [x, y] = tilGrid(g, p.pos);
-      const c = cellIndex(g, x, y);
-      if (c < 0 || !(T1[c] / v <= L * 1.2)) continue;
-      const celler: number[] = [];
-      forCellsNearLine(g, [[x, y]], Math.max(150, g.cell), (idx) => celler.push(idx));
-      out.push({ type: 'poi', pos: p.pos, x, y, score: sumCeller(post, celler), tekst: `Punktsøk: ${p.tekst}`, timer: T1[c] / v });
-    }
-  } else {
-    for (const r of inp.reflekser) {
-      const [x, y] = tilGrid(g, r.pos);
-      const c = cellIndex(g, x, y);
-      if (c < 0) continue;
-      const celler: number[] = [];
-      forCellsNearLine(g, [[x, y]], Math.max(150, g.cell), (idx) => celler.push(idx));
-      out.push({ type: 'poi', pos: r.pos, x, y, score: sumCeller(post, celler), tekst: `Punktsøk: ${r.id}${r.navn ? ` – ${r.navn}` : ''}` });
-    }
-  }
-
-  // high-probability areas
-  for (const k of mestSannsynlige(g, post, orden, 40, sep)) {
-    const i = k % g.n;
-    const j = (k - i) / g.n;
-    const celler: number[] = [];
-    const x = cellX(g, i);
-    const y = cellY(g, j);
-    forCellsNearLine(g, [[x, y]], 2 * g.cell, (idx) => celler.push(idx));
-    out.push({
-      type: 'omrade',
-      pos: fraGrid(g, x, y),
-      x,
-      y,
-      score: sumCeller(post, celler),
-      tekst: 'Område med høy sannsynlighet – grovsøk',
-      timer: Number.isFinite(T1[k]) ? T1[k] / v : undefined,
-    });
-  }
-  return out;
 }

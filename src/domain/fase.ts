@@ -42,13 +42,12 @@ export function faseanbefaling(p: {
   grenser: [number, number];
   /** R25 in metres */
   r25: number;
-  fotmannskap: number;
-  mannskapPerLag: number;
+  /** how many teiger the search leader wants now (one per available team, from FAKS) */
+  antallTeiger: number;
   standardTeknikk: SokTeknikk;
 }): Faseanbefaling {
   const fase = sokefase(p.timer, p.grenser);
-  // no crew registered: suggest 3 teiger
-  const lag = Math.max(1, Math.floor(p.fotmannskap / Math.max(1, p.mannskapPerLag)) || 3);
+  const lag = Math.max(1, Math.floor(p.antallTeiger) || 3);
   const f = (grunn: string) => ({ navn: FASENAVN[fase], timer: p.timer, grunn });
   if (fase === 'forsteinnsats') {
     if (p.r25 < 300) {
@@ -75,16 +74,12 @@ export function faseanbefaling(p: {
   if (fase === 'overgang') {
     return {
       fase,
-      tekst: `Søket har pågått en stund. Foreslå teiger der det er mest sannsynlighet igjen – like mange som tilgjengelige fotlag (${lag}).`,
+      tekst: `Søket har pågått en stund. Foreslå teiger der det er mest sannsynlighet igjen – like mange som lag dere kan sende ut nå (${lag}).`,
       teig: {
         modus: 'neste',
         antall: lag,
         teknikk: p.standardTeknikk,
-        fase: f(
-          p.fotmannskap > 0
-            ? `${p.fotmannskap} fotmannskap / ${p.mannskapPerLag} per lag = ${lag} lag, så de ${lag} teigene med mest sannsynlighet igjen i 50 %-sonen foreslås.`
-            : `Ingen fotmannskap registrert under Ressurser, så de ${lag} teigene med mest sannsynlighet igjen i 50 %-sonen foreslås.`,
-        ),
+        fase: f(`${lag} teiger ønsket, så de ${lag} teigene med mest sannsynlighet igjen i 50 %-sonen foreslås.`),
       },
       knapp: `Foreslå ${lag} neste teiger`,
     };

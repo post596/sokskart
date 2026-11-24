@@ -72,7 +72,6 @@ export function lagInput(): BeregningInput | null {
     },
     teiger: a.teiger.map((t) => ({ id: t.id, ringer: [t.ring], pod: 1 - t.sok.reduce((acc, x) => acc * (1 - x.pod), 1) })),
     reflekser: a.punkter.filter((p) => p.type === 'poi').map((p) => ({ id: p.id, navn: p.tekst, pos: p.pos })),
-    ressurser: a.ressurser,
     visningTimer: s.visningTimer ?? standardVisning(),
     forslagOnske: s.forslagOnske,
     merkatorBredde: Math.min(1100, Math.max(400, Math.round(g.n * 2.2))),

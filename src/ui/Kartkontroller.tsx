@@ -13,7 +13,6 @@ const EKSTRA: Array<[keyof Visning, string]> = [
   ['sannsynlighet', 'Sannsynlighet (25/50/75/95 %)'],
   ['gangtid', 'Gangtid fra IPP'],
   ['alleLedelinjer', 'Alle ledelinjer'],
-  ['forslag', 'Ressursforslag'],
 ];
 
 export function Kartkontroller() {

@@ -7,7 +7,6 @@ import { teigAkkPod } from '../domain/aksjon';
 import type { LatLng } from '../domain/coords';
 import { formatLatLonUtm, toUtm } from '../domain/utm';
 import { TEIGFARGER, teigfarge } from '../domain/pod';
-import { RESSURSER } from '../model/ressurser';
 import { LINJETYPE_FARGE, LINJETYPE_NAVN } from '../model/typer';
 import { KARTLAG } from '../services/kartfliser';
 import { VEKTOR_ATTRIBUSJON } from '../services/vektorfliser';
@@ -28,13 +27,6 @@ const PUNKTFARGE = {
   poi: '#7c3aed',
   funn: '#0369a1',
 } as const;
-const RESSURSFARGE: Record<string, string> = {
-  fotmannskap: '#dc2626',
-  hundefører: '#1d4ed8',
-  drone: '#0e7490',
-  atv: '#16a34a',
-  bil: '#15803d',
-};
 
 const toLL = (p: LatLng): L.LatLngTuple => [p.lat, p.lng];
 
@@ -142,7 +134,7 @@ export function Kart() {
     const grov = window.matchMedia?.('(pointer: coarse)').matches;
     // thin lines must be easy to tap: the canvas renderer hit-tests within `tolerance` px
     linjeRenderer.current = L.canvas({ pane: 'linjer', padding: 0.3, tolerance: grov ? 12 : 5 });
-    for (const g of ['ringer', 'alleLinjer', 'spor', 'topp', 'sjekket', 'teigforslag', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'forslag', 'valgt', 'egen']) {
+    for (const g of ['ringer', 'alleLinjer', 'spor', 'topp', 'sjekket', 'teigforslag', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'valgt', 'egen']) {
       grupper.current[g] = L.layerGroup().addTo(map);
     }
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
@@ -607,23 +599,6 @@ export function Kart() {
     });
   }, [resultat, visning.plankart, aksjon.sone]);
 
-  // ------------------------------------------------------------ resource suggestions
-  useEffect(() => {
-    const g = grupper.current.forslag;
-    if (!g) return;
-    g.clearLayers();
-    if (!resultat || !visning.forslag || !visning.plankart) return;
-    for (const f of resultat.forslag) {
-      const kort = RESSURSER.find((r) => r.type === f.ressurs)?.kort ?? f.ressurs;
-      const nr = f.linjeId ? aksjon.lnummer[f.linjeId] : '';
-      L.marker(toLL(f.pos), {
-        icon: divIkon(`<span style="background:${RESSURSFARGE[f.ressurs]}">${esc(kort)} ${f.nr}</span>`, 'forslagikon'),
-        zIndexOffset: 500,
-      })
-        .bindTooltip(`${esc(kort)} ${f.nr}: ${esc(f.tekst)}${nr ? ` (${nr})` : ''}<br>${formatLatLonUtm(f.pos.lat, f.pos.lng, aksjon.sone)}${f.timer != null ? `<br>Kan være nådd etter ${fmtTimer(f.timer)}` : ''}`)
-        .addTo(g);
-    }
-  }, [resultat, visning.forslag, visning.plankart, aksjon.sone, aksjon.lnummer]);
 
   // ------------------------------------------------------------ own position
   useEffect(() => {

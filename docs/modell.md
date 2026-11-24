@@ -288,23 +288,10 @@ hverandre og fra eksisterende R-punkter.
   og 95 % av sannsynligheten (mørk rød → lys oransje).
 - **Mest sannsynlige punkter**: de høyeste cellene med minst max(R25, 300 m) mellom seg.
 
-## 10. Ressursforslag
+## 10. Ressurser
 
-Brukeren oppgir antall enheter per type. Appen foreslår like mange punkter per type:
-
-| Ressurs | Mål |
-|---|---|
-| Fotmannskap | IPP (akslingen), stier, punkter av interesse, områder med høy sannsynlighet |
-| Hundefører | IPP (sporutgang), områder med høy sannsynlighet (grovsøk) |
-| Drone | IPP, deretter ledelinjer (helst elv/bekk og kraftgate), så risikoområder (vann, myr, bre, stup) |
-| ATV | Traktor- og skogsveier |
-| Bil | Veier |
-
-En ledelinje foreslås søkt **ut til punktet personen kan ha nådd** innen valgt gangtid
-(tidslinja). Scoren er sannsynligheten langs den delen. Typene velger etter tur. Et mål en
-annen type allerede har fått, teller halvt, og samme type får ikke to punkter nærmere enn
-max(300 m, 2 celler). Reglene er avklart med brukeren og bygger på veilederens kap. 6.3.
-De er modellantakelser.
+Søkskart tar ikke imot ressurstall. Ressursstatus føres i FAKS. Appen anbefaler i stedet
+ressurs og metode for hvert stisøk (se §10b).
 
 ## Kjente begrensninger
 

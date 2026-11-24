@@ -4,7 +4,6 @@ import { distanceM } from '../domain/geo';
 import { fromUtm, toUtm } from '../domain/utm';
 import { beregn, gridFor, type BeregningInput } from './beregning';
 import type { Komponent } from './lpb';
-import { INGEN_RESSURSER } from './ressurser';
 import { rekkeviddeFaktor } from './sannsynlighet';
 import { droneFlytid } from './soketid';
 import type { OsmData } from './typer';
@@ -49,7 +48,6 @@ function input(over: Partial<BeregningInput> = {}): BeregningInput {
     observasjoner: [],
     teiger: [],
     reflekser: [],
-    ressurser: INGEN_RESSURSER,
     visningTimer: null,
     merkatorBredde: 160,
     ...over,
@@ -345,31 +343,5 @@ describe('interessepunkter per kategori', () => {
   it('foreslår ikke punkter som allerede er registrert som refleks', () => {
     const r = beregn(input({ osm, osmVersjon: '1', reflekser: [{ id: 'R001', navn: 'Hytta', pos: at(2000, 2000) }] }));
     expect(r.poiforslag.some((p) => p.navn === 'Hytta')).toBe(false);
-  });
-});
-
-describe('ressursforslag', () => {
-  it('gir like mange forslag som enheter når det finnes nok mål, og følger reglene', () => {
-    const r = beregn(
-      input({
-        osm,
-        osmVersjon: '1',
-        timerSidenSistSett: 2,
-        visningTimer: 2,
-        ressurser: { fotmannskap: 4, hundefører: 1, drone: 2, atv: 1, bil: 1 },
-      }),
-    );
-    const av = (t: string) => r.forslag.filter((f) => f.ressurs === t);
-    expect(av('fotmannskap')).toHaveLength(4);
-    expect(av('drone')[0].type).toBe('ipp');
-    expect(av('hundefører')[0].type).toBe('ipp');
-    // no tractor roads in the data → no ATV suggestion
-    expect(av('atv')).toHaveLength(0);
-    // the road is 8 km north: 2 h × 3 km/h is not enough → no car suggestion either
-    expect(av('bil')).toHaveLength(0);
-    // trail suggestion for foot teams ends where the person could be after ≤ 2 h
-    const sti = av('fotmannskap').find((f) => f.type === 'ledelinje');
-    expect(sti).toBeDefined();
-    expect(sti!.timer!).toBeLessThanOrEqual(2);
   });
 });
