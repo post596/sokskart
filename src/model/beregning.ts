@@ -12,10 +12,10 @@ import { beregnSannsynlighet, mestSannsynlige, sumCeller, UTGANGSPUNKT } from '.
 import { AREALKLASSE, byggTerreng, type TerrengLag } from './terreng';
 import { cellSoketid, droneFlytid, sokefaktorer } from './soketid';
 import { forslagGrunnlag, type GrunnlagKontekst } from './grunnlag';
-import { dekketAreal, leggTilFastPod, sveipLinje, sveipSkive } from './innsats';
+import { dekketAreal, leggTilDekning, leggTilFastPod, linjerAvSpor, sveipLinje, sveipSkive } from './innsats';
 import type { ForslagGrunnlag } from '../domain/grunnlag';
 import { genererTeiger } from './teiggenerator';
-import type { SokTeknikk } from '../data/modellantakelser';
+import type { SokTeknikk, SporRessurs } from '../data/modellantakelser';
 import { PUNKTBEGRUNNELSE, punktgrunn, PUNKTTYPENAVN, punktvekterMedBidrag, vurderPunkt, type PunktTypeKandidat } from '../data/interessepunkter';
 import type { HoydeRaster, LinjeType, OsmData } from './typer';
 import { LINJETYPE_NAVN, POI_NAVN } from './typer';
@@ -33,8 +33,16 @@ export interface BeregningInput {
   observasjoner: Array<{ pos: LatLng; timerSiden: number; klasse: Observasjonsklasse }>;
   teiger: Array<{ id: string; ringer: LatLng[][]; pod: number }>;
   reflekser: Array<{ id: string; navn: string; pos: LatLng }>;
-  /** search effort outside registered teig searches: points and ledelinjer marked as checked */
-  innsats?: { punkter: LatLng[]; linjer: LatLng[][] };
+  /**
+   * Search effort outside registered teig searches: points and ledelinjer marked as checked,
+   * and GPS tracks. A track does not count inside the teiger in `utelat` (its coverage is
+   * already in a registered search there).
+   */
+  innsats?: {
+    punkter: LatLng[];
+    linjer: LatLng[][];
+    spor?: Array<{ id: string; ressurs: SporRessurs; pts: LatLng[]; utelat: string[] }>;
+  };
   ressurser: Ressursantall;
   /** hours walked used for the frontier along ledelinjer (time slider) */
   visningTimer: number | null;
@@ -122,9 +130,12 @@ export interface BeregningResultat {
   post: Float32Array;
   arealKm2: [number, number, number, number];
   sokt: number;
-  teiger: Array<{ id: string; poaFor: number; poaNa: number; celler: number; timer: number }>;
+  /** sporDekning: share of the teig covered by imported GPS tracks (mean 1 − e^−C), when there are tracks */
+  teiger: Array<{ id: string; poaFor: number; poaNa: number; celler: number; timer: number; sporDekning?: number }>;
   /** POA now outside all teiger */
   utenforTeiger: number;
+  /** ledelinjer followed by GPS tracks (share of the line within the tolerance ≥ sporLinjeAndel) */
+  sporLinjer: Array<{ id: string; andel: number; spor: string[] }>;
   punkter: Punkt[];
   linjer: LinjeInfo[];
   linjeTider: Float32Array;
@@ -153,6 +164,8 @@ export interface BeregningCache {
   terr?: TerrengLag;
   T1?: Float32Array;
   obsT1?: Map<string, Float32Array>;
+  /** swept area per cell for each GPS track (sparse), keyed by grid, track and sweep width */
+  spor?: Map<string, Map<number, number>>;
 }
 
 const gridKeyOf = (g: Grid) => `${g.zone}|${g.west.toFixed(2)}|${g.north.toFixed(2)}|${g.n}|${g.cell.toFixed(4)}`;
@@ -212,7 +225,8 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
   });
   for (const k of [...cache.obsT1.keys()]) if (!brukt.has(k)) cache.obsT1.delete(k);
 
-  const innsats = lagInnsats(g, inp);
+  const teigCellerPerId = new Map(inp.teiger.map((t, k) => [t.id, teigCeller[k]]));
+  const { igjen: innsats, sporAndel } = lagInnsats(g, gk, inp, teigCellerPerId, cache);
 
   const s = beregnSannsynlighet({
     g,
@@ -271,12 +285,32 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
   const teiger = inp.teiger.map((t, k) => {
     let timer = 0;
     for (const c of teigCeller[k]) timer += sf[c] > 0 ? cellSoketid(cellM2, sf[c], teknikk) : 0;
-    return { id: t.id, poaFor: sumCeller(s.prior, teigCeller[k]), poaNa: sumCeller(s.post, teigCeller[k]), celler: teigCeller[k].length, timer };
+    const n = teigCeller[k].length;
+    return {
+      id: t.id,
+      poaFor: sumCeller(s.prior, teigCeller[k]),
+      poaNa: sumCeller(s.post, teigCeller[k]),
+      celler: n,
+      timer,
+      ...(sporAndel && n ? { sporDekning: sumCeller(sporAndel, teigCeller[k]) / n } : {}),
+    };
   });
   const iTeig = new Uint8Array(s.post.length);
   for (const c of teigCeller) for (const k of c) iTeig[k] = 1;
   let utenforTeiger = 0;
   for (let k = 0; k < s.post.length; k++) if (!iTeig[k]) utenforTeiger += s.post[k];
+
+  // ledelinjer followed by GPS tracks (tolerance: half the sweep width, at least the model value)
+  const spor = inp.innsats?.spor ?? [];
+  const sporLinjer =
+    spor.length && osmLinjer.length
+      ? linjerAvSpor(
+          g,
+          terr.linjeXY,
+          spor.map((x) => ({ id: x.id, xy: x.pts.map((p) => tilGrid(g, p)), tolM: Math.max((m.sokebredde[x.ressurs] ?? 30) / 2, m.sporLinjeToleranseM) })),
+          m.sporLinjeAndel,
+        ).map((r) => ({ id: osmLinjer[r.i].id, andel: r.andel, spor: r.spor }))
+      : [];
 
   // resource suggestions
   const total = Object.values(inp.ressurser).reduce((a, b) => a + (b || 0), 0);
@@ -301,7 +335,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
         return { lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6) };
       }),
     });
-    const ctx: GrunnlagKontekst = { g, band: s.band, T1, v, terr, osm: inp.osm, reflekser: inp.reflekser, sokefaktor: sf };
+    const ctx: GrunnlagKontekst = { g, band: s.band, T1, v, terr, osm: inp.osm, reflekser: inp.reflekser, sokefaktor: sf, sporAndel };
     if (onske.teig) {
       const o = onske.teig;
       const maal = new Uint8Array(N);
@@ -388,6 +422,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     sokt: s.sokt,
     teiger,
     utenforTeiger,
+    sporLinjer,
     punkter,
     linjer,
     linjeTider: tider,
@@ -417,14 +452,25 @@ export const DRONEEFFEKT: Record<number, number> = {
 };
 
 /**
- * Remaining share per cell after checked points and ledelinjer (fixed POD inside their swept
- * area), or null when there is none.
+ * Search effort outside registered teig searches.
+ * - igjen: remaining share per cell after checked points/lines (fixed POD inside their swept
+ *   area) and GPS tracks (C = swept area / cell area with the resource's sweep width,
+ *   POD = 1 − e^−C; not inside teiger whose registered search already uses the track)
+ * - sporAndel: share covered by all tracks (1 − e^−C), for display per teig/suggestion
  */
-function lagInnsats(g: Grid, inp: BeregningInput): Float32Array | null {
+function lagInnsats(
+  g: Grid,
+  gk: string,
+  inp: BeregningInput,
+  teigCeller: Map<string, Int32Array>,
+  cache: BeregningCache,
+): { igjen: Float32Array | null; sporAndel: Float32Array | null } {
   const i = inp.innsats;
-  if (!i || (!i.punkter.length && !i.linjer.length)) return null;
+  const spor = i?.spor ?? [];
+  if (!i || (!i.punkter.length && !i.linjer.length && !spor.length)) return { igjen: null, sporAndel: null };
   const m = inp.m;
-  const igjen = new Float32Array(g.n * g.n).fill(1);
+  const N = g.n * g.n;
+  const igjen = new Float32Array(N).fill(1);
   for (const p of i.punkter) {
     const [x, y] = tilGrid(g, p);
     leggTilFastPod(g, igjen, dekketAreal((legg) => sveipSkive(g, x, y, m.sjekketPunktM, legg)), m.sjekketPunktPod);
@@ -433,7 +479,35 @@ function lagInnsats(g: Grid, inp: BeregningInput): Float32Array | null {
     const xy = l.map((p) => tilGrid(g, p));
     leggTilFastPod(g, igjen, dekketAreal((legg) => sveipLinje(g, xy, m.sjekketLinjeM, legg)), m.sjekketLinjePod);
   }
-  return igjen;
+  let sporAndel: Float32Array | null = null;
+  if (spor.length) {
+    const Calle = new Float32Array(N);
+    const Ceff = new Float32Array(N);
+    cache.spor ??= new Map();
+    const brukt = new Set<string>();
+    for (const s of spor) {
+      const W = m.sokebredde[s.ressurs] ?? 30;
+      const key = `${gk}|${s.id}|${W}|${s.pts.length}`;
+      brukt.add(key);
+      let d = cache.spor.get(key);
+      if (!d) {
+        const xy = s.pts.map((p) => tilGrid(g, p));
+        d = dekketAreal((legg) => sveipLinje(g, xy, W / 2, legg));
+        cache.spor.set(key, d);
+      }
+      leggTilDekning(g, Calle, d);
+      const ute = new Set<number>();
+      for (const id of s.utelat) for (const c of teigCeller.get(id) ?? []) ute.add(c);
+      leggTilDekning(g, Ceff, d, ute);
+    }
+    for (const k of [...cache.spor.keys()]) if (!brukt.has(k)) cache.spor.delete(k);
+    sporAndel = new Float32Array(N);
+    for (let k = 0; k < N; k++) {
+      igjen[k] *= Math.exp(-Ceff[k]);
+      sporAndel[k] = 1 - Math.exp(-Calle[k]);
+    }
+  }
+  return { igjen, sporAndel };
 }
 
 export function droneeffekt(g: Grid, terr: TerrengLag): Float32Array {

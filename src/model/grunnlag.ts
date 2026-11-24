@@ -30,6 +30,8 @@ export interface GrunnlagKontekst {
   reflekser: Array<{ id: string; navn: string; pos: { lat: number; lng: number } }>;
   /** search speed factor per cell (foot teiger) */
   sokefaktor?: Float32Array;
+  /** share covered by imported GPS tracks per cell (1 − e^−C), when there are tracks */
+  sporAndel?: Float32Array | null;
 }
 
 /** Bounding boxes of the ledelinjer, computed once per context. */
@@ -87,7 +89,9 @@ export function forslagGrunnlag(
   let helN = 0;
   let sfSum = 0;
   let sfN = 0;
+  let sporSum = 0;
   for (const c of celler) {
+    if (ctx.sporAndel) sporSum += ctx.sporAndel[c];
     const b = ctx.band[c];
     soner[b >= 0 && b <= 3 ? b : 4] += 1 / n;
     const at = terr.arealtype[c];
@@ -182,6 +186,7 @@ export function forslagGrunnlag(
       ? { teknikk: { navn: t.navn, mannskap: t.mannskap, avstandM: t.avstandM, fartKmt: t.fartKmt, sokefaktor: r3(sfN ? sfSum / sfN : 0), timer: Math.round(f.timer * 100) / 100 } }
       : {}),
     ...(ekstra.fase ? { fase: ekstra.fase } : {}),
+    ...(ctx.sporAndel ? { sporDekning: r3(sporSum / n) } : {}),
     ...(ekstra.drone ? { drone: { ...ekstra.drone, effekt: r3(ekstra.drone.effekt), minutter: Math.round(ekstra.drone.minutter) } } : {}),
     beregnet: new Date().toISOString(),
   };

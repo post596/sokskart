@@ -1,4 +1,6 @@
 import { timerMellom } from '../domain/aksjon';
+import { LINJETYPE_NAVN, type LinjeType } from '../model/typer';
+import { forenkleLinje } from './handlinger';
 import { gridFor, type BeregningInput } from '../model/beregning';
 import { blandingRinger, byggKomponenter, vektetFart } from '../model/lpb';
 import { Beregner } from '../model/workerKlient';
@@ -60,6 +62,13 @@ export function lagInput(): BeregningInput | null {
       linjer: Object.values(a.linjestatus)
         .filter((l) => l.kilde === 'manuell')
         .map((l) => l.pts),
+      // a track already used for the POD of a registered teig search does not count again there
+      spor: a.spor.map((s) => ({
+        id: s.id,
+        ressurs: s.ressurs,
+        pts: s.pts,
+        utelat: a.teiger.filter((t) => t.sok.some((x) => x.spor?.includes(s.id))).map((t) => t.id),
+      })),
     },
     teiger: a.teiger.map((t) => ({ id: t.id, ringer: [t.ring], pod: 1 - t.sok.reduce((acc, x) => acc * (1 - x.pod), 1) })),
     reflekser: a.punkter.filter((p) => p.type === 'poi').map((p) => ({ id: p.id, navn: p.tekst, pos: p.pos })),
@@ -134,8 +143,14 @@ async function kjor(): Promise<void> {
     sisteInput = '';
     return;
   }
-  // skip when nothing changed (the big arrays are compared by version strings)
-  const key = JSON.stringify({ ...input, osm: input.osmVersjon, hoyde: input.hoydeVersjon });
+  // skip when nothing changed (the big arrays are compared by version strings; tracks never
+  // change their points after import, so id, resource and length identify them)
+  const key = JSON.stringify({
+    ...input,
+    osm: input.osmVersjon,
+    hoyde: input.hoydeVersjon,
+    innsats: input.innsats && { ...input.innsats, spor: input.innsats.spor?.map((s) => [s.id, s.ressurs, s.pts.length, s.utelat]) },
+  });
   if (key === sisteInput && s.resultat) return;
   sisteInput = key;
   beregner ??= new Beregner();
@@ -159,7 +174,54 @@ async function kjor(): Promise<void> {
       cur.melding(n ? `${n} forslag er klare. Godkjenn dem i fanen Teiger.` : 'Fant ingen områder å foreslå (alt er dekket av teiger, eller mangler sannsynlighet).', n ? 'ok' : 'info');
     }
     tildelLnummer();
+    synkSporLinjer();
   } else cur.set({ beregner: false });
+}
+
+/**
+ * Keeps the «searched by GPS track» status of ledelinjer in step with the latest result:
+ * adds lines the tracks now follow, removes those they no longer do. Manual marks are
+ * never touched. Writes (and logs) only when something changed.
+ */
+function synkSporLinjer(): void {
+  const s = useStore.getState();
+  const r = s.resultat;
+  const osm = s.osm;
+  if (!r || !osm) return;
+  const a = s.aksjon;
+  const na = new Map(r.sporLinjer.map((x) => [x.id, x]));
+  const fjern = Object.entries(a.linjestatus).filter(([id, st]) => st.kilde === 'spor' && !na.has(id));
+  const nye = r.sporLinjer.filter((x) => {
+    const st = a.linjestatus[x.id];
+    return !st || (st.kilde === 'spor' && (Math.abs((st.andel ?? 0) - x.andel) > 0.01 || (st.spor ?? []).join() !== x.spor.join()));
+  });
+  if (!fjern.length && !nye.length) return;
+  const navn = (id: string, type: LinjeType, n: string) => `${a.lnummer[id] ?? LINJETYPE_NAVN[type]}${n ? ` «${n}»` : ''}`;
+  const logg: string[] = [];
+  s.endreAksjon((x) => {
+    for (const [id, st] of fjern) {
+      delete x.linjestatus[id];
+      logg.push(`${navn(id, st.type, st.navn)}: ikke lenger dekket av GPS-spor`);
+    }
+    for (const n of nye) {
+      const l = osm.linjer.find((o) => o.id === n.id);
+      if (!l) continue;
+      const fantes = x.linjestatus[n.id];
+      x.linjestatus[n.id] = {
+        tid: fantes?.tid ?? new Date().toISOString(),
+        kilde: 'spor',
+        pts: fantes?.pts ?? forenkleLinje(l.pts),
+        ...(x.lnummer[n.id] ? { nr: x.lnummer[n.id] } : {}),
+        navn: l.navn,
+        type: l.type,
+        spor: n.spor,
+        andel: n.andel,
+      };
+      if (!fantes) logg.push(`${navn(n.id, l.type, l.navn)} merket som søkt: GPS-spor følger ${Math.round(n.andel * 100)} % av linja`);
+    }
+    const t = new Date().toISOString();
+    for (const tekst of logg) x.logg.push({ tid: t, tekst });
+  });
 }
 
 /** Gives the top ranked ledelinjer a fixed L number the first time they enter the top list. */

@@ -182,6 +182,24 @@ registrert søk, telles ikke igjen for samme teig.
 Søkebreddene er modellantakelser («moderate» standardverdier valgt av brukeren). Når både
 hund og hundefører har spor i teigen, telles begge.
 
+**Spor senker sannsynligheten i hele kartet** (`src/model/innsats.ts`). Hvert importert spor
+regnes som en korridor med bredde W langs sporet:
+
+- **Dekning per celle:** C = sveipet areal / celleareal, summert over sporene. Gjenværende
+  andel blir e^(−C), altså POD = 1 − e^(−C) per celle. Dette ganges inn etter teigsøkene.
+  Nye teigforslag går dermed til hullene der ingen har gått.
+- **Ingen dobbelttelling:** et spor som er koblet til et registrert søk i en teig, telles
+  ikke inne i den teigen, fordi søkets POD allerede dekker det. Utenfor teigen teller det
+  fortsatt. Når søk registreres, kobles sporene i teigen som standard.
+- **Ledelinjer:** en ledelinje regnes som søkt når minst 70 % av den ligger innenfor
+  max(W/2, 25 m) fra et spor. Den merkes da «søkt (GPS-spor)» automatisk, og merket fjernes
+  hvis sporet slettes. Slike linjer får ingen ekstra POD, fordi sporet allerede har gitt
+  dekningen.
+- **Visning:** per teig og per teigforslag vises «GPS-spor dekker ca. X %» (snitt av
+  1 − e^(−C) i området, alle spor).
+- **Begrensning:** POD forfaller ikke over tid. Et område som ble søkt for mange timer siden,
+  regnes som like godt søkt, selv om personen kan ha beveget seg inn i det senere.
+
 ## 8d. Kvalitetssikring
 
 Ved avslutning uten funn (veileder 7.5.2) viser appen teiger som **berører** R50 og ikke har

@@ -149,8 +149,9 @@ export function nyId(): string {
  * 2: regioner/Mattson and the savnet profile removed.
  * 3: drone areas 0,2–0,45 km² (one battery) instead of 1–3 km².
  * 4: funn (finds) count like observations; old ones get klasse «mulig».
+ * 5: imported GPS tracks lower the probability along them (notice only).
  */
-export const AKSJON_SKJEMA = 4;
+export const AKSJON_SKJEMA = 5;
 
 export function nyAksjon(): Aksjon {
   const t = new Date().toISOString();
@@ -331,6 +332,13 @@ function migrer(a: Aksjon, fra: number, advarsler: string[]): void {
   if (funn.length) {
     for (const p of funn) p.klasse = 'mulig';
     const t = `Funn av gjenstand påvirker nå sannsynlighetskartet. ${funn.map((p) => p.id).join(', ')} er satt til «mulig» – kontroller klassifiseringen i fanen Punkter.`;
+    a.logg.push({ tid: new Date().toISOString(), tekst: t });
+    advarsler.push(t);
+  }
+  if (fra < 5 && a.spor.length) {
+    const t =
+      `${a.spor.length} GPS-spor senker nå sannsynligheten langs sporene (søkebredde per ressurs). ` +
+      'Spor som er brukt til POD i et registrert teigsøk, telles ikke på nytt i den teigen.';
     a.logg.push({ tid: new Date().toISOString(), tekst: t });
     advarsler.push(t);
   }

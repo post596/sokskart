@@ -83,7 +83,7 @@ export function settPunktSjekket(id: string, paa: boolean, av = ''): void {
 }
 
 /** Line simplified to about 5 m in UTM, for storing with its status. */
-function forenkleLinje(pts: LatLng[]): LatLng[] {
+export function forenkleLinje(pts: LatLng[]): LatLng[] {
   if (pts.length < 3) return pts.map((p) => ({ lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6) }));
   const z = computeZone(pts[0].lat, pts[0].lng, 'auto');
   return forenkle(

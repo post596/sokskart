@@ -118,6 +118,10 @@ export interface Modellantakelser {
   /** «Ferdig sjekket» ledelinje (hurtigsøk): POD within this distance (m) on each side. */
   sjekketLinjePod: number;
   sjekketLinjeM: number;
+  /** A ledelinje counts as searched by GPS tracks when this share of it lies within the tolerance. */
+  sporLinjeAndel: number;
+  /** Tolerance (m) between track and ledelinje; at least half the sweep width is used. */
+  sporLinjeToleranseM: number;
 
   /** Tak på søkeradius for stier og veier (km). */
   ledelinjeTakKm: number;
@@ -179,6 +183,8 @@ export const STANDARD_MODELL: Modellantakelser = {
   sjekketPunktM: 50,
   sjekketLinjePod: 0.5,
   sjekketLinjeM: 30,
+  sporLinjeAndel: 0.7,
+  sporLinjeToleranseM: 25,
 
   ledelinjeTakKm: 10,
   antallLedelinjer: 20,
@@ -256,6 +262,15 @@ export const MODELL_FELT: Array<{
   { felt: 'sjekketPunktM', navn: 'Radius for sjekket punkt (m)', steg: 5, min: 10, max: 500 },
   { felt: 'sjekketLinjePod', navn: 'POD for sjekket ledelinje (0–1)', steg: 0.05, min: 0, max: 1, hjelp: 'Hurtigsøk langs linja. Gjelder innenfor avstanden under på hver side.' },
   { felt: 'sjekketLinjeM', navn: 'Avstand på hver side av sjekket ledelinje (m)', steg: 5, min: 5, max: 300 },
+  {
+    felt: 'sporLinjeAndel',
+    navn: 'Ledelinje søkt av GPS-spor fra andel (0–1)',
+    steg: 0.05,
+    min: 0.1,
+    max: 1,
+    hjelp: 'Så stor del av linja må ligge nær et spor for at den merkes som søkt.',
+  },
+  { felt: 'sporLinjeToleranseM', navn: 'Avstand spor–ledelinje (m)', steg: 5, min: 5, max: 200 },
   { felt: 'ledelinjeTakKm', navn: 'Tak på søkeradius for stier (km)', steg: 1, min: 1, max: 25 },
   { felt: 'antallLedelinjer', navn: 'Antall ledelinjer med L-nummer', steg: 1, min: 5, max: 60 },
   { felt: 'antallPunkter', navn: 'Antall mest sannsynlige punkter', steg: 1, min: 3, max: 20 },

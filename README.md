@@ -224,6 +224,12 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
   («T005–281345–RK–Drone–71») gir ressurstype, organisasjon og id automatisk. Åpne en teig
   for å se dekning og foreslått POD, trykk «Bruk foreslått POD» og juster før du registrerer.
   Sporene vises i resultatkartet med veilederens farger.
+  - **Sporene senker også sannsynligheten** langs sporet, i hele kartet (søkebredde per
+    ressurs, POD = 1 − e^(−C)). Nye teigforslag går derfor til områdene der ingen har gått.
+  - En ledelinje som et spor følger i minst 70 % av lengden, merkes automatisk «søkt
+    (GPS-spor)».
+  - Spor som er koblet til et registrert teigsøk, telles ikke dobbelt inne i den teigen. De
+    kobles som standard når søket registreres.
 - **Kvalitetssikring** (fanen Teiger): teiger som ikke oppfyller kravet for R50/R75, og teiger
   med markert høyere gjenstående POA. De kan markeres i kartet.
 - **Tidslinje:** sist sett, observasjoner, funn og søk på en tidsakse. Observasjoner som ikke

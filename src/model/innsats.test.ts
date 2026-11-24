@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cellAreaKm2, type Grid } from './grid';
-import { dekketAreal, leggTilDekning, leggTilFastPod, sveipLinje, sveipSkive } from './innsats';
+import { dekketAreal, leggTilDekning, leggTilFastPod, linjerAvSpor, sveipLinje, sveipSkive } from './innsats';
 
 /** Plain grid: n × n cells of `cell` m, scale factor 1, west/north at 0/n·cell. */
 const grid = (n: number, cell: number, k = 1): Grid =>
@@ -35,6 +35,33 @@ describe('søkt innsats: sveipet areal', () => {
     expect(igjen[5]).toBeCloseTo(0.6, 6);
     leggTilFastPod(g, igjen, new Map([[5, 20000]]), 0.5); // more than the cell: capped
     expect(igjen[5]).toBeCloseTo(0.3, 6);
+  });
+  it('et rett spor gir Σ C·A ≈ W·L, og et helikopterspor dekker flere celler på tvers', () => {
+    const g = grid(60, 50);
+    const C = new Float32Array(3600);
+    leggTilDekning(g, C, dekketAreal((legg) => sveipLinje(g, [[200, 1500], [2200, 1500]], 15, legg)));
+    const sumCA = C.reduce((s, c) => s + c, 0) * 2500;
+    expect(sumCA / (30 * 2000)).toBeCloseTo(1, 2);
+    const H = dekketAreal((legg) => sveipLinje(g, [[200, 1525], [2200, 1525]], 75, legg));
+    const rader = new Set([...H.keys()].map((c) => Math.floor(c / 60)));
+    expect(rader.size).toBeGreaterThanOrEqual(3);
+  });
+  it('ledelinje fulgt av spor: parallell 10 m unna teller, en kryssende linje gjør ikke', () => {
+    const g = grid(60, 50);
+    const linjer: Array<Array<[number, number]>> = [
+      [
+        [300, 1000],
+        [1800, 1000],
+      ], // along the track, 10 m off
+      [
+        [1000, 200],
+        [1000, 2800],
+      ], // crossing
+    ];
+    const r = linjerAvSpor(g, linjer, [{ id: 's1', xy: [[200, 990], [2000, 990]], tolM: 25 }], 0.7);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ i: 0, spor: ['s1'] });
+    expect(r[0].andel).toBeGreaterThan(0.99);
   });
   it('dekning C = sveipet areal / celleareal', () => {
     const g = grid(10, 100);

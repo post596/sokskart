@@ -211,6 +211,35 @@ describe('ferdig sjekket punkt og ledelinje', () => {
   });
 });
 
+describe('GPS-spor', () => {
+  // a foot team walked the trail w1 from the IPP 4 km east
+  const spor = { id: 's1', ressurs: 'fotmannskap' as const, pts: [at(0, 5), at(4000, 5)], utelat: [] as string[] };
+  const T001 = { id: 'T001', ringer: [[at(500, -500), at(2000, -500), at(2000, 500), at(500, 500)]], pod: 0 };
+  it('senker sannsynligheten langs sporet og merker linja som søkt når sporet følger nok av den', () => {
+    const uten = beregn(input({ osm, osmVersjon: '1' }));
+    const med = beregn(input({ osm, osmVersjon: '1', innsats: { punkter: [], linjer: [], spor: [spor] } }));
+    const w1 = (r: typeof uten) => r.linjer.find((l) => l.id === 'w1')!.na;
+    expect(w1(med)).toBeLessThan(w1(uten));
+    expect(med.sokt).toBeGreaterThan(0);
+    // the track covers 4 of the 9 km of w1: below 70 %, so not marked
+    expect(med.sporLinjer.find((l) => l.id === 'w1')).toBeUndefined();
+    const hele = beregn(input({ osm, osmVersjon: '1', innsats: { punkter: [], linjer: [], spor: [{ ...spor, pts: [at(0, 5), at(9000, 5)] }] } }));
+    expect(hele.sporLinjer.find((l) => l.id === 'w1')).toMatchObject({ spor: ['s1'] });
+  });
+  it('et spor koblet til et registrert søk i T001 virker ikke inne i T001, men utenfor', () => {
+    const fritt = beregn(input({ osm, osmVersjon: '1', teiger: [T001], innsats: { punkter: [], linjer: [], spor: [spor] } }));
+    const koblet = beregn(input({ osm, osmVersjon: '1', teiger: [T001], innsats: { punkter: [], linjer: [], spor: [{ ...spor, utelat: ['T001'] }] } }));
+    const uten = beregn(input({ osm, osmVersjon: '1', teiger: [T001] }));
+    // inside T001 the linked track removes nothing (POA before searches = prior share in T001)
+    const tapI = (r: typeof uten) => r.teiger[0].poaFor - r.teiger[0].poaNa * (1 - r.sokt);
+    expect(tapI(koblet)).toBeCloseTo(tapI(uten), 6);
+    expect(tapI(fritt)).toBeGreaterThan(tapI(koblet) + 1e-4);
+    // outside it still counts
+    expect(koblet.sokt).toBeGreaterThan(0);
+    expect(fritt.teiger[0].sporDekning).toBeGreaterThan(0);
+  });
+});
+
 describe('søk i teig', () => {
   it('POS = POA før søk × POD, og POA utenfor teiger er resten', () => {
     const ring = [at(-3000, -3000), at(0, -3000), at(0, 3000), at(-3000, 3000)];

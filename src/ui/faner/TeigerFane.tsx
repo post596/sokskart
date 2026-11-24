@@ -28,7 +28,10 @@ function SokSkjema({ teig, dekning }: { teig: Teig; dekning: TeigDekning | null 
   const [podEgen, setPodEgen] = useState('');
   const [tid, setTid] = useState(lokalTid());
   const [spor, setSpor] = useState<string[]>([]);
+  // tracks in the teig are linked to the search by default, so they are not counted twice
+  const [koble, setKoble] = useState(true);
   const pod = podValg === 'egen' ? lesProsent(podEgen) : Number(podValg);
+  const koblet = koble && dekning ? [...new Set([...spor, ...dekning.bidrag.map((b) => b.sporId)])] : spor;
   return (
     <form
       className="sokskjema"
@@ -38,7 +41,7 @@ function SokSkjema({ teig, dekning }: { teig: Teig; dekning: TeigDekning | null 
           useStore.getState().melding('Skriv POD som prosent, f.eks. 60.', 'feil');
           return;
         }
-        registrerSok(teig.id, { tid, pod, org, ressurstype: type, enhet: enhet.trim(), merknad: spor.length ? 'POD foreslått fra GPS-spor' : '', spor });
+        registrerSok(teig.id, { tid, pod, org, ressurstype: type, enhet: enhet.trim(), merknad: spor.length ? 'POD foreslått fra GPS-spor' : '', spor: koblet });
         useStore.getState().melding(`Søk registrert i ${teig.id}.`, 'ok');
         setEnhet('');
         setSpor([]);
@@ -72,6 +75,10 @@ function SokSkjema({ teig, dekning }: { teig: Teig; dekning: TeigDekning | null 
           >
             Bruk foreslått POD (kan justeres)
           </button>
+          <label className="avkryss">
+            <input type="checkbox" checked={koble} onChange={(e) => setKoble(e.target.checked)} />
+            Søket bygger på disse GPS-sporene (de telles da ikke dobbelt i teigen)
+          </label>
         </div>
       )}
       <div className="rad">
@@ -126,7 +133,7 @@ function SokSkjema({ teig, dekning }: { teig: Teig; dekning: TeigDekning | null 
       <div className="linje">
         <span className="dempet liten-tekst">
           Oppdrag: {oppdragsnavn(teig.id, org, type, enhet)}
-          {spor.length > 0 && ` · bygger på ${spor.length} spor`}
+          {koblet.length > 0 && ` · bygger på ${koblet.length} spor`}
         </span>
         <button type="submit" className="knapp hoved">
           Registrer søk
@@ -417,6 +424,7 @@ export function TeigerFane() {
                   {t.type === 'D' && <> · {fmtFlytid(droneFlytid(areal, a.modell))}</>} · POA nå{' '}
                   {st ? prosent(st.poaNa) : '–'}
                   {st && t.sok.length > 0 && ` (før søk ${prosent(st.poaFor)})`} · akk. POD {prosent(akk, 0)} ({podBetegnelse(akk)}) · {t.sok.length} søk
+                  {st?.sporDekning != null && st.sporDekning >= 0.01 && ` · GPS-spor dekker ca. ${prosent(st.sporDekning, 0)}`}
                 </div>
                 {apen && (
                   <div className="teigdetaljer">
