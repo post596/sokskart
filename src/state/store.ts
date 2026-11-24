@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { kopierStatistikk, type LpbKategori } from '../data/lpb-stats';
+import type { StiRessurs } from '../data/stisok';
 import { harRegistrerteSok, lesAksjonsfil, nyAksjon, type Aksjon } from '../domain/aksjon';
 import type { LatLng } from '../domain/coords';
 import type { BeregningResultat, ForslagOnske, TeigForslag } from '../model/beregning';
@@ -35,6 +36,11 @@ export interface Visning {
   plankart: boolean;
   resultatkart: boolean;
   etterretningskart: boolean;
+  /** suggestions in the map */
+  teigforslag: boolean;
+  droneforslag: boolean;
+  /** suggested points of interest also outside the Punkter tab */
+  poiforslag: boolean;
 }
 
 export interface Egenposisjon {
@@ -61,6 +67,8 @@ interface State {
   visningTimer: number | null;
   spiller: boolean;
   visning: Visning;
+  /** ledelinjer recommended for this resource are highlighted, the others toned down */
+  linjeFilter: StiRessurs | 'alle';
   grunnkart: string;
   meldinger: Melding[];
   dialog: Dialog | null;
@@ -185,7 +193,11 @@ export const useStore = create<State>()((set, get) => ({
     plankart: true,
     resultatkart: true,
     etterretningskart: true,
+    teigforslag: true,
+    droneforslag: true,
+    poiforslag: false,
   },
+  linjeFilter: 'alle',
   grunnkart: 'topo',
   meldinger: [],
   dialog: null,

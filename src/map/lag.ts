@@ -99,6 +99,8 @@ export interface RekkeviddeData {
   linjer: LatLng[][];
   /** true for paths and roads (drawn wider than streams and power lines) */
   bred: boolean[];
+  /** lines filtered out in the map (not drawn) */
+  skjul?: boolean[];
   /** hours at 1 km/h per vertex, concatenated */
   tider: Float32Array;
   start: Uint32Array;
@@ -172,6 +174,7 @@ export class Rekkeviddelinjer extends L.Layer {
     const brede: Array<[number, number, number, number]> = [];
     const smale: Array<[number, number, number, number]> = [];
     for (let i = 0; i < d.linjer.length; i++) {
+      if (d.skjul?.[i]) continue;
       const pts = d.linjer[i];
       const s = d.start[i];
       const segs = d.bred[i] ? brede : smale;

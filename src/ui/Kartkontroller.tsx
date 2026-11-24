@@ -3,6 +3,7 @@ import { fliserForOmrade, flisUrl, KARTLAG, lastNedFliser } from '../services/ka
 import { posisjonAktiv, startPosisjon, stoppPosisjon } from '../services/posisjon';
 import { useStore, type Visning } from '../state/store';
 import { BANDFARGER } from '../map/lag';
+import { STIRESSURSER, type StiRessurs } from '../data/stisok';
 
 const LAG: Array<[keyof Visning, string]> = [
   ['plankart', 'Plankart'],
@@ -14,10 +15,16 @@ const EKSTRA: Array<[keyof Visning, string]> = [
   ['gangtid', 'Gangtid fra IPP'],
   ['alleLedelinjer', 'Alle ledelinjer'],
 ];
+const FORSLAG: Array<[keyof Visning, string]> = [
+  ['teigforslag', 'Teigforslag'],
+  ['droneforslag', 'Droneområder'],
+  ['poiforslag', 'Punktforslag (også utenfor Punkter)'],
+];
 
 export function Kartkontroller() {
   const visning = useStore((s) => s.visning);
   const grunnkart = useStore((s) => s.grunnkart);
+  const linjeFilter = useStore((s) => s.linjeFilter);
   const egen = useStore((s) => s.egenposisjon);
   const r = useStore((s) => s.resultat);
   const set = useStore((s) => s.set);
@@ -100,6 +107,40 @@ export function Kartkontroller() {
               ))}
             </div>
           )}
+          <hr />
+          <div className="kk-tittel">Forslag i kartet</div>
+          {FORSLAG.map(([k, navn]) => (
+            <label key={k} className="avkryss">
+              <input type="checkbox" checked={visning[k]} onChange={(e) => set({ visning: { ...visning, [k]: e.target.checked } })} />
+              {navn}
+            </label>
+          ))}
+          <label>
+            Ledelinjer for
+            <select value={linjeFilter} onChange={(e) => set({ linjeFilter: e.target.value as StiRessurs | 'alle' })}>
+              <option value="alle">Alle ressurser</option>
+              {STIRESSURSER.map((r) => (
+                <option key={r.type} value={r.type}>
+                  {r.navn}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="knapperad">
+            <button
+              type="button"
+              className={`knapp liten ${linjeFilter === 'drone' && !visning.teigforslag ? 'hoved' : ''}`}
+              title="Fremhev linjer der drone er anbefalt, vis droneområder og skjul teigforslag"
+              onClick={() => set({ linjeFilter: 'drone', visning: { ...visning, droneforslag: true, teigforslag: false, poiforslag: false } })}
+            >
+              Bare drone
+            </button>
+            {(linjeFilter !== 'alle' || !visning.teigforslag || !visning.droneforslag) && (
+              <button type="button" className="knapp liten" onClick={() => set({ linjeFilter: 'alle', visning: { ...visning, teigforslag: true, droneforslag: true } })}>
+                Vis alle
+              </button>
+            )}
+          </div>
           <hr />
           <button type="button" className={`knapp liten ${egen ? 'hoved' : ''}`} onClick={vekslPosisjon}>
             {egen ? 'Skjul min posisjon' : 'Min posisjon'}

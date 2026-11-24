@@ -2,12 +2,12 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '@geoman-io/leaflet-geoman-free';
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { teigAkkPod } from '../domain/aksjon';
 import type { LatLng } from '../domain/coords';
 import { formatLatLonUtm, toUtm } from '../domain/utm';
 import { TEIGFARGER, teigfarge } from '../domain/pod';
-import { LINJETYPE_FARGE, LINJETYPE_NAVN } from '../model/typer';
+import { LINJETYPE_FARGE, LINJETYPE_NAVN, type LinjeType } from '../model/typer';
 import { KARTLAG } from '../services/kartfliser';
 import { VEKTOR_ATTRIBUSJON } from '../services/vektorfliser';
 import { mixRinger, standardVisning } from '../state/beregning';
@@ -19,6 +19,7 @@ import { fmtAvstand, fmtTimer } from '../ui/format';
 import { poiTittel } from '../ui/Poiforslag';
 import { divIkon, esc, lagCanvasOverlay, Rekkeviddelinjer, tegnGangtid, tegnSannsynlighet } from './lag';
 import { naermesteLinje, type PlukkLinje, type Px } from './linjeplukk';
+import { ressurserFor, stisokAnbefaling, valgteKategorier } from '../data/stisok';
 
 const RINGFARGER = ['#7f1d1d', '#b91c1c', '#ea580c', '#a16207'];
 const PUNKTFARGE = {
@@ -105,6 +106,17 @@ export function Kart() {
   const fane = useStore((s) => s.fane);
   const droneforslag = useStore((s) => s.droneforslag);
   const valgt = useStore((s) => s.valgt);
+  const linjeFilter = useStore((s) => s.linjeFilter);
+  // which line types the chosen resource is recommended for (primary or alternative)
+  const kategorier = aksjon.kategorier;
+  const modell = aksjon.modell;
+  const filterTyper = useMemo(() => {
+    if (linjeFilter === 'alle') return null;
+    const kat = valgteKategorier(kategorier);
+    const typer = new Set<LinjeType>();
+    for (const t of Object.keys(LINJETYPE_NAVN) as LinjeType[]) if (ressurserFor(stisokAnbefaling(t, 0, kat, modell)).includes(linjeFilter)) typer.add(t);
+    return typer;
+  }, [linjeFilter, kategorier, modell]);
 
   // ------------------------------------------------------------ init
   useEffect(() => {
@@ -316,6 +328,7 @@ export function Kart() {
           ? {
               linjer: osm.linjer.map((l) => l.pts),
               bred: osm.linjer.map((l) => l.type === 'sti' || l.type === 'traktorvei' || l.type === 'vei'),
+              skjul: filterTyper ? osm.linjer.map((l) => !filterTyper.has(l.type)) : undefined,
               tider: resultat!.linjeTider,
               start: resultat!.linjeStart,
               v: resultat!.fart.v,
@@ -324,7 +337,7 @@ export function Kart() {
           : null,
       );
     }
-  }, [resultat, visning.gangtid, aksjon.ipp, tVis, osm]);
+  }, [resultat, visning.gangtid, aksjon.ipp, tVis, osm, filterTyper]);
 
   // ------------------------------------------------------------ attribution for fallback sources
   useEffect(() => {
@@ -344,10 +357,11 @@ export function Kart() {
     g.clearLayers();
     if (!osm || !visning.alleLedelinjer) return;
     for (const l of osm.linjer) {
+      const ute = filterTyper && !filterTyper.has(l.type);
       L.polyline(l.pts.map(toLL), {
         color: LINJETYPE_FARGE[l.type],
         weight: l.type === 'vei' ? 3 : 2.2,
-        opacity: 0.8,
+        opacity: ute ? 0.2 : 0.8,
         dashArray: l.type === 'sti' ? '6 4' : l.type === 'kraft' ? '1 6' : undefined,
         renderer: linjeRenderer.current ?? undefined,
       })
@@ -355,7 +369,7 @@ export function Kart() {
         .on('click', (e) => velg(e, { type: 'linje', id: l.id }))
         .addTo(g);
     }
-  }, [osm, visning.alleLedelinjer]);
+  }, [osm, visning.alleLedelinjer, filterTyper]);
 
   // ------------------------------------------------------------ prioritised ledelinjer (plankart)
   useEffect(() => {
@@ -368,17 +382,18 @@ export function Kart() {
       const l = osm.linjer[li.i];
       if (!l) return;
       const nr = aksjon.lnummer[l.id] ?? '';
-      L.polyline(l.pts.map(toLL), { color: '#fde047', weight: 10, opacity: 0.7, interactive: false, renderer: linjeRenderer.current ?? undefined }).addTo(g);
-      const pl = L.polyline(l.pts.map(toLL), { color: LINJETYPE_FARGE[l.type], weight: 3.5, renderer: linjeRenderer.current ?? undefined });
+      const ute = filterTyper && !filterTyper.has(l.type);
+      if (!ute) L.polyline(l.pts.map(toLL), { color: '#fde047', weight: 10, opacity: 0.7, interactive: false, renderer: linjeRenderer.current ?? undefined }).addTo(g);
+      const pl = L.polyline(l.pts.map(toLL), { color: LINJETYPE_FARGE[l.type], weight: ute ? 2 : 3.5, opacity: ute ? 0.25 : 1, renderer: linjeRenderer.current ?? undefined });
       pl.bindTooltip(`${nr} ${LINJETYPE_NAVN[l.type]}${l.navn ? ` «${esc(l.navn)}»` : ''}`, {
-        permanent: n < 6 && !aksjon.linjestatus[l.id],
+        permanent: n < 6 && !aksjon.linjestatus[l.id] && !ute,
         className: 'linjeetikett',
         direction: 'center',
       });
       pl.on('click', (e) => velg(e, { type: 'linje', id: l.id }));
       pl.addTo(g);
     });
-  }, [resultat, osm, visning.plankart, aksjon.lnummer, aksjon.linjestatus, aksjon.modell.antallLedelinjer]);
+  }, [resultat, osm, visning.plankart, aksjon.lnummer, aksjon.linjestatus, aksjon.modell.antallLedelinjer, filterTyper]);
 
   // ------------------------------------------------------------ ledelinjer marked as searched (plankart)
   useEffect(() => {
@@ -496,22 +511,22 @@ export function Kart() {
     const g = grupper.current.teigforslag;
     if (!g) return;
     g.clearLayers();
-    teigforslag.forEach((f, i) => {
+    if (visning.teigforslag) teigforslag.forEach((f, i) => {
       L.polygon(f.ring.map(toLL), { color: '#334155', weight: 2.5, dashArray: '6 5', fillColor: '#64748b', fillOpacity: 0.12, pane: 'teiger' })
         .bindTooltip(`Forslag ${i + 1}`, { permanent: true, direction: 'center', className: 'forslagetikett' })
         .addTo(g);
     });
-    droneforslag.forEach((f, i) => {
+    if (visning.droneforslag) droneforslag.forEach((f, i) => {
       L.polygon(f.ring.map(toLL), { color: '#0e7490', weight: 2.5, dashArray: '10 6', fillColor: '#0e7490', fillOpacity: 0.1, pane: 'teiger' })
         .bindTooltip(`Drone ${i + 1}`, { permanent: true, direction: 'center', className: 'forslagetikett' })
         .addTo(g);
     });
-  }, [teigforslag, droneforslag]);
+  }, [teigforslag, droneforslag, visning.teigforslag, visning.droneforslag]);
 
   // ------------------------------------------------------------ suggested points of interest (Punkter tab)
   useEffect(() => {
     const g = grupper.current.teigforslag;
-    if (!g || fane !== 'punkter' || !resultat) return;
+    if (!g || (fane !== 'punkter' && !visning.poiforslag) || !resultat) return;
     const lag = L.layerGroup().addTo(g);
     resultat.poiforslag.slice(0, 12).forEach((p, i) => {
       L.marker(toLL(p.pos), { icon: divIkon(`<span>?${i + 1}</span>`, 'poiforslagikon') })
@@ -522,7 +537,7 @@ export function Kart() {
     return () => {
       lag.remove();
     };
-  }, [fane, resultat]);
+  }, [fane, resultat, visning.poiforslag]);
 
   // ------------------------------------------------------------ quality assurance highlight
   useEffect(() => {

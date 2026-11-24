@@ -708,6 +708,14 @@ hr {
 .kk-innhold .knapp {
   margin-top: 4px;
 }
+.kk-tittel {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+.kk-innhold .knapperad {
+  gap: 4px;
+}
 .tidslinje {
   position: absolute;
   z-index: 850;
