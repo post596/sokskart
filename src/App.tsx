@@ -8,6 +8,7 @@ import { RessurserFane } from './ui/faner/RessurserFane';
 import { StatistikkFane } from './ui/faner/StatistikkFane';
 import { TeigerFane } from './ui/faner/TeigerFane';
 import { TidslinjeFane } from './ui/faner/TidslinjeFane';
+import { NullstillDialog } from './ui/Nullstill';
 import { OrdreDialog } from './ui/Ordre';
 import { Kartkontroller } from './ui/Kartkontroller';
 import { Tidslinje } from './ui/Tidslinje';
@@ -144,6 +145,14 @@ export function App() {
           {!nett && <span className="statusmerke av">Uten nett</span>}
           {beregner && <span className="statusmerke">Beregner …</span>}
           {feil && <span className="statusmerke av" title={feil}>Beregningsfeil</span>}
+          <button
+            type="button"
+            className="knapp liten"
+            title="Ny aksjon eller slett alt på denne enheten"
+            onClick={() => set({ visNullstill: true })}
+          >
+            Start på nytt
+          </button>
         </div>
         <p className="stotte">
           Støtteverktøy. Søksledelsen tar beslutningene – HRS sitt felles system for aksjonsstøtte er det offisielle systemet.
@@ -171,6 +180,7 @@ export function App() {
       </main>
       <Meldinger />
       <Ordre />
+      <NullstillDialog />
       <DialogBoks />
     </div>
   );

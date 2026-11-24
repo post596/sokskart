@@ -58,6 +58,8 @@ export async function hentStier(): Promise<void> {
   }
   const [trbR] = await Promise.allSettled([trbP]);
   const st = useStore.getState();
+  // the aksjon was replaced while fetching («Start på nytt» or another file): drop the result
+  if (st.aksjon.id !== a.id) return;
   const forrige = st.osm;
   if (!osm && (trbR.status === 'rejected' || forrige)) {
     // keep what we already have rather than replacing it with less
@@ -111,6 +113,7 @@ export async function hentStier(): Promise<void> {
     }
   }
   const cur = useStore.getState();
+  if (cur.aksjon.id !== a.id) return;
   if (cur.osm && areal) {
     cur.set({
       osm: { ...cur.osm, omrader: [...cur.osm.omrader, ...areal.omrader], punkter: [...cur.osm.punkter, ...areal.punkter], hentet: new Date().toISOString() },
@@ -478,40 +481,8 @@ export function AksjonFane() {
         <button type="button" className="knapp" onClick={() => eksporter('geojson')} disabled={!a.ipp} title="For import i FAKS eller andre kartverktøy">
           GeoJSON (FAKS)
         </button>
-        <button
-          type="button"
-          className="knapp"
-          onClick={async () => {
-            const ok = await useStore.getState().bekreft({
-              tittel: 'Ny aksjon',
-              tekst: 'Den åpne aksjonen erstattes. Lagre den som fil først hvis du trenger den.',
-              ja: 'Start ny aksjon',
-              nei: 'Avbryt',
-            });
-            if (ok) useStore.getState().nyAksjon();
-          }}
-        >
-          Ny aksjon
-        </button>
-        <button
-          type="button"
-          className="knapp fare"
-          onClick={async () => {
-            const ok = await useStore.getState().bekreft({
-              tittel: 'Slette aksjonen helt?',
-              tekst:
-                'All aksjonsdata på denne enheten slettes: IPP, teiger, punkter, observasjoner, logg, hentede stier og høydedata, og egen statistikk. Dette kan ikke angres. Kartfliser og selve appen beholdes.',
-              ja: 'Slett alt',
-              nei: 'Avbryt',
-              fare: true,
-            });
-            if (ok) {
-              await useStore.getState().slettAksjonHelt();
-              useStore.getState().melding('Aksjonen og alle lokale data er slettet.', 'ok');
-            }
-          }}
-        >
-          Slett aksjonen helt
+        <button type="button" className="knapp fare" onClick={() => useStore.getState().set({ visNullstill: true })}>
+          Start på nytt …
         </button>
       </div>
 

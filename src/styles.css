@@ -79,6 +79,22 @@ body {
   justify-self: end;
   display: flex;
   gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.nullstill-valg {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+.nullstill-valg > div {
+  border: 1px solid var(--linje);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.nullstill-valg p {
+  margin: 6px 0 0;
 }
 .statusmerke {
   font-size: 0.8rem;

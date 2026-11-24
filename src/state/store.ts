@@ -73,6 +73,8 @@ interface State {
   teigforslag: TeigForslag[];
   droneforslag: TeigForslag[];
   visKvalitet: boolean;
+  /** the «Start på nytt» dialog is open */
+  visNullstill: boolean;
 
   endreAksjon: (fn: (a: Aksjon) => void, logg?: string) => void;
   settStatistikk: (s: LpbKategori[]) => void;
@@ -85,9 +87,79 @@ interface State {
   set: (p: Partial<State>) => void;
   lastInn: () => Promise<void>;
   importer: (tekst: string) => Promise<boolean>;
-  nyAksjon: () => void;
-  slettAksjonHelt: () => Promise<void>;
+  /** 'ny': new empty aksjon (keeps statistics and offline map tiles); 'alt': delete everything on this device */
+  nullstill: (valg: 'ny' | 'alt') => Promise<void>;
   settIpp: (p: LatLng) => Promise<void>;
+}
+
+/** Everything that belongs to one aksjon (and its work in progress). Statistics, map view and settings are not included. */
+type Aksjonstilstand = Pick<
+  State,
+  | 'aksjon'
+  | 'osm'
+  | 'osmStatus'
+  | 'hoyde'
+  | 'hoydeStatus'
+  | 'resultat'
+  | 'beregner'
+  | 'beregningFeil'
+  | 'fane'
+  | 'modus'
+  | 'visningTimer'
+  | 'spiller'
+  | 'egenposisjon'
+  | 'valgtTeig'
+  | 'redigererTeig'
+  | 'ordreFor'
+  | 'forslagOnske'
+  | 'teigforslag'
+  | 'droneforslag'
+  | 'visKvalitet'
+>;
+
+/** A fresh, empty aksjon state. Used at start-up, when opening a file and by «Start på nytt». */
+export function tomAksjonstilstand(): Aksjonstilstand {
+  return {
+    aksjon: nyAksjon(),
+    osm: null,
+    osmStatus: { henter: false, feil: null, merknad: null },
+    hoyde: null,
+    hoydeStatus: { henter: false, feil: null },
+    resultat: null,
+    beregner: false,
+    beregningFeil: null,
+    fane: 'aksjon',
+    modus: null,
+    visningTimer: null,
+    spiller: false,
+    egenposisjon: null,
+    valgtTeig: null,
+    redigererTeig: null,
+    ordreFor: null,
+    forslagOnske: null,
+    teigforslag: [],
+    droneforslag: [],
+    visKvalitet: false,
+  };
+}
+
+/**
+ * Module-level work that must stop when the aksjon is replaced (pending computations,
+ * height fetches, the geolocation watch, form drafts). Modules register here so the
+ * store does not need to import them.
+ */
+const nullstillere: Array<() => void> = [];
+export function vedNullstilling(fn: () => void): void {
+  nullstillere.push(fn);
+}
+function kjorNullstillere(): void {
+  for (const fn of nullstillere) {
+    try {
+      fn();
+    } catch {
+      /* a failing hook must not stop the reset */
+    }
+  }
 }
 
 let meldingId = 0;
@@ -95,19 +167,8 @@ let fokusN = 0;
 
 export const useStore = create<State>()((set, get) => ({
   lastet: false,
-  aksjon: nyAksjon(),
+  ...tomAksjonstilstand(),
   statistikk: kopierStatistikk(),
-  osm: null,
-  osmStatus: { henter: false, feil: null },
-  hoyde: null,
-  hoydeStatus: { henter: false, feil: null },
-  resultat: null,
-  beregner: false,
-  beregningFeil: null,
-  fane: 'aksjon',
-  modus: null,
-  visningTimer: null,
-  spiller: false,
   visning: {
     sannsynlighet: true,
     gangtid: true,
@@ -121,15 +182,8 @@ export const useStore = create<State>()((set, get) => ({
   meldinger: [],
   dialog: null,
   naa: Date.now(),
-  egenposisjon: null,
   fokus: null,
-  valgtTeig: null,
-  redigererTeig: null,
-  ordreFor: null,
-  forslagOnske: null,
-  teigforslag: [],
-  droneforslag: [],
-  visKvalitet: false,
+  visNullstill: false,
 
   endreAksjon: (fn, logg) =>
     set((s) => {
@@ -205,40 +259,28 @@ export const useStore = create<State>()((set, get) => ({
       });
       if (!ok) return false;
     }
-    set({
-      aksjon: r.fil.aksjon,
-      statistikk: r.fil.statistikk,
-      osm: r.fil.osm,
-      hoyde: null,
-      resultat: null,
-      visningTimer: null,
-      ordreFor: null,
-    });
+    kjorNullstillere();
+    set({ ...tomAksjonstilstand(), aksjon: r.fil.aksjon, statistikk: r.fil.statistikk, osm: r.fil.osm });
     get().endreAksjon(() => {}, 'Aksjon åpnet fra fil');
     for (const a of r.advarsler) get().melding(a, 'info');
     get().melding('Aksjonen er åpnet.', 'ok');
     return true;
   },
 
-  nyAksjon: () => {
-    set({ aksjon: nyAksjon(), osm: null, hoyde: null, resultat: null, visningTimer: null, valgtTeig: null, redigererTeig: null, ordreFor: null });
-  },
-
-  slettAksjonHelt: async () => {
-    await slettAlt();
-    set({
-      aksjon: nyAksjon(),
-      statistikk: kopierStatistikk(),
-      osm: null,
-      hoyde: null,
-      resultat: null,
-      visningTimer: null,
-      egenposisjon: null,
-      valgtTeig: null,
-      redigererTeig: null,
-      ordreFor: null,
-    });
-    // map tiles and the app itself stay cached: they hold no personal data
+  nullstill: async (valg) => {
+    // stop saving first, so an old save cannot land after the wipe
+    await pauseLagring();
+    kjorNullstillere();
+    set({ ...tomAksjonstilstand(), visNullstill: false, ...(valg === 'alt' ? { statistikk: kopierStatistikk(), fokus: null } : {}) });
+    if (valg === 'alt') {
+      await slettAlt();
+      await slettKartbuffer();
+      fortsettLagring(false); // nothing is written back: the device stays empty
+      get().melding('Alt er slettet fra denne enheten: aksjon, logg, stier, høydedata, egen statistikk og nedlastede kart.', 'ok');
+    } else {
+      fortsettLagring(true);
+      get().melding('Ny aksjon startet. Statistikken og nedlastede kart er beholdt.', 'ok');
+    }
   },
 
   settIpp: async (p) => {
@@ -276,22 +318,70 @@ export const useStore = create<State>()((set, get) => ({
 
 let lagreTimer: ReturnType<typeof setTimeout> | null = null;
 let forrige: { aksjon?: Aksjon; statistikk?: LpbKategori[]; osm?: OsmData | null; hoyde?: HoydeRaster | null } = {};
+/** the save that is running now (awaited before a reset) */
+let pagaende: Promise<void> | null = null;
+let pause = false;
+
+async function lagreNa(): Promise<void> {
+  const cur = useStore.getState();
+  const jobs: Promise<boolean>[] = [];
+  if (cur.aksjon !== forrige.aksjon) jobs.push(lagre('aksjon', cur.aksjon));
+  if (cur.statistikk !== forrige.statistikk) jobs.push(lagre('statistikk', cur.statistikk));
+  if (cur.osm !== forrige.osm) jobs.push(lagre('osm', cur.osm));
+  if (cur.hoyde !== forrige.hoyde) jobs.push(lagre('hoyde', cur.hoyde));
+  forrige = { aksjon: cur.aksjon, statistikk: cur.statistikk, osm: cur.osm, hoyde: cur.hoyde };
+  const ok = await Promise.all(jobs);
+  if (ok.some((x) => !x)) cur.melding('Klarte ikke lagre lokalt på denne enheten. Lagre aksjonen som fil.', 'feil');
+}
+
+function kjorLagring(): Promise<void> {
+  const p = lagreNa().finally(() => {
+    if (pagaende === p) pagaende = null;
+  });
+  pagaende = p;
+  return p;
+}
 
 export function startLagring(): void {
   useStore.subscribe((s) => {
-    if (!s.lastet) return;
+    if (!s.lastet || pause) return;
     if (s.aksjon === forrige.aksjon && s.statistikk === forrige.statistikk && s.osm === forrige.osm && s.hoyde === forrige.hoyde) return;
     if (lagreTimer) clearTimeout(lagreTimer);
-    lagreTimer = setTimeout(async () => {
-      const cur = useStore.getState();
-      const jobs: Promise<boolean>[] = [];
-      if (cur.aksjon !== forrige.aksjon) jobs.push(lagre('aksjon', cur.aksjon));
-      if (cur.statistikk !== forrige.statistikk) jobs.push(lagre('statistikk', cur.statistikk));
-      if (cur.osm !== forrige.osm) jobs.push(lagre('osm', cur.osm));
-      if (cur.hoyde !== forrige.hoyde) jobs.push(lagre('hoyde', cur.hoyde));
-      forrige = { aksjon: cur.aksjon, statistikk: cur.statistikk, osm: cur.osm, hoyde: cur.hoyde };
-      const ok = await Promise.all(jobs);
-      if (ok.some((x) => !x)) cur.melding('Klarte ikke lagre lokalt på denne enheten. Lagre aksjonen som fil.', 'feil');
+    lagreTimer = setTimeout(() => {
+      lagreTimer = null;
+      void kjorLagring();
     }, 400);
   });
 }
+
+/** Cancels a pending save and waits for one in progress. */
+async function pauseLagring(): Promise<void> {
+  pause = true;
+  if (lagreTimer) clearTimeout(lagreTimer);
+  lagreTimer = null;
+  await pagaende;
+}
+
+/** Resumes saving. `skriv`: save the current state now; otherwise treat it as already saved. */
+function fortsettLagring(skriv: boolean): void {
+  const cur = useStore.getState();
+  pause = false;
+  if (skriv) {
+    forrige = {};
+    if (cur.lastet) void kjorLagring();
+  } else {
+    forrige = { aksjon: cur.aksjon, statistikk: cur.statistikk, osm: cur.osm, hoyde: cur.hoyde };
+  }
+}
+
+/** Deletes the offline map tiles (service worker runtime cache, see vite.config.ts). */
+async function slettKartbuffer(): Promise<void> {
+  try {
+    if (typeof caches !== 'undefined') await caches.delete(KARTBUFFER);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Must match `cacheName` of the map tile runtime cache in vite.config.ts. */
+export const KARTBUFFER = 'kartfliser';

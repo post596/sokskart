@@ -3,7 +3,7 @@ import { gridFor, type BeregningInput } from '../model/beregning';
 import { blandingRinger, byggKomponenter, vektetFart } from '../model/lpb';
 import { Beregner } from '../model/workerKlient';
 import { dekker, hentHoyde } from '../services/hoydedata';
-import { useStore } from './store';
+import { useStore, vedNullstilling } from './store';
 
 /**
  * Glue between the store and the worker: rebuilds the input when something relevant
@@ -13,6 +13,18 @@ let beregner: Beregner | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let sisteInput = '';
 let hoydeForsokt = '';
+/** bumped when the aksjon is replaced: results of work started before are thrown away */
+let generasjon = 0;
+
+/** Forgets all computation state (new aksjon / «Start på nytt» / opening a file). */
+export function nullstillBeregning(): void {
+  if (timer) clearTimeout(timer);
+  timer = null;
+  sisteInput = '';
+  hoydeForsokt = '';
+  generasjon++;
+}
+vedNullstilling(nullstillBeregning);
 
 const versjon = (o: { hentet: string } | null) => (o ? o.hentet : '0');
 
@@ -83,10 +95,13 @@ async function kanskjeHentHoyde(): Promise<void> {
     return;
   }
   s.set({ hoydeStatus: { henter: true, feil: null } });
+  const gen = generasjon;
   try {
     const h = await hentHoyde(g);
+    if (gen !== generasjon) return;
     useStore.getState().set({ hoyde: h, hoydeStatus: { henter: false, feil: null } });
   } catch (e) {
+    if (gen !== generasjon) return;
     useStore.getState().set({
       hoydeStatus: {
         henter: false,
@@ -118,7 +133,10 @@ async function kjor(): Promise<void> {
   beregner ??= new Beregner();
   beregner.onFeil = (msg) => useStore.getState().set({ beregningFeil: msg });
   s.set({ beregner: true });
+  const gen = generasjon;
   const r = await beregner.beregn(input);
+  // the aksjon was replaced while computing: the result belongs to the old one
+  if (gen !== generasjon) return;
   const cur = useStore.getState();
   if (r) {
     cur.set({ resultat: r, beregner: false, beregningFeil: null });

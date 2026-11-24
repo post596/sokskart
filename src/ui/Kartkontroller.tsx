@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { fliserForOmrade, flisUrl, KARTLAG, lastNedFliser } from '../services/kartfliser';
+import { posisjonAktiv, startPosisjon, stoppPosisjon } from '../services/posisjon';
 import { useStore, type Visning } from '../state/store';
 import { BANDFARGER } from '../map/lag';
 
@@ -23,42 +24,11 @@ export function Kartkontroller() {
   const set = useStore((s) => s.set);
   const [apen, setApen] = useState(() => window.innerWidth > 900);
   const [nedlasting, setNedlasting] = useState<{ ferdig: number; totalt: number } | null>(null);
-  const watch = useRef<number | null>(null);
   const abort = useRef<AbortController | null>(null);
 
-  useEffect(() => () => {
-    if (watch.current != null) navigator.geolocation.clearWatch(watch.current);
-  }, []);
+  useEffect(() => () => stoppPosisjon(), []);
 
-  const vekslPosisjon = () => {
-    if (watch.current != null) {
-      navigator.geolocation.clearWatch(watch.current);
-      watch.current = null;
-      set({ egenposisjon: null });
-      return;
-    }
-    if (!('geolocation' in navigator)) {
-      useStore.getState().melding('Denne enheten kan ikke gi posisjon.', 'feil');
-      return;
-    }
-    let forste = true;
-    watch.current = navigator.geolocation.watchPosition(
-      (p) => {
-        const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
-        set({ egenposisjon: { pos, noyaktighet: p.coords.accuracy, tid: p.timestamp } });
-        if (forste) {
-          forste = false;
-          useStore.getState().vis({ pos, zoom: 15 });
-        }
-      },
-      (e) => {
-        useStore.getState().melding(`Fikk ikke posisjon: ${e.message}`, 'feil');
-        if (watch.current != null) navigator.geolocation.clearWatch(watch.current);
-        watch.current = null;
-      },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 },
-    );
-  };
+  const vekslPosisjon = () => (posisjonAktiv() ? stoppPosisjon() : startPosisjon());
 
   const lastNedKart = async () => {
     if (!r) return;

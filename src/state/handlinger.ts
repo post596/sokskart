@@ -3,7 +3,7 @@ import type { LatLng } from '../domain/coords';
 import { nesteId, type Prefiks } from '../domain/naming';
 import { podBetegnelse, prosent } from '../domain/pod';
 import type { Observasjonsklasse } from '../data/modellantakelser';
-import { useStore } from './store';
+import { useStore, vedNullstilling } from './store';
 
 export interface PunktUtkast {
   type: PunktType;
@@ -12,11 +12,16 @@ export interface PunktUtkast {
   tekst: string;
 }
 
-let utkast: PunktUtkast = { type: 'obs', klasse: 'sannsynlig', tid: '', tekst: '' };
+const TOMT_UTKAST: PunktUtkast = { type: 'obs', klasse: 'sannsynlig', tid: '', tekst: '' };
+let utkast: PunktUtkast = { ...TOMT_UTKAST };
 export const settPunktUtkast = (u: PunktUtkast) => {
   utkast = u;
 };
 export const hentPunktUtkast = () => utkast;
+// a half-written point (text) must not survive into a new aksjon
+vedNullstilling(() => {
+  utkast = { ...TOMT_UTKAST };
+});
 
 const PREFIKS: Record<PunktType, Prefiks> = { obs: 'OBS', sp: 'SP', poi: 'R', funn: 'F' };
 export const PUNKTNAVN: Record<PunktType, string> = {
