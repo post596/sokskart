@@ -139,3 +139,74 @@ describe('teiggenerator', () => {
     }
   });
 });
+
+describe('teiger går til naturlige grenser utenfor sonen (utvid)', () => {
+  const g = grid();
+  const N = g.n * g.n;
+  // R25: circle with radius 500 m around the centre
+  const sirkel = new Uint8Array(N);
+  for (let j = 0; j < g.n; j++) {
+    for (let i = 0; i < g.n; i++) {
+      const x = g.west + (i + 0.5) * g.cell;
+      const y = g.north - (j + 0.5) * g.cell;
+      if (Math.hypot(x - g.cx, y - g.cy) <= 500) sirkel[j * g.n + i] = 1;
+    }
+  }
+  const d = 700;
+  const boks: Array<Array<[number, number]>> = [
+    [[g.cx - d, g.cy - 1500], [g.cx - d, g.cy + 1500]],
+    [[g.cx + d, g.cy - 1500], [g.cx + d, g.cy + 1500]],
+    [[g.cx - 1500, g.cy - d], [g.cx + 1500, g.cy - d]],
+    [[g.cx - 1500, g.cy + d], [g.cx + 1500, g.cy + d]],
+  ];
+  const alle = (t: ReturnType<typeof genererTeiger>) => t.flatMap((x) => x.ring);
+
+  it('fortsetter ut over R25 til veiene rundt, men ikke forbi dem', () => {
+    const t = genererTeiger(input({ maal: sirkel, linjer: boks, utvid: true }));
+    const sum = t.reduce((s, x) => s + x.arealKm2, 0);
+    // the box (1.4 × 1.4 km) instead of the circle (0.79 km²)
+    expect(sum).toBeGreaterThan(1.5);
+    expect(sum).toBeLessThan(2.1);
+    for (const [x, y] of alle(t)) {
+      expect(Math.abs(x - g.cx)).toBeLessThanOrEqual(d + 30);
+      expect(Math.abs(y - g.cy)).toBeLessThanOrEqual(d + 30);
+    }
+    expect(t.some((x) => (x.utenforAndel ?? 0) > 0.2)).toBe(true);
+  });
+
+  it('kuttes ved sonen når det ikke finnes noen grense', () => {
+    const t = genererTeiger(input({ maal: sirkel, utvid: true }));
+    const sum = t.reduce((s, x) => s + x.arealKm2, 0);
+    expect(sum).toBeGreaterThan(0.6);
+    expect(sum).toBeLessThan(0.95);
+    for (const [x, y] of alle(t)) expect(Math.hypot(x - g.cx, y - g.cy)).toBeLessThan(620); // 500 m + one 100 m cell diagonal
+  });
+
+  it('gir ikke teiger helt utenfor sonen', () => {
+    // a single road through the middle: the zone is split, and the parts beyond the zone on
+    // either side reach the grid edge, so both are cut at the circle
+    const t = genererTeiger(input({ maal: sirkel, linjer: [[[g.cx, g.cy - 1500], [g.cx, g.cy + 1500]]], utvid: true }));
+    for (const x of t) expect(x.utenforAndel ?? 0).toBeLessThan(1);
+    for (const [x, y] of alle(t)) expect(Math.hypot(x - g.cx, y - g.cy)).toBeLessThan(620); // 500 m + one 100 m cell diagonal
+  });
+
+  it('uten utvid er det som før (kuttet langs sonen)', () => {
+    const t = genererTeiger(input({ maal: sirkel, linjer: boks }));
+    for (const [x, y] of alle(t)) expect(Math.hypot(x - g.cx, y - g.cy)).toBeLessThan(620); // 500 m + one 100 m cell diagonal
+  });
+});
+
+describe('grenseceller langs mange stier', () => {
+  it('holder søketiden under grensen også der mange stier møtes', () => {
+    const g = grid();
+    // a dense net of paths every 120 m in both directions: the boundary bands are a large share
+    const linjer: Array<Array<[number, number]>> = [];
+    for (let k = -12; k <= 12; k++) {
+      linjer.push([[g.cx + k * 120, g.cy - 1500], [g.cx + k * 120, g.cy + 1500]]);
+      linjer.push([[g.cx - 1500, g.cy + k * 120], [g.cx + 1500, g.cy + k * 120]]);
+    }
+    const t = genererTeiger(input({ linjer, teknikk: STANDARD_MODELL.teknikker.finsok }));
+    expect(t.length).toBeGreaterThan(10);
+    for (const x of t) expect(x.timer).toBeLessThanOrEqual(2.05);
+  });
+});

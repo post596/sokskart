@@ -68,7 +68,7 @@ export function forslagGrunnlag(
   ctx: GrunnlagKontekst,
   ring: XY[],
   f: { rang: number; antall: number; poa: number; poaKum: number; arealKm2: number; timer: number },
-  ekstra: { teknikk?: Teknikk; fase?: ForslagGrunnlag['fase']; drone?: ForslagGrunnlag['drone'] } = {},
+  ekstra: { teknikk?: Teknikk; fase?: ForslagGrunnlag['fase']; drone?: ForslagGrunnlag['drone']; utenforSone?: ForslagGrunnlag['utenforSone'] } = {},
 ): ForslagGrunnlag {
   const { g, terr } = ctx;
   const celler: number[] = [];
@@ -186,6 +186,7 @@ export function forslagGrunnlag(
       ? { teknikk: { navn: t.navn, mannskap: t.mannskap, avstandM: t.avstandM, fartKmt: t.fartKmt, sokefaktor: r3(sfN ? sfSum / sfN : 0), timer: Math.round(f.timer * 100) / 100 } }
       : {}),
     ...(ekstra.fase ? { fase: ekstra.fase } : {}),
+    ...(ekstra.utenforSone ? { utenforSone: { andel: r3(ekstra.utenforSone.andel), sone: ekstra.utenforSone.sone } } : {}),
     ...(ctx.sporAndel ? { sporDekning: r3(sporSum / n) } : {}),
     ...(ekstra.drone ? { drone: { ...ekstra.drone, effekt: r3(ekstra.drone.effekt), minutter: Math.round(ekstra.drone.minutter) } } : {}),
     beregnet: new Date().toISOString(),

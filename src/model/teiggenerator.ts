@@ -9,7 +9,9 @@ import { cellSoketid } from './soketid';
  * 1. Et fint rutenett (standard 25 m) legges over området.
  * 2. Grenser: ledelinjer (stier, veier, bekker, kraftgater, jernbane), stup og
  *    arealtypeskifter (skogkant, myrkant). Vann og bratt terreng er ikke med i teigene.
- * 3. Sammenhengende områder mellom grensene blir kandidater.
+ * 3. Sammenhengende områder mellom grensene blir kandidater. Med utvid: en kandidat som krysser
+ *    kanten av sonen (f.eks. R25) beholdes helt ut til nærmeste naturlige grense, ikke kuttet
+ *    langs sirkelen (veileder 7.3.7). Finnes ingen grense innen marginen, kuttes den ved sonen.
  * 4. Kandidater som tar mer enn maks søketid eller er større enn maks areal, deles med
  *    geodetisk k-means der kostnaden er høy over rygger og i dalbunner (fra høydedata), slik
  *    at delelinjene legger seg i terrengformer.
@@ -43,6 +45,10 @@ export interface GeneratorInput {
   modus?: 'teig' | 'drone';
   /** drone effect per main cell (0..1), drone mode only */
   droneeffekt?: Float32Array;
+  /** foot teiger: parts crossing the edge of maal continue out to the nearest natural boundary */
+  utvid?: boolean;
+  /** how far outside maal (m) a natural boundary is looked for (technical limit) */
+  utvidMarginM?: number;
 }
 
 export interface GenerertTeig {
@@ -55,6 +61,8 @@ export interface GenerertTeig {
   poa: number;
   /** ranking score (POA, × drone effect in drone mode) */
   score: number;
+  /** share of the area outside maal (utvid) */
+  utenforAndel?: number;
 }
 
 interface Fin {
@@ -84,6 +92,14 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
     j1 = Math.max(j1, j);
   }
   if (i1 < 0) return [];
+  const utvid = !!inp.utvid && !drone;
+  if (utvid) {
+    const mrg = Math.ceil(((inp.utvidMarginM ?? 1500) * g.k) / g.cell);
+    i0 = Math.max(0, i0 - mrg);
+    j0 = Math.max(0, j0 - mrg);
+    i1 = Math.min(g.n - 1, i1 + mrg);
+    j1 = Math.min(g.n - 1, j1 + mrg);
+  }
   const bredde = (i1 - i0 + 1) * g.cell;
   const hoydeM = (j1 - j0 + 1) * g.cell;
   let c = inp.fin ?? 25;
@@ -115,9 +131,12 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
   const tid = new Float64Array(NF);
   const poa = new Float64Array(NF);
   const vekt = new Float64Array(NF);
+  /** fine cells inside maal (the chosen zone) */
+  const kjerne = new Uint8Array(NF);
   for (let p = 0; p < NF; p++) {
     const h = F.hoved[p];
-    if (h < 0 || !inp.maal[h] || inp.opptatt[h]) continue;
+    if (h < 0 || (!inp.maal[h] && !utvid) || inp.opptatt[h]) continue;
+    kjerne[p] = inp.maal[h] ? 1 : 0;
     if (drone) {
       const e = inp.droneeffekt?.[h] ?? 0;
       if (e < 0.5) continue;
@@ -180,26 +199,51 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
   }
 
   // 1. components between boundaries
-  const del = new Int32Array(NF).fill(-1);
-  const komponenter: number[][] = [];
-  const stack: number[] = [];
-  for (let p = 0; p < NF; p++) {
-    if (!brukbar[p] || grense[p] || del[p] >= 0) continue;
-    const id = komponenter.length;
-    const celler: number[] = [];
-    del[p] = id;
-    stack.push(p);
-    while (stack.length) {
-      const q = stack.pop()!;
-      celler.push(q);
-      const ii = q % F.n;
-      for (const r of [ii > 0 ? q - 1 : -1, ii < F.n - 1 ? q + 1 : -1, q - F.n, q + F.n]) {
-        if (r < 0 || r >= NF || !brukbar[r] || grense[r] || del[r] >= 0) continue;
-        del[r] = id;
-        stack.push(r);
+  const finnKomponenter = (): number[][] => {
+    const del = new Int32Array(NF).fill(-1);
+    const ut: number[][] = [];
+    const stack: number[] = [];
+    for (let p = 0; p < NF; p++) {
+      if (!brukbar[p] || grense[p] || del[p] >= 0) continue;
+      const id = ut.length;
+      const celler: number[] = [];
+      del[p] = id;
+      stack.push(p);
+      while (stack.length) {
+        const q = stack.pop()!;
+        celler.push(q);
+        const ii = q % F.n;
+        for (const r of [ii > 0 ? q - 1 : -1, ii < F.n - 1 ? q + 1 : -1, q - F.n, q + F.n]) {
+          if (r < 0 || r >= NF || !brukbar[r] || grense[r] || del[r] >= 0) continue;
+          del[r] = id;
+          stack.push(r);
+        }
       }
+      ut.push(celler);
     }
-    komponenter.push(celler);
+    return ut;
+  };
+  let komponenter = finnKomponenter();
+  if (utvid) {
+    // a part crossing the zone edge keeps its cells out to the nearest natural boundary; a part
+    // that reaches the edge of the margin (no boundary found) is cut at the zone edge as before,
+    // and parts entirely outside the zone are left out
+    for (const kmp of komponenter) {
+      let harKjerne = false;
+      let kant = false;
+      for (const p of kmp) {
+        if (kjerne[p]) {
+          harKjerne = true;
+          continue;
+        }
+        const ii = p % F.n;
+        const jj = (p - ii) / F.n;
+        if (ii === 0 || jj === 0 || ii === F.n - 1 || jj === F.m - 1) kant = true;
+        else if (F.hoved[p - 1] < 0 || F.hoved[p + 1] < 0 || F.hoved[p - F.n] < 0 || F.hoved[p + F.n] < 0) kant = true;
+      }
+      if (!harKjerne || kant) for (const p of kmp) if (!kjerne[p]) brukbar[p] = 0;
+    }
+    komponenter = finnKomponenter();
   }
 
   const mal = (celler: number[]) => {
@@ -289,7 +333,7 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
         for (const r of [ii > 0 ? q - 1 : -1, ii < F.n - 1 ? q + 1 : -1, q - F.n, q + F.n]) {
           if (r < 0 || r >= NF || eier[r] >= 0 || !grense[r]) continue;
           const h = F.hoved[r];
-          if (h < 0 || !inp.maal[h] || inp.opptatt[h] || inp.sokefaktor[h] <= 0) continue;
+          if (h < 0 || (!inp.maal[h] && !utvid) || inp.opptatt[h] || inp.sokefaktor[h] <= 0) continue;
           eier[r] = eier[q];
           deler[eier[q]].push(r);
           poa[r] = inp.post[h] * andel;
@@ -302,10 +346,30 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
     }
   }
 
+  // 4b. the boundary cells can add a lot where many paths and roads meet (a ~50 m band along
+  // each line): split again the parts that now break the time or area limit
+  if (!drone) {
+    const ferdig: number[][] = [];
+    const etterdel = (celler: number[], dybde: number) => {
+      const f = mal(celler);
+      if (f <= 1.15 || dybde > 5 || celler.length < 8) {
+        ferdig.push(celler);
+        return;
+      }
+      const k = Math.min(celler.length >> 2, Math.ceil(f * 1.15));
+      for (const d of kmeans(celler, k, F, rygg)) etterdel(d, dybde + 1);
+    };
+    for (const d of deler) if (d.length) etterdel(d, 0);
+    deler.splice(0, deler.length, ...ferdig);
+    settEier();
+  }
+
   // 5. polygons
   const ut: GenerertTeig[] = [];
   deler.forEach((d, i) => {
     if (!d.length) return;
+    // a part entirely outside the zone (after splitting) is not a suggestion for this zone
+    if (utvid && !d.some((p) => kjerne[p])) return;
     const a = d.length * finArealKm2;
     if (drone && a < inp.minKm2 * 0.3) return;
     const ring = omriss(d, i, eier, F);
@@ -318,7 +382,9 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
       pa += poa[p];
       s += poa[p] * vekt[p];
     }
-    ut.push({ ring, arealKm2: a, timer: drone ? 0 : t, poa: pa, score: s });
+    let utenfor = 0;
+    if (utvid) for (const p of d) if (!kjerne[p]) utenfor++;
+    ut.push({ ring, arealKm2: a, timer: drone ? 0 : t, poa: pa, score: s, ...(utvid ? { utenforAndel: utenfor / d.length } : {}) });
   });
   return ut.sort((a, b) => b.score - a.score);
 }

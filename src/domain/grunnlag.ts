@@ -35,6 +35,8 @@ export interface ForslagGrunnlag {
   fase?: { navn: string; timer: number | null; grunn: string };
   /** drone areas: mean drone effect (0..1), flight time and batteries */
   drone?: { effekt: number; minutter: number; batterier: number };
+  /** foot teiger that continue past the zone edge to a natural boundary: share outside, and the zone */
+  utenforSone?: { andel: number; sone: string };
   /** share of the area covered by imported GPS tracks (1 − e^−C), when known */
   sporDekning?: number;
   beregnet: string;
@@ -70,6 +72,9 @@ export function grunnlagLinjer(g: ForslagGrunnlag, lnummer: Record<string, strin
       (g.rang > 1 ? ` (${prosent(g.poaKum)} sammen med forslagene foran).` : '.'),
   );
   L.push(`Sone: ${soneTekst(g.soner)}.`);
+  if (g.utenforSone) {
+    L.push(`Følger naturlige grenser (vei, sti, bekk, skogkant) ut over ${g.utenforSone.sone}: ${prosent(g.utenforSone.andel, 0)} av arealet ligger utenfor sonen.`);
+  }
   L.push(
     `${g.avstandM < 1 ? 'IPP ligger i området' : `Nærmeste del er ${fmtAvstand(g.avstandM)} fra IPP`}` +
       (g.tMinTimer != null ? `; personen kan tidligst ha vært her etter ca. ${fmtTimer(g.tMinTimer)} gange.` : '.'),

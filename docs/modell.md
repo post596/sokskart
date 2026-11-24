@@ -230,12 +230,20 @@ av observasjonen, IPP eller tidspunktet.
 
 1. Fint rutenett på 25 m.
 2. Grenser fra ledelinjer, stup og skifte i arealtype.
-3. Sammenhengende områder mellom grensene.
+3. Sammenhengende områder mellom grensene. **Sonen er ikke absolutt** (veileder 7.3.7): et område
+   som krysser kanten av valgt sone (R25-sirkelen, 50 %- eller 75 %-sonen) beholdes helt ut til
+   nærmeste naturlige grense, uansett avstand. Generatoren ser teknisk inntil 1,5 km utenfor
+   sonen. Finnes ingen grense der, kuttes området ved sonen som før. Deler som etter
+   delingen ligger helt utenfor sonen, blir ikke foreslått. «Hvorfor?» viser hvor stor del
+   av teigen som ligger utenfor.
 4. For store eller for tidkrevende områder deles med geodetisk k-means, der kostnaden er høy
    over rygger og i dalbunner (laplace av høydemodellen). Delelinjene legger seg dermed i
    terrengformer. Det er 15 % margin for grensecellene.
 5. Biter under `minTeigKm2` slås sammen med en nabo bare når grensene fortsatt holdes.
    Kun biter under 0,01 km² slås alltid sammen.
+   Grensecellene (et bånd på ca. 50 m langs hver linje) fordeles til naboteigene. Der mange
+   stier og veier møtes, kan det gi mye ekstra areal, så teiger som da bryter tids- eller
+   arealgrensen, deles på nytt.
 6. Polygon langs cellekantene, forenklet (Douglas–Peucker) og glattet (Chaikin).
 
 **Søksfase** (`src/domain/fase.ts`): Førsteinnsats varer til første grense (6 t), overgang

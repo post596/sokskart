@@ -350,12 +350,16 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
         maksTimer: m.maksSoketid,
         maksKm2: m.maksTeigKm2,
         minKm2: m.minTeigKm2,
+        // the zone is not absolute: teiger end at roads, paths, streams and forest edges (veileder 7.3.7)
+        utvid: true,
       });
       const valgt = (o.modus === 'neste' ? gen.slice(0, Math.max(1, o.antall)) : gen).filter((t) => t.poa > 0 || o.modus !== 'neste');
       let kum = 0;
       teigforslag = valgt.map((t, i) => {
         kum += t.poa;
-        const grunnlag = forslagGrunnlag(ctx, t.ring, { ...t, rang: i + 1, antall: valgt.length, poaKum: kum }, { teknikk: m.teknikker[o.teknikk], fase: o.fase });
+        const sone = o.modus === 'navet' ? 'R25' : o.modus === 'neste' ? '50 %-sonen' : '75 %-sonen';
+        const utenforSone = t.utenforAndel != null && t.utenforAndel >= 0.02 ? { andel: t.utenforAndel, sone } : undefined;
+        const grunnlag = forslagGrunnlag(ctx, t.ring, { ...t, rang: i + 1, antall: valgt.length, poaKum: kum }, { teknikk: m.teknikker[o.teknikk], fase: o.fase, utenforSone });
         return { ...tilLL(t), teknikk: o.teknikk, grunnlag };
       });
     }
