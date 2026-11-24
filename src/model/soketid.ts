@@ -32,6 +32,16 @@ export function sokefaktorer(terr: TerrengLag, m: Modellantakelser): Float32Arra
   return ut;
 }
 
+/**
+ * Flight time for one drone to cover an area once with the drone sweep width
+ * (`sokebredde.drone`) at `droneFartKmt`, and the batteries that takes.
+ */
+export function droneFlytid(arealKm2: number, m: Modellantakelser): { minutter: number; batterier: number } {
+  const km2PerTime = (m.sokebredde.drone / 1000) * m.droneFartKmt;
+  const minutter = km2PerTime > 0 ? (arealKm2 / km2PerTime) * 60 : Number.POSITIVE_INFINITY;
+  return { minutter, batterier: Math.max(1, Math.ceil(minutter / Math.max(1, m.droneBatteriMin) - 1e-9)) };
+}
+
 /** Hours for one team to search a cell of the given ground area (m²). Infinity if impossible. */
 export function cellSoketid(arealM2: number, faktor: number, t: Teknikk): number {
   return faktor > 0 ? arealM2 / (arealPerTime(t) * faktor) : Number.POSITIVE_INFINITY;

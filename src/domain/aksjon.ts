@@ -1,5 +1,5 @@
 import { kopierStatistikk, type LpbKategori, type Terreng } from '../data/lpb-stats';
-import { medStandard, type Modellantakelser, type Observasjonsklasse, type SporRessurs } from '../data/modellantakelser';
+import { medStandard, STANDARD_MODELL, type Modellantakelser, type Observasjonsklasse, type SporRessurs } from '../data/modellantakelser';
 import type { ValgtKategori } from '../model/lpb';
 import { INGEN_RESSURSER, type Ressursantall } from '../model/ressurser';
 import type { OsmData } from '../model/typer';
@@ -120,8 +120,9 @@ export function nyId(): string {
 /**
  * Data-model revision of an aksjon (separate from the file format version, which stays 1).
  * 2: regioner/Mattson and the savnet profile removed.
+ * 3: drone areas 0,2–0,45 km² (one battery) instead of 1–3 km².
  */
-export const AKSJON_SKJEMA = 2;
+export const AKSJON_SKJEMA = 3;
 
 export function nyAksjon(): Aksjon {
   const t = new Date().toISOString();
@@ -217,6 +218,7 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
   const raw = { ...(o.aksjon as Record<string, unknown>) };
   fjernUtgatteFelt(raw, advarsler);
   const a = raw as Partial<Aksjon>;
+  const fraSkjema = typeof a.skjema === 'number' ? a.skjema : 1;
   const base = nyAksjon();
   const aksjon: Aksjon = {
     ...base,
@@ -237,6 +239,7 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
     ordre: { ...TOMME_ORDRETEKSTER, ...(a.ordre ?? {}) },
     spor: Array.isArray(a.spor) ? a.spor.filter((s) => s && Array.isArray(s.pts) && s.pts.every(erLatLng)) : [],
   };
+  migrer(aksjon, fraSkjema, advarsler);
   if (Array.isArray(a.teiger) && aksjon.teiger.length < a.teiger.length) advarsler.push('Noen teiger hadde ugyldig geometri og ble hoppet over.');
   const statistikk = Array.isArray(o.statistikk) && o.statistikk.length ? (o.statistikk as LpbKategori[]) : kopierStatistikk();
   const osm = o.osm && typeof o.osm === 'object' && Array.isArray((o.osm as OsmData).linjer) ? (o.osm as OsmData) : null;
@@ -274,6 +277,20 @@ function fjernUtgatteFelt(raw: Record<string, unknown>, advarsler: string[]): vo
   }
   if (hadde || fjernet > 0) {
     advarsler.push('Opplysninger om den savnede (profil, bilde og logglinjer om dem) er fjernet. Søkskart lagrer ikke lenger personopplysninger.');
+  }
+}
+
+/**
+ * One-time changes of stored values, by schema revision. Unlike fjernUtgatteFelt these run
+ * only once, so a value the user sets on purpose later is never changed again.
+ */
+function migrer(a: Aksjon, fra: number, advarsler: string[]): void {
+  if (fra < 3 && a.modell.droneMinKm2 === 1 && a.modell.droneMaksKm2 === 3) {
+    a.modell.droneMinKm2 = STANDARD_MODELL.droneMinKm2;
+    a.modell.droneMaksKm2 = STANDARD_MODELL.droneMaksKm2;
+    const t = 'Droneområder er gjort mindre: 0,2–0,45 km² (ca. ett batteri) i stedet for 1–3 km².';
+    a.logg.push({ tid: new Date().toISOString(), tekst: t });
+    advarsler.push(t);
   }
 }
 

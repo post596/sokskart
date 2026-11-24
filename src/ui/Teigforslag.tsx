@@ -4,12 +4,12 @@ import { faseanbefaling, FASENAVN, type TeigOnske } from '../domain/fase';
 import { prosent } from '../domain/pod';
 import type { SokTeknikk } from '../data/modellantakelser';
 import type { TeigForslag } from '../model/beregning';
-import { arealPerTime } from '../model/soketid';
+import { arealPerTime, droneFlytid } from '../model/soketid';
 import { mixRinger } from '../state/beregning';
 import { leggTilTeig } from '../state/handlinger';
 import { useStore } from '../state/store';
 import { Modellmerke } from './felles';
-import { fmtKm2, fmtTimer } from './format';
+import { fmtFlytid, fmtKm2, fmtTimer } from './format';
 
 export function Teigforslag() {
   const a = useStore((s) => s.aksjon);
@@ -158,7 +158,7 @@ export function Teigforslag() {
               <li key={i}>
                 <div className="linje">
                   <span>
-                    <b>Drone {i + 1}</b> · {fmtKm2(f.arealKm2)} · POA {prosent(f.poa)}
+                    <b>Drone {i + 1}</b> · {fmtKm2(f.arealKm2)} · {fmtFlytid(droneFlytid(f.arealKm2, m))} · POA {prosent(f.poa)}
                   </span>
                   <span className="knapperad">
                     <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: f.ring })}>
@@ -172,7 +172,11 @@ export function Teigforslag() {
               </li>
             ))}
           </ol>
-          <p className="liten-tekst dempet">Droneområder legges der drone virker best: åpent terreng, myr, vann og strandsone, bre og bratt terreng. <Modellmerke /></p>
+          <p className="liten-tekst dempet">
+            Droneområder legges der drone virker best: åpent terreng, myr, vann og strandsone, bre og bratt terreng. Hvert område er maks{' '}
+            {String(m.droneMaksKm2).replace('.', ',')} km² (ca. ett batteri med {m.sokebredde.drone} m søkebredde, {m.droneFartKmt} km/t og{' '}
+            {m.droneBatteriMin} min flytid). <Modellmerke />
+          </p>
         </>
       )}
     </section>

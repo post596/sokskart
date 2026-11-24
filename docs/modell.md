@@ -218,8 +218,12 @@ normalt varer opptil 12 timer og at formell planlegging kommer etter 6–24 time
 | Skog | 0,2 |
 | Bebygd | 0,1 |
 
-Droneområder lages av celler med effekt på minst 0,5 innenfor 75 %-sonen, er 1–3 km² og
+Droneområder lages av celler med effekt på minst 0,5 innenfor 75 %-sonen, er 0,2–0,45 km² og
 rangeres etter POA × effekt.
+
+Flytid per område: areal / (søkebredde × fart), med søkebredde 60 m og 18 km/t, altså ca.
+1,08 km² i timen. Antall batterier = flytid / 25 min, rundet opp. Maks 0,45 km² er valgt slik
+at ett område kan flys på ett batteri. Alle fire tallene er modellantakelser.
 
 **Interessepunkter** (`src/data/interessepunkter.ts`): vekt per punkttype per kategori,
 blandet med kategorivektene. Score = POA innen 150 m × vekt. Punktene ligger minst 150 m fra

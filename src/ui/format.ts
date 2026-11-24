@@ -31,7 +31,13 @@ export function fmtKm2(km2: number): string {
 }
 
 /** 3,0 km/t */
-export const fmtFart = (v: number) => `${komma(v.toFixed(1))} km/t`;
+/** "ca. 23 min · 1 batteri" for a drone area. */
+export function fmtFlytid(f: { minutter: number; batterier: number }): string {
+  if (!Number.isFinite(f.minutter)) return '–';
+  return `ca. ${fmtTimer(f.minutter / 60)} flytid · ${f.batterier} ${f.batterier === 1 ? 'batteri' : 'batterier'}`;
+}
+
+export const fmtFart =(v: number) => `${komma(v.toFixed(1))} km/t`;
 
 /** "22.11. kl. 10:05" from ISO or local datetime string */
 export function fmtTid(s: string | null | undefined): string {

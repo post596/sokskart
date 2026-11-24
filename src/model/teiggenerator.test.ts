@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { STANDARD_MODELL } from '../data/modellantakelser';
 import { pointInRing, shoelace } from '../domain/geo';
 import type { Grid } from './grid';
-import { arealPerTime, cellSoketid } from './soketid';
+import { arealPerTime, cellSoketid, droneFlytid } from './soketid';
 import { genererTeiger, type GeneratorInput } from './teiggenerator';
 
 // 3 × 3 km main grid with 100 m cells
@@ -42,6 +42,13 @@ describe('søketid', () => {
     expect(cellSoketid(225000, 1, grovsok)).toBeCloseTo(2, 10);
     expect(cellSoketid(225000, 0.5, grovsok)).toBeCloseTo(4, 10);
     expect(cellSoketid(1, 0, grovsok)).toBe(Infinity);
+  });
+  it('drone: 0,45 km² tar ca. 25 min (ett batteri), 0,8 km² tar to', () => {
+    const m = STANDARD_MODELL;
+    expect(droneFlytid(0.45, m).minutter).toBeCloseTo(25, 6);
+    expect(droneFlytid(0.45, m).batterier).toBe(1);
+    expect(droneFlytid(0.8, m).minutter).toBeCloseTo(44.4, 1);
+    expect(droneFlytid(0.8, m).batterier).toBe(2);
   });
 });
 

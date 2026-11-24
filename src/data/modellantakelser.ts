@@ -105,9 +105,12 @@ export interface Modellantakelser {
   skogSokefaktor: number;
   /** Hours from start: before the first value only ledelinjer/POI (and navet), then teiger for available teams, after the second the full teigsett. */
   fasegrenser: [number, number];
-  /** Drone areas (km²). */
+  /** Drone areas (km²); the maximum is about what one battery covers. */
   droneMinKm2: number;
   droneMaksKm2: number;
+  /** Drone search speed (km/h) and effective flight time per battery (min), for flight time per area. */
+  droneFartKmt: number;
+  droneBatteriMin: number;
 
   /** Tak på søkeradius for stier og veier (km). */
   ledelinjeTakKm: number;
@@ -159,8 +162,11 @@ export const STANDARD_MODELL: Modellantakelser = {
   minTeigKm2: 0.05,
   skogSokefaktor: 0.7,
   fasegrenser: [6, 12],
-  droneMinKm2: 1,
-  droneMaksKm2: 3,
+  // 60 m sweep × 18 km/h ≈ 1.08 km²/h → 25 min per battery ≈ 0.45 km²
+  droneMinKm2: 0.2,
+  droneMaksKm2: 0.45,
+  droneFartKmt: 18,
+  droneBatteriMin: 25,
 
   ledelinjeTakKm: 10,
   antallLedelinjer: 20,
@@ -223,8 +229,17 @@ export const MODELL_FELT: Array<{
   { felt: 'maksTeigKm2', navn: 'Maks teigstørrelse (km²)', steg: 0.05, min: 0.1, max: 3 },
   { felt: 'minTeigKm2', navn: 'Minste teig før sammenslåing (km²)', steg: 0.01, min: 0.01, max: 0.5 },
   { felt: 'skogSokefaktor', navn: 'Søkefart i skog (andel)', steg: 0.05, min: 0.2, max: 1 },
-  { felt: 'droneMinKm2', navn: 'Droneområde minst (km²)', steg: 0.1, min: 0.1, max: 10 },
-  { felt: 'droneMaksKm2', navn: 'Droneområde maks (km²)', steg: 0.1, min: 0.2, max: 20 },
+  { felt: 'droneMinKm2', navn: 'Droneområde minst (km²)', steg: 0.05, min: 0.05, max: 3 },
+  {
+    felt: 'droneMaksKm2',
+    navn: 'Droneområde maks (km²)',
+    steg: 0.05,
+    min: 0.1,
+    max: 5,
+    hjelp: 'Standard 0,45 km²: ca. ett batteri med 60 m søkebredde, 18 km/t og 25 min flytid.',
+  },
+  { felt: 'droneFartKmt', navn: 'Drone søkefart (km/t)', steg: 1, min: 3, max: 60 },
+  { felt: 'droneBatteriMin', navn: 'Effektiv flytid per batteri (min)', steg: 1, min: 5, max: 120 },
   { felt: 'ledelinjeTakKm', navn: 'Tak på søkeradius for stier (km)', steg: 1, min: 1, max: 25 },
   { felt: 'antallLedelinjer', navn: 'Antall ledelinjer med L-nummer', steg: 1, min: 5, max: 60 },
   { felt: 'antallPunkter', navn: 'Antall mest sannsynlige punkter', steg: 1, min: 3, max: 20 },

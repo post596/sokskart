@@ -245,8 +245,10 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
     10 m, 1,0 km/t) og kompasskurssøk (3 pers, 75 m, 2,5 km/t).
   - Søkefarten senkes i skog, myr og bratt terreng.
   - Forslagene vises stiplet og blir faste T-nummer når de godkjennes.
-- **Droneområder** (D###) på 1–3 km², der drone virker best: åpent terreng, myr, vann og
-  strandsone, bre og bratt terreng. Tett skog og bebyggelse unngås.
+- **Droneområder** (D###) på 0,2–0,45 km², der drone virker best: åpent terreng, myr, vann og
+  strandsone, bre og bratt terreng. Tett skog og bebyggelse unngås. Maks 0,45 km² er ca. ett
+  batteri (60 m søkebredde, 18 km/t, 25 min flytid), og hvert område viser flytid og antall
+  batterier. Gamle aksjoner med 1–3 km² endres automatisk én gang.
 - **Interessepunkter per kategori** (fanen Punkter): appen søker i nærområdet etter typer
   steder som er aktuelle for kategorien, f.eks. bruer, stup, utsiktspunkter, kaier og
   strandsone ved økt selvmordsrisiko. Den rangerer dem etter sannsynlighet og legger dem til

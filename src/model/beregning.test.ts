@@ -6,6 +6,7 @@ import { beregn, gridFor, type BeregningInput } from './beregning';
 import type { Komponent } from './lpb';
 import { INGEN_RESSURSER } from './ressurser';
 import { rekkeviddeFaktor } from './sannsynlighet';
+import { droneFlytid } from './soketid';
 import type { OsmData } from './typer';
 
 // IPP in Jotunheimen (near Spiterstulen)
@@ -213,10 +214,14 @@ describe('teig- og droneforslag', () => {
     expect(sum).toBeGreaterThan(Math.PI * 0.7 ** 2 * 0.8);
     expect(sum).toBeLessThan(Math.PI * 0.7 ** 2 * 1.3);
   });
-  it('foreslår droneområder på 1–3 km²', () => {
+  it('foreslår droneområder på 0,2–0,45 km² (ca. ett batteri)', () => {
     const r = beregn(input({ forslagOnske: { teig: null, drone: { antall: 3 } } }));
     expect(r.droneforslag.length).toBeGreaterThan(0);
-    for (const d of r.droneforslag) expect(d.arealKm2).toBeLessThanOrEqual(3.05);
+    for (const d of r.droneforslag) {
+      expect(d.arealKm2).toBeLessThanOrEqual(0.5);
+      expect(d.arealKm2).toBeGreaterThanOrEqual(0.06);
+      expect(droneFlytid(d.arealKm2, m).batterier).toBe(1);
+    }
   });
   it('lager ingen forslag når de ikke er bedt om', () => {
     const r = beregn(input());

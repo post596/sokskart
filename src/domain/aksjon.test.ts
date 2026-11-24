@@ -80,6 +80,22 @@ describe('aksjonsfil', () => {
       expect(JSON.stringify(r.fil)).not.toContain('Ola');
     }
   });
+  it('gjør gamle droneområder (1–3 km²) mindre én gang, men rører ikke egne verdier', () => {
+    const lag = (skjema: number | undefined, min: number, maks: number) => {
+      const f = lagAksjonsfil(nyAksjon(), kopierStatistikk(), null) as unknown as { aksjon: Record<string, unknown> & { modell: Record<string, number> } };
+      if (skjema === undefined) delete f.aksjon.skjema;
+      else f.aksjon.skjema = skjema;
+      f.aksjon.modell.droneMinKm2 = min;
+      f.aksjon.modell.droneMaksKm2 = maks;
+      const r = lesAksjonsfil(JSON.stringify(f));
+      if (!r.ok) throw new Error(r.feil);
+      return r.fil.aksjon.modell;
+    };
+    expect(lag(undefined, 1, 3)).toMatchObject({ droneMinKm2: 0.2, droneMaksKm2: 0.45 });
+    expect(lag(2, 1, 3)).toMatchObject({ droneMinKm2: 0.2, droneMaksKm2: 0.45 });
+    expect(lag(3, 1, 3)).toMatchObject({ droneMinKm2: 1, droneMaksKm2: 3 }); // set on purpose after the change
+    expect(lag(2, 2, 5)).toMatchObject({ droneMinKm2: 2, droneMaksKm2: 5 });
+  });
   it('leser aksjonsfiler fra prototypen', () => {
     const proto = {
       state: {

@@ -13,7 +13,8 @@ import { endreSpor, leggTilSpor, registrerSok, settTeigStatus, slettSok, slettSp
 import { useStore } from '../../state/store';
 import { Advarsel, Modellmerke } from '../felles';
 import { Teigforslag } from '../Teigforslag';
-import { fmtAvstand, fmtKm2, fmtTid, fmtTimer, lesProsent } from '../format';
+import { fmtAvstand, fmtFlytid, fmtKm2, fmtTid, fmtTimer, lesProsent } from '../format';
+import { droneFlytid } from '../../model/soketid';
 
 const TYPENAVN = { T: 'Teig', H: 'Helikoptersøk', D: 'Droneområde' } as const;
 
@@ -386,7 +387,8 @@ export function TeigerFane() {
                 <div className="dempet liten-tekst">
                   {fmtKm2(areal)}
                   {t.type === 'T' && areal > a.modell.maksTeigKm2 && <span className="feiltekst"> (over {String(a.modell.maksTeigKm2).replace('.', ',')} km²)</span>}
-                  {st && t.type === 'T' && <> · ca. {fmtTimer(st.timer)} søk{st.timer > a.modell.maksSoketid && <span className="feiltekst"> (over {fmtTimer(a.modell.maksSoketid)})</span>}</>} · POA nå{' '}
+                  {st && t.type === 'T' && <> · ca. {fmtTimer(st.timer)} søk{st.timer > a.modell.maksSoketid && <span className="feiltekst"> (over {fmtTimer(a.modell.maksSoketid)})</span>}</>}
+                  {t.type === 'D' && <> · {fmtFlytid(droneFlytid(areal, a.modell))}</>} · POA nå{' '}
                   {st ? prosent(st.poaNa) : '–'}
                   {st && t.sok.length > 0 && ` (før søk ${prosent(st.poaFor)})`} · akk. POD {prosent(akk, 0)} ({podBetegnelse(akk)}) · {t.sok.length} søk
                 </div>
