@@ -48,6 +48,8 @@ export interface Punkt {
   tid: string;
   tekst: string;
   pos: LatLng;
+  /** why it was suggested (points added from «Foreslåtte interessepunkter») */
+  begrunnelse?: { type: string; tekst: string; vurder?: string };
 }
 
 export interface LoggPost {

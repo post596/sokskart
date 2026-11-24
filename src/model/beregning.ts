@@ -15,7 +15,7 @@ import { forslagGrunnlag, type GrunnlagKontekst } from './grunnlag';
 import type { ForslagGrunnlag } from '../domain/grunnlag';
 import { genererTeiger } from './teiggenerator';
 import type { SokTeknikk } from '../data/modellantakelser';
-import { PUNKTTYPENAVN, punktvekter, type PunktTypeKandidat } from '../data/interessepunkter';
+import { PUNKTBEGRUNNELSE, punktgrunn, PUNKTTYPENAVN, punktvekterMedBidrag, vurderPunkt, type PunktTypeKandidat } from '../data/interessepunkter';
 import type { HoydeRaster, LinjeType, OsmData } from './typer';
 import { LINJETYPE_NAVN, POI_NAVN } from './typer';
 
@@ -47,6 +47,8 @@ export interface ForslagOnske {
 }
 
 export interface PoiForslag {
+  /** stable key (type and rounded position), used to select it in the map */
+  id: string;
   type: PunktTypeKandidat;
   navn: string;
   pos: LatLng;
@@ -54,6 +56,23 @@ export interface PoiForslag {
   poa: number;
   score: number;
   timer: number | null;
+  /** why it is suggested */
+  grunnlag: PoiGrunnlag;
+}
+
+export interface PoiGrunnlag {
+  /** where the point comes from: an OSM point, or derived from a cliff, shore, wetland or junction */
+  kilde: 'osm' | 'stup' | 'strand' | 'myr' | 'stikryss';
+  kildeTekst: string;
+  /** categories that make this type relevant, largest share first */
+  bidrag: Array<{ kategori: string; navn: string; andel: number }>;
+  /** reason per contributing category (max 2) */
+  begrunnelse: string[];
+  /** reference for the reason (veileder or practice) */
+  referanse: string;
+  /** 0–3: 25/50/75/95 % zone, null outside */
+  sone: number | null;
+  vurder: string;
 }
 
 export interface TeigForslag {
@@ -346,7 +365,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     }
   }
 
-  const poiforslag = inp.osm ? lagPoiForslag(g, inp, terr, T1, s.post, v) : [];
+  const poiforslag = inp.osm ? lagPoiForslag(g, inp, terr, T1, s.post, v, s.band) : [];
 
   return {
     poiforslag,
@@ -421,11 +440,18 @@ export function droneeffekt(g: Grid, terr: TerrengLag): Float32Array {
  * Points of interest for the chosen categories (data/interessepunkter.ts): OSM points plus
  * cliffs, shores, wetlands and path junctions, scored by POA nearby × category weight.
  */
-function lagPoiForslag(g: Grid, inp: BeregningInput, terr: TerrengLag, T1: Float32Array, post: Float64Array, v: number): PoiForslag[] {
+function lagPoiForslag(g: Grid, inp: BeregningInput, terr: TerrengLag, T1: Float32Array, post: Float64Array, v: number, band: Int8Array): PoiForslag[] {
   const osm = inp.osm!;
-  const vekter = punktvekter(inp.komps.map((k) => ({ key: k.key, w: k.w })));
-  const kand: Array<{ type: PunktTypeKandidat; navn: string; pos: LatLng }> = [];
-  for (const p of osm.punkter) if (vekter[p.type]) kand.push({ type: p.type, navn: p.navn, pos: p.pos });
+  const medBidrag = punktvekterMedBidrag(inp.komps.map((k) => ({ key: k.key, w: k.w })));
+  const vekter: Partial<Record<PunktTypeKandidat, number>> = {};
+  for (const [t, b] of Object.entries(medBidrag) as Array<[PunktTypeKandidat, { sum: number }]>) vekter[t] = b.sum;
+  const kategorinavn = new Map(inp.komps.map((k) => [k.key, k.navn]));
+  let effekt: Float32Array | null = null; // drone effect, computed only if needed
+  type Kand = { type: PunktTypeKandidat; navn: string; pos: LatLng; kilde: PoiGrunnlag['kilde']; kildeTekst: string };
+  const kand: Kand[] = [];
+  for (const p of osm.punkter) {
+    if (vekter[p.type]) kand.push({ type: p.type, navn: p.navn, pos: p.pos, kilde: 'osm', kildeTekst: `${POI_NAVN[p.type]} i OpenStreetMap` });
+  }
   const besteCelle = (celler: number[]) => {
     let b = -1;
     for (const c of celler) if (b < 0 || post[c] > post[b]) b = c;
@@ -440,7 +466,7 @@ function lagPoiForslag(g: Grid, inp: BeregningInput, terr: TerrengLag, T1: Float
       const celler: number[] = [];
       forCellsNearLine(g, st.map((p) => tilGrid(g, p)), g.cell, (idx) => celler.push(idx));
       const b = besteCelle(celler);
-      if (b >= 0) kand.push({ type: 'stup', navn: '', pos: tilPos(b) });
+      if (b >= 0) kand.push({ type: 'stup', navn: '', pos: tilPos(b), kilde: 'stup', kildeTekst: 'Stup i OpenStreetMap – stedet langs kanten med mest sannsynlighet' });
     }
   }
   for (const o of osm.omrader) {
@@ -458,7 +484,10 @@ function lagPoiForslag(g: Grid, inp: BeregningInput, terr: TerrengLag, T1: Float
       }
     }
     const b = besteCelle(celler);
-    if (b >= 0) kand.push({ type, navn: o.navn, pos: tilPos(b) });
+    if (b >= 0) {
+      const hva = type === 'vann' ? `Strandsonen rundt ${o.navn ? `«${o.navn}»` : 'vannet'}` : `Myra${o.navn ? ` «${o.navn}»` : ''}`;
+      kand.push({ type, navn: o.navn, pos: tilPos(b), kilde: type === 'vann' ? 'strand' : 'myr', kildeTekst: `${hva} – stedet med mest sannsynlighet` });
+    }
   }
   if (vekter.stikryss) {
     const teller = new Map<string, { n: number; pos: LatLng }>();
@@ -471,7 +500,9 @@ function lagPoiForslag(g: Grid, inp: BeregningInput, terr: TerrengLag, T1: Float
         teller.set(k, e);
       }
     }
-    for (const e of teller.values()) if (e.n >= 3) kand.push({ type: 'stikryss', navn: '', pos: e.pos });
+    for (const e of teller.values()) {
+      if (e.n >= 3) kand.push({ type: 'stikryss', navn: '', pos: e.pos, kilde: 'stikryss', kildeTekst: `Kryss der ${e.n} stier eller veier møtes` });
+    }
   }
   const eksisterende = inp.reflekser.map((r) => tilGrid(g, r.pos));
   const ut: PoiForslag[] = [];
@@ -483,9 +514,31 @@ function lagPoiForslag(g: Grid, inp: BeregningInput, terr: TerrengLag, T1: Float
     const celler: number[] = [];
     forCellsNearLine(g, [[x, y]], Math.max(150, g.cell * 0.75), (idx) => celler.push(idx));
     const poa = sumCeller(post, celler);
-    const score = poa * (vekter[k.type] ?? 0);
-    if (score <= 0) continue;
-    ut.push({ type: k.type, navn: k.navn || PUNKTTYPENAVN[k.type], pos: k.pos, poa, score, timer: Number.isFinite(T1[c]) ? T1[c] / v : null });
+    const vb = medBidrag[k.type];
+    const score = poa * (vb?.sum ?? 0);
+    if (score <= 0 || !vb) continue;
+    const bidrag = vb.bidrag
+      .map((b) => ({ kategori: b.key, navn: kategorinavn.get(b.key) ?? b.key, andel: Math.round(((b.w * b.v) / vb.sum) * 1000) / 1000 }))
+      .sort((a, b) => b.andel - a.andel);
+    if (['myr', 'topp', 'utsikt'].includes(k.type)) effekt ??= droneeffekt(g, terr);
+    ut.push({
+      id: `${k.type}:${k.pos.lat.toFixed(5)},${k.pos.lng.toFixed(5)}`,
+      type: k.type,
+      navn: k.navn || PUNKTTYPENAVN[k.type],
+      pos: k.pos,
+      poa,
+      score,
+      timer: Number.isFinite(T1[c]) ? T1[c] / v : null,
+      grunnlag: {
+        kilde: k.kilde,
+        kildeTekst: k.kildeTekst,
+        bidrag,
+        begrunnelse: [...new Set(bidrag.slice(0, 2).map((b) => punktgrunn(k.type, b.kategori)))],
+        referanse: PUNKTBEGRUNNELSE[k.type].kilde,
+        sone: band[c] >= 0 ? band[c] : null,
+        vurder: vurderPunkt(k.type, effekt ? effekt[c] : null),
+      },
+    });
   }
   ut.sort((a, b) => b.score - a.score);
   // spread: no two suggestions closer than 150 m

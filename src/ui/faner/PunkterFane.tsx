@@ -121,6 +121,19 @@ export function PunkterFane() {
               <Utm pos={p.pos} sone={a.sone} />
               <div className="dempet liten-tekst">{fmtTid(p.tid)}</div>
               {p.tekst && <div className="liten-tekst">{p.tekst}</div>}
+              {p.begrunnelse && (
+                <details className="grunnlag">
+                  <summary>Hvorfor foreslått</summary>
+                  <ul>
+                    <li>{p.begrunnelse.tekst}</li>
+                    {p.begrunnelse.vurder && (
+                      <li>
+                        <b>Vurder:</b> {p.begrunnelse.vurder}
+                      </li>
+                    )}
+                  </ul>
+                </details>
+              )}
             </li>
           ))}
       </ul>

@@ -268,6 +268,27 @@ describe('interessepunkter per kategori', () => {
     expect(r.poiforslag[0].type).toBe('bru');
     expect(r.poiforslag.some((p) => p.type === 'lekeplass')).toBe(false);
   });
+  it('forklarer hvorfor hvert punkt foreslås', () => {
+    const r = beregn(input({ osm, osmVersjon: '1' }));
+    const h = r.poiforslag.find((p) => p.type === 'hytte')!;
+    expect(h.grunnlag.kilde).toBe('osm');
+    expect(h.grunnlag.kildeTekst).toContain('Hytte');
+    expect(h.grunnlag.bidrag[0]).toMatchObject({ kategori: 'turgaer', navn: 'Turgåer', andel: 1 });
+    expect(h.grunnlag.begrunnelse[0]).toContain('turmål');
+    expect(h.grunnlag.vurder).toContain('Punktsøk');
+    expect(h.grunnlag.referanse).toContain('Veileder');
+    expect(h.id).toMatch(/^hytte:/);
+    // the lake gives a shore point with its own source
+    const strand = r.poiforslag.find((p) => p.type === 'vann');
+    if (strand) expect(strand.grunnlag.kilde).toBe('strand');
+  });
+  it('fordeler bidraget mellom flere kategorier', () => {
+    const fisker: Komponent = { key: 'fisker', navn: 'Fisker', w: 0.5, r: [500, 1500, 3000, 9000], v: 2.5, mob: 10, verifisert: false };
+    const r = beregn(input({ komps: [{ ...turgaer, w: 0.5 }, fisker], osm, osmVersjon: '1' }));
+    const h = r.poiforslag.find((p) => p.type === 'hytte')!;
+    expect(h.grunnlag.bidrag.reduce((s, b) => s + b.andel, 0)).toBeCloseTo(1, 2);
+    expect(h.grunnlag.bidrag.map((b) => b.kategori)).toEqual(['turgaer', 'fisker']); // 0.5·1 vs 0.5·0.5
+  });
   it('foreslår ikke punkter som allerede er registrert som refleks', () => {
     const r = beregn(input({ osm, osmVersjon: '1', reflekser: [{ id: 'R001', navn: 'Hytta', pos: at(2000, 2000) }] }));
     expect(r.poiforslag.some((p) => p.navn === 'Hytta')).toBe(false);

@@ -17,6 +17,7 @@ import { kvalitetssikring } from '../domain/kvalitet';
 import { SPORRESSURSER } from '../data/modellantakelser';
 import { useStore } from '../state/store';
 import { fmtAvstand, fmtTimer } from '../ui/format';
+import { poiTittel } from '../ui/Poiforslag';
 import { divIkon, esc, lagCanvasOverlay, Rekkeviddelinjer, tegnGangtid, tegnSannsynlighet } from './lag';
 
 const RINGFARGER = ['#7f1d1d', '#b91c1c', '#ea580c', '#a16207'];
@@ -414,7 +415,7 @@ export function Kart() {
     const lag = L.layerGroup().addTo(g);
     resultat.poiforslag.slice(0, 12).forEach((p, i) => {
       L.marker(toLL(p.pos), { icon: divIkon(`<span>?${i + 1}</span>`, 'poiforslagikon') })
-        .bindTooltip(`Forslag: ${esc(p.navn)}`)
+        .bindTooltip(`Forslag ${i + 1}: ${esc(poiTittel(p))}<br>${esc(p.grunnlag.vurder)}`)
         .addTo(lag);
     });
     return () => {

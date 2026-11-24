@@ -98,6 +98,7 @@ export function lagFempunktsordre(i: OrdreInput): string {
     const p = k.punkt;
     L.push(`   Punkt: ${p.id}${p.tekst ? ` – ${p.tekst}` : ''}`);
     L.push(`   Posisjon: ${utm(p.pos, a.sone)}`);
+    if (p.begrunnelse) L.push(`   Hvorfor: ${p.begrunnelse.tekst}${p.begrunnelse.vurder ? ` Vurdering: ${p.begrunnelse.vurder}` : ''}`);
     if (p.type === 'sp') L.push('   Sperrepost: hindre at den savnede tar seg forbi punktet. Meld alle observasjoner av personer til ILKO.');
   }
   L.push('   Ved funn: meld nøyaktig posisjon (14-sifret UTM), savnedes tilstand og bistandsbehov til ILKO.');

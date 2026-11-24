@@ -71,7 +71,15 @@ export function lagGeoJson(i: EksportInput): string {
   for (const p of a.punkter) {
     f.push({
       type: 'Feature',
-      properties: { name: p.id, kind: p.type, type: PUNKTTYPE[p.type], ...(p.type === 'obs' ? { klasse: p.klasse } : {}), tid: p.tid, description: p.tekst },
+      properties: {
+        name: p.id,
+        kind: p.type,
+        type: PUNKTTYPE[p.type],
+        ...(p.type === 'obs' ? { klasse: p.klasse } : {}),
+        tid: p.tid,
+        description: p.tekst,
+        ...(p.begrunnelse ? { begrunnelse: p.begrunnelse.tekst, vurder: p.begrunnelse.vurder ?? '' } : {}),
+      },
       geometry: { type: 'Point', coordinates: xy(p.pos) },
     });
   }
@@ -113,7 +121,7 @@ export function lagKml(i: EksportInput): string {
   }
   for (const p of a.punkter) {
     ut.push(
-      `<Placemark><name>${escXml(p.id)}</name><description>${escXml(`${PUNKTTYPE[p.type]}${p.type === 'obs' ? ` (${p.klasse})` : ''}${p.tekst ? ` – ${p.tekst}` : ''}`)}</description><Point><coordinates>${koord([p.pos])}</coordinates></Point></Placemark>`,
+      `<Placemark><name>${escXml(p.id)}</name><description>${escXml(`${PUNKTTYPE[p.type]}${p.type === 'obs' ? ` (${p.klasse})` : ''}${p.tekst ? ` – ${p.tekst}` : ''}${p.begrunnelse ? `. Hvorfor: ${p.begrunnelse.tekst}${p.begrunnelse.vurder ? ` Vurder: ${p.begrunnelse.vurder}` : ''}` : ''}`)}</description><Point><coordinates>${koord([p.pos])}</coordinates></Point></Placemark>`,
     );
   }
   for (const l of i.ledelinjer) {

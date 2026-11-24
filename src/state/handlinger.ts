@@ -1,4 +1,4 @@
-import { lokalTid, nyId, type Avgrensningstype, type PunktType, type Sok, type Spor } from '../domain/aksjon';
+import { lokalTid, nyId, type Avgrensningstype, type Punkt, type PunktType, type Sok, type Spor } from '../domain/aksjon';
 import type { LatLng } from '../domain/coords';
 import { medLnummer, type ForslagGrunnlag } from '../domain/grunnlag';
 import { nesteId, type Prefiks } from '../domain/naming';
@@ -11,6 +11,7 @@ export interface PunktUtkast {
   klasse: Observasjonsklasse;
   tid: string;
   tekst: string;
+  begrunnelse?: Punkt['begrunnelse'];
 }
 
 const TOMT_UTKAST: PunktUtkast = { type: 'obs', klasse: 'sannsynlig', tid: '', tekst: '' };
@@ -45,6 +46,7 @@ export function leggTilPunkt(pos: LatLng, u: PunktUtkast = utkast): string {
         tid: u.tid || lokalTid(),
         tekst: u.tekst.trim(),
         pos: { lat: +pos.lat.toFixed(6), lng: +pos.lng.toFixed(6) },
+        ...(u.begrunnelse ? { begrunnelse: u.begrunnelse } : {}),
       });
     },
     `${id}: ${PUNKTNAVN[u.type]}${u.type === 'obs' ? ` (${u.klasse})` : ''} lagt til`,

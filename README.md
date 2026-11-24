@@ -257,6 +257,14 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
   strandsone ved økt selvmordsrisiko. Den rangerer dem etter sannsynlighet og legger dem til
   som R### med ett trykk. Listen ([src/data/interessepunkter.ts](src/data/interessepunkter.ts))
   er en modellantakelse som bør kvalitetssikres av fagfolk.
+  - «Hvorfor?» per punkt viser:
+    - hva punktet er (OSM-punkt, stupkant, strandsone, myr eller stikryss)
+    - hvorfor typen er aktuell for valgt savnetkategori, med andel per kategori ved blanding
+    - sannsynligheten rundt punktet, sonen og gangtiden
+    - et «Vurder:»-forslag om ressurs, for eksempel drone over åpen myr eller tau ved stup
+    - grunnlaget (veileder 7.2.5 / 7.3 eller søksfaglig praksis)
+  - Begrunnelsen følger med punktet når det legges til som R, og vises i 5-punktsordren og i
+    eksporten.
 - **Eksport for FAKS:** KML og GeoJSON med IPP, R25–R95, teiger i HRS-farger, punkter og
   prioriterte ledelinjer, i tillegg til GPX. Hvilket format FAKS tar imot, må testes.
   - Fanen Teiger: «KML» og «GPX» for én teig eller alle teiger, og for alle teig- og
