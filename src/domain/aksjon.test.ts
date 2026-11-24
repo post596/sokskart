@@ -96,6 +96,24 @@ describe('aksjonsfil', () => {
     expect(lag(3, 1, 3)).toMatchObject({ droneMinKm2: 1, droneMaksKm2: 3 }); // set on purpose after the change
     expect(lag(2, 2, 5)).toMatchObject({ droneMinKm2: 2, droneMaksKm2: 5 });
   });
+  it('setter gamle funn til «mulig» én gang, med varsel', () => {
+    const lag = (skjema: number | undefined) => {
+      const a = nyAksjon();
+      a.punkter.push({ id: 'F001', type: 'funn', klasse: 'sannsynlig', tid: '', tekst: 'Lue', pos: { lat: 61.6, lng: 8.4 } });
+      const f = lagAksjonsfil(a, kopierStatistikk(), null) as unknown as { aksjon: Record<string, unknown> };
+      if (skjema === undefined) delete f.aksjon.skjema;
+      else f.aksjon.skjema = skjema;
+      const r = lesAksjonsfil(JSON.stringify(f));
+      if (!r.ok) throw new Error(r.feil);
+      return r;
+    };
+    const gammel = lag(3);
+    expect(gammel.fil.aksjon.punkter[0].klasse).toBe('mulig');
+    expect(gammel.advarsler.some((t) => t.includes('F001'))).toBe(true);
+    const ny = lag(4);
+    expect(ny.fil.aksjon.punkter[0].klasse).toBe('sannsynlig');
+    expect(ny.fil.aksjon.linjestatus).toEqual({});
+  });
   it('leser aksjonsfiler fra prototypen', () => {
     const proto = {
       state: {

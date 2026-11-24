@@ -204,6 +204,14 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
 
 ## Fase 2 – bruk
 
+- **Punkter rett i kartet:** høyreklikk, hold fingeren på kartet eller trykk «+ Punkt» for
+  å registrere funn av gjenstand, observasjon/etterretning, sperrepost eller
+  interessepunkt.
+  - Sikre og sannsynlige funn og observasjoner blir nytt utgangspunkt i sannsynlighetskartet.
+  - Trykk på et punkt eller en ledelinje i kartet for et kort med «Merk som sjekket»,
+    5-punktsordre, «Vis i liste» og «Slett».
+  - Sjekkede punkter (50 m, POD 80 %) og ledelinjer (30 m til hver side, POD 50 %) senker
+    sannsynligheten. De vises grå med ✓ i kart og lister.
 - **Ingen personopplysninger:** Søkskart er en åpen løsning og lagrer ikke opplysninger om den
   savnede (navn, signalement, helse, bilde). Savnetkategori, sist sett og terreng velges i
   fanen Aksjon. Eldre aksjoner lastes uten savnetprofilen.

@@ -12,6 +12,7 @@ import { beregnSannsynlighet, mestSannsynlige, sumCeller, UTGANGSPUNKT } from '.
 import { AREALKLASSE, byggTerreng, type TerrengLag } from './terreng';
 import { cellSoketid, droneFlytid, sokefaktorer } from './soketid';
 import { forslagGrunnlag, type GrunnlagKontekst } from './grunnlag';
+import { dekketAreal, leggTilFastPod, sveipLinje, sveipSkive } from './innsats';
 import type { ForslagGrunnlag } from '../domain/grunnlag';
 import { genererTeiger } from './teiggenerator';
 import type { SokTeknikk } from '../data/modellantakelser';
@@ -32,6 +33,8 @@ export interface BeregningInput {
   observasjoner: Array<{ pos: LatLng; timerSiden: number; klasse: Observasjonsklasse }>;
   teiger: Array<{ id: string; ringer: LatLng[][]; pod: number }>;
   reflekser: Array<{ id: string; navn: string; pos: LatLng }>;
+  /** search effort outside registered teig searches: points and ledelinjer marked as checked */
+  innsats?: { punkter: LatLng[]; linjer: LatLng[][] };
   ressurser: Ressursantall;
   /** hours walked used for the frontier along ledelinjer (time slider) */
   visningTimer: number | null;
@@ -209,6 +212,8 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
   });
   for (const k of [...cache.obsT1.keys()]) if (!brukt.has(k)) cache.obsT1.delete(k);
 
+  const innsats = lagInnsats(g, inp);
+
   const s = beregnSannsynlighet({
     g,
     komps,
@@ -221,6 +226,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     hav: terr.hav,
     observasjoner: obs,
     sok: inp.teiger.map((t, k) => ({ celler: teigCeller[k], pod: t.pod })),
+    innsats,
   });
 
   const ringer = s.ringer;
@@ -409,6 +415,26 @@ export const DRONEEFFEKT: Record<number, number> = {
   [AREALKLASSE.bre]: 1,
   [AREALKLASSE.vann]: 0.8,
 };
+
+/**
+ * Remaining share per cell after checked points and ledelinjer (fixed POD inside their swept
+ * area), or null when there is none.
+ */
+function lagInnsats(g: Grid, inp: BeregningInput): Float32Array | null {
+  const i = inp.innsats;
+  if (!i || (!i.punkter.length && !i.linjer.length)) return null;
+  const m = inp.m;
+  const igjen = new Float32Array(g.n * g.n).fill(1);
+  for (const p of i.punkter) {
+    const [x, y] = tilGrid(g, p);
+    leggTilFastPod(g, igjen, dekketAreal((legg) => sveipSkive(g, x, y, m.sjekketPunktM, legg)), m.sjekketPunktPod);
+  }
+  for (const l of i.linjer) {
+    const xy = l.map((p) => tilGrid(g, p));
+    leggTilFastPod(g, igjen, dekketAreal((legg) => sveipLinje(g, xy, m.sjekketLinjeM, legg)), m.sjekketLinjePod);
+  }
+  return igjen;
+}
 
 export function droneeffekt(g: Grid, terr: TerrengLag): Float32Array {
   const N = g.n * g.n;

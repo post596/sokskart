@@ -1,30 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { lokalTid, type PunktType } from '../../domain/aksjon';
 import type { Observasjonsklasse } from '../../data/modellantakelser';
-import { hentPunktUtkast, leggTilPunkt, PUNKTNAVN, settPunktUtkast, slettPunkt } from '../../state/handlinger';
+import { harKlasse, hentPunktUtkast, leggTilPunkt, PUNKTNAVN, settPunktSjekket, settPunktUtkast, slettPunkt } from '../../state/handlinger';
 import { useStore } from '../../state/store';
 import { Utm, VisKnapp } from '../felles';
+import { KLASSER } from '../NyttPunkt';
 import { Poiforslag } from '../Poiforslag';
 import { fmtTid } from '../format';
-
-const KLASSER: Array<[Observasjonsklasse, string]> = [
-  ['sikker', 'Sikker – sett av nær familie, nabo, kollega, god venn eller kamera'],
-  ['sannsynlig', 'Sannsynlig – kan stemme med beskrivelsen'],
-  ['mulig', 'Mulig – ikke spesifikk nok til å omprioritere'],
-  ['usikker', 'Usikker – vag beskrivelse, kan ikke bekreftes'],
-];
 
 export function PunkterFane() {
   const a = useStore((s) => s.aksjon);
   const egen = useStore((s) => s.egenposisjon);
+  const valgt = useStore((s) => s.valgt);
   const [u, setU] = useState(() => ({ ...hentPunktUtkast(), tid: hentPunktUtkast().tid || lokalTid() }));
   useEffect(() => settPunktUtkast(u), [u]);
+  const listeRef = useRef<HTMLUListElement>(null);
+  const valgtId = valgt?.type === 'punkt' ? valgt.id : null;
+  useEffect(() => {
+    if (valgtId) listeRef.current?.querySelector(`[data-id="${CSS.escape(valgtId)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [valgtId]);
 
   return (
     <div className="fane">
       <p className="dempet">
-        Observasjoner, spor og funn vekter sannsynlighetskartet. <b>Bare sikre og sannsynlige observasjoner skal normalt føre til omprioritering</b> – IPP
-        flyttes ikke. Sperreposter og reflekser vises i plankartet, observasjoner og funn i etterretningskartet.
+        Observasjoner, etterretning og funn vekter sannsynlighetskartet. <b>Bare sikre og sannsynlige observasjoner og funn skal normalt føre til
+        omprioritering</b> – IPP flyttes ikke. Sperreposter og reflekser vises i plankartet, observasjoner og funn i etterretningskartet.
+      </p>
+      <p className="liten-tekst dempet">
+        Raskere i felt: <b>høyreklikk</b> eller <b>hold fingeren</b> på kartet, eller trykk «+ Punkt». Trykk på et punkt eller en ledelinje i kartet for å
+        merke det som ferdig sjekket.
       </p>
       <div className="rad">
         <label>
@@ -37,7 +41,7 @@ export function PunkterFane() {
             ))}
           </select>
         </label>
-        {u.type === 'obs' && (
+        {harKlasse(u.type) && (
           <label>
             Klassifisering
             <select value={u.klasse} onChange={(e) => setU({ ...u, klasse: e.target.value as Observasjonsklasse })}>
@@ -83,29 +87,38 @@ export function PunkterFane() {
         </button>
       </div>
       <Poiforslag />
-      <ul className="liste">
+      <ul className="liste" ref={listeRef}>
         {a.punkter
           .slice()
           .reverse()
           .map((p) => (
-            <li key={p.id}>
+            <li key={p.id} data-id={p.id} className={valgtId === p.id ? 'valgt' : p.sjekket ? 'sjekket' : ''}>
               <div className="linje">
                 <b>
+                  {p.sjekket && '✓ '}
                   {p.id} · {PUNKTNAVN[p.type]}
-                  {p.type === 'obs' && ` (${p.klasse})`}
+                  {harKlasse(p.type) && ` (${p.klasse})`}
                 </b>
                 <span className="knapperad">
                   <VisKnapp pos={p.pos} zoom={15} />
-                  {(p.type === 'sp' || p.type === 'poi') && (
+                  {p.type !== 'sp' && (
                     <button
                       type="button"
-                      className="knapp liten"
-                      title="Lag 5-punktsordre (oppdrag til mannskapet) for dette punktet"
-                      onClick={() => useStore.getState().set({ ordreFor: { type: 'punkt', id: p.id } })}
+                      className={`knapp liten ${p.sjekket ? '' : 'hoved'}`}
+                      title={p.sjekket ? 'Fjern merket «ferdig sjekket»' : 'Merk som ferdig sjekket – senker sannsynligheten rundt punktet'}
+                      onClick={() => settPunktSjekket(p.id, !p.sjekket)}
                     >
-                      5-punktsordre
+                      {p.sjekket ? 'Angre sjekket' : 'Sjekket'}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="knapp liten"
+                    title="Lag 5-punktsordre (oppdrag til mannskapet) for dette punktet"
+                    onClick={() => useStore.getState().set({ ordreFor: { type: 'punkt', id: p.id } })}
+                  >
+                    5-punktsordre
+                  </button>
                   <button
                     type="button"
                     className="knapp liten"
@@ -119,7 +132,10 @@ export function PunkterFane() {
                 </span>
               </div>
               <Utm pos={p.pos} sone={a.sone} />
-              <div className="dempet liten-tekst">{fmtTid(p.tid)}</div>
+              <div className="dempet liten-tekst">
+                {fmtTid(p.tid)}
+                {p.sjekket && ` · ferdig sjekket ${fmtTid(p.sjekket.tid)}${p.sjekket.av ? ` av ${p.sjekket.av}` : ''}`}
+              </div>
               {p.tekst && <div className="liten-tekst">{p.tekst}</div>}
               {p.begrunnelse && (
                 <details className="grunnlag">

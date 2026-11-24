@@ -9,6 +9,8 @@ import { StatistikkFane } from './ui/faner/StatistikkFane';
 import { TeigerFane } from './ui/faner/TeigerFane';
 import { TidslinjeFane } from './ui/faner/TidslinjeFane';
 import { NullstillDialog } from './ui/Nullstill';
+import { NyttPunktDialog } from './ui/NyttPunkt';
+import { Valgtkort } from './ui/Valgtkort';
 import { OrdreDialog } from './ui/Ordre';
 import { Kartkontroller } from './ui/Kartkontroller';
 import { Tidslinje } from './ui/Tidslinje';
@@ -173,6 +175,7 @@ export function App() {
         </aside>
         <section className="kartkolonne" aria-label="Kart">
           <Kart />
+          <Valgtkort />
           <Modusbar />
           <Kartkontroller />
           <Tidslinje />
@@ -181,6 +184,7 @@ export function App() {
       <Meldinger />
       <Ordre />
       <NullstillDialog />
+      <NyttPunktDialog />
       <DialogBoks />
     </div>
   );

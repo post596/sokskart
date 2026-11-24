@@ -50,9 +50,17 @@ export function lagInput(): BeregningInput | null {
     osmVersjon: versjon(s.osm),
     hoyde,
     hoydeVersjon: versjon(hoyde),
+    // finds (funn) count like observations
     observasjoner: a.punkter
-      .filter((p) => p.type === 'obs')
+      .filter((p) => p.type === 'obs' || p.type === 'funn')
       .map((p) => ({ pos: p.pos, timerSiden: Math.max(0, timerMellom(p.tid, now) ?? 0), klasse: p.klasse })),
+    innsats: {
+      // a checked sperrepost says nothing about the area
+      punkter: a.punkter.filter((p) => p.sjekket && p.type !== 'sp').map((p) => p.pos),
+      linjer: Object.values(a.linjestatus)
+        .filter((l) => l.kilde === 'manuell')
+        .map((l) => l.pts),
+    },
     teiger: a.teiger.map((t) => ({ id: t.id, ringer: [t.ring], pod: 1 - t.sok.reduce((acc, x) => acc * (1 - x.pod), 1) })),
     reflekser: a.punkter.filter((p) => p.type === 'poi').map((p) => ({ id: p.id, navn: p.tekst, pos: p.pos })),
     ressurser: a.ressurser,

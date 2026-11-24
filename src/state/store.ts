@@ -7,8 +7,11 @@ import type { HoydeRaster, OsmData } from '../model/typer';
 import { hent, lagre, slett, slettAlt } from '../services/lagring';
 
 export type Fane = 'aksjon' | 'ledelinjer' | 'teiger' | 'punkter' | 'ressurser' | 'tidslinje' | 'statistikk';
-export type Modus = null | { type: 'ipp' } | { type: 'punkt' } | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' };
+/** punkt.hurtig: place first, then choose type and text in a dialog («+ Punkt» in the map) */
+export type Modus = null | { type: 'ipp' } | { type: 'punkt'; hurtig?: boolean } | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' };
 export type OrdreFor = { type: 'teig' | 'linje' | 'punkt'; id: string };
+/** what is selected in the map (shown in a card over the map) */
+export type Valgt = { type: 'punkt' | 'linje' | 'poiforslag'; id: string };
 
 export interface Melding {
   tekst: string;
@@ -73,6 +76,9 @@ interface State {
   teigforslag: TeigForslag[];
   droneforslag: TeigForslag[];
   visKvalitet: boolean;
+  valgt: Valgt | null;
+  /** position for a new point (dialog open) */
+  nyttPunkt: { pos: LatLng } | null;
   /** the «Start på nytt» dialog is open */
   visNullstill: boolean;
 
@@ -115,6 +121,8 @@ type Aksjonstilstand = Pick<
   | 'teigforslag'
   | 'droneforslag'
   | 'visKvalitet'
+  | 'valgt'
+  | 'nyttPunkt'
 >;
 
 /** A fresh, empty aksjon state. Used at start-up, when opening a file and by «Start på nytt». */
@@ -140,6 +148,8 @@ export function tomAksjonstilstand(): Aksjonstilstand {
     teigforslag: [],
     droneforslag: [],
     visKvalitet: false,
+    valgt: null,
+    nyttPunkt: null,
   };
 }
 

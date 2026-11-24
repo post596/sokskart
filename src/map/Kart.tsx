@@ -15,7 +15,7 @@ import { mixRinger, standardVisning } from '../state/beregning';
 import { endreTeigRing, leggTilPunkt, leggTilTeig } from '../state/handlinger';
 import { kvalitetssikring } from '../domain/kvalitet';
 import { SPORRESSURSER } from '../data/modellantakelser';
-import { useStore } from '../state/store';
+import { useStore, type Valgt } from '../state/store';
 import { fmtAvstand, fmtTimer } from '../ui/format';
 import { poiTittel } from '../ui/Poiforslag';
 import { divIkon, esc, lagCanvasOverlay, Rekkeviddelinjer, tegnGangtid, tegnSannsynlighet } from './lag';
@@ -36,6 +36,17 @@ const RESSURSFARGE: Record<string, string> = {
 };
 
 const toLL = (p: LatLng): L.LatLngTuple => [p.lat, p.lng];
+
+/**
+ * Click on a map object: select it (card over the map). While placing something (modus)
+ * the click is left to the map, so drawing and placing are not disturbed.
+ */
+function velg(e: L.LeafletEvent, v: Valgt): void {
+  const s = useStore.getState();
+  if (s.modus || s.redigererTeig) return;
+  L.DomEvent.stopPropagation(e as L.LeafletMouseEvent);
+  s.set({ valgt: v });
+}
 
 export function Kart() {
   const el = useRef<HTMLDivElement>(null);
@@ -67,6 +78,7 @@ export function Kart() {
   const teigforslag = useStore((s) => s.teigforslag);
   const fane = useStore((s) => s.fane);
   const droneforslag = useStore((s) => s.droneforslag);
+  const valgt = useStore((s) => s.valgt);
 
   // ------------------------------------------------------------ init
   useEffect(() => {
@@ -92,8 +104,10 @@ export function Kart() {
       map.getPane(p)!.style.zIndex = String(z);
       if (p !== 'teiger') map.getPane(p)!.style.pointerEvents = p === 'linjer' ? 'auto' : 'none';
     }
-    linjeRenderer.current = L.canvas({ pane: 'linjer', padding: 0.3 });
-    for (const g of ['ringer', 'alleLinjer', 'spor', 'topp', 'teigforslag', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'forslag', 'egen']) {
+    const grov = window.matchMedia?.('(pointer: coarse)').matches;
+    // thin lines must be easy to tap: the canvas renderer hit-tests within `tolerance` px
+    linjeRenderer.current = L.canvas({ pane: 'linjer', padding: 0.3, tolerance: grov ? 12 : 5 });
+    for (const g of ['ringer', 'alleLinjer', 'spor', 'topp', 'sjekket', 'teigforslag', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'forslag', 'valgt', 'egen']) {
       grupper.current[g] = L.layerGroup().addTo(map);
     }
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
@@ -106,7 +120,6 @@ export function Kart() {
     }
     map.pm.setGlobalOptions({ snappable: true, snapDistance: 15, allowSelfIntersection: false } as L.PM.GlobalOptions);
 
-    const grov = window.matchMedia?.('(pointer: coarse)').matches;
     const visKoord = (ll: L.LatLng) => {
       if (coordRef.current) {
         const sone = useStore.getState().aksjon.sone;
@@ -123,9 +136,19 @@ export function Kart() {
       const pos = { lat: e.latlng.lat, lng: e.latlng.lng };
       if (m?.type === 'ipp') void s.settIpp(pos);
       else if (m?.type === 'punkt') {
-        const id = leggTilPunkt(pos);
-        s.melding(`${id} er lagt til.`, 'ok');
+        if (m.hurtig) s.set({ modus: null, nyttPunkt: { pos } });
+        else {
+          const id = leggTilPunkt(pos);
+          s.melding(`${id} er lagt til.`, 'ok');
+        }
       }
+    });
+    // right-click, or long-press on touch screens: new point here (funn, observasjon, …)
+    map.on('contextmenu', (e: L.LeafletMouseEvent) => {
+      const s = useStore.getState();
+      if (s.modus || s.redigererTeig) return;
+      e.originalEvent?.preventDefault?.();
+      s.set({ nyttPunkt: { pos: { lat: e.latlng.lat, lng: e.latlng.lng } } });
     });
     map.on('pm:create', (e: { layer: L.Layer }) => {
       const s = useStore.getState();
@@ -298,6 +321,7 @@ export function Kart() {
         renderer: linjeRenderer.current ?? undefined,
       })
         .bindTooltip(`${LINJETYPE_NAVN[l.type]}${l.navn ? `: ${esc(l.navn)}` : ''}`, { sticky: true })
+        .on('click', (e) => velg(e, { type: 'linje', id: l.id }))
         .addTo(g);
     }
   }, [osm, visning.alleLedelinjer]);
@@ -316,13 +340,49 @@ export function Kart() {
       L.polyline(l.pts.map(toLL), { color: '#fde047', weight: 10, opacity: 0.7, interactive: false, renderer: linjeRenderer.current ?? undefined }).addTo(g);
       const pl = L.polyline(l.pts.map(toLL), { color: LINJETYPE_FARGE[l.type], weight: 3.5, renderer: linjeRenderer.current ?? undefined });
       pl.bindTooltip(`${nr} ${LINJETYPE_NAVN[l.type]}${l.navn ? ` «${esc(l.navn)}»` : ''}`, {
-        permanent: n < 6,
+        permanent: n < 6 && !aksjon.linjestatus[l.id],
         className: 'linjeetikett',
         direction: 'center',
       });
+      pl.on('click', (e) => velg(e, { type: 'linje', id: l.id }));
       pl.addTo(g);
     });
-  }, [resultat, osm, visning.plankart, aksjon.lnummer, aksjon.modell.antallLedelinjer]);
+  }, [resultat, osm, visning.plankart, aksjon.lnummer, aksjon.linjestatus, aksjon.modell.antallLedelinjer]);
+
+  // ------------------------------------------------------------ ledelinjer marked as searched (plankart)
+  useEffect(() => {
+    const g = grupper.current.sjekket;
+    if (!g) return;
+    g.clearLayers();
+    if (!visning.plankart) return;
+    for (const [id, st] of Object.entries(aksjon.linjestatus)) {
+      const pts = st.pts.map(toLL);
+      L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.85, interactive: false, renderer: linjeRenderer.current ?? undefined }).addTo(g);
+      L.polyline(pts, { color: '#4b5563', weight: 4, dashArray: '8 6', renderer: linjeRenderer.current ?? undefined })
+        .bindTooltip(
+          `✓ ${esc(st.nr ?? LINJETYPE_NAVN[st.type])}${st.navn ? ` «${esc(st.navn)}»` : ''} – ${st.kilde === 'spor' ? 'søkt (GPS-spor)' : 'ferdig sjekket'}`,
+          { permanent: true, direction: 'center', className: 'linjeetikett sjekket' },
+        )
+        .on('click', (e) => velg(e, { type: 'linje', id }))
+        .addTo(g);
+    }
+  }, [aksjon.linjestatus, visning.plankart]);
+
+  // ------------------------------------------------------------ highlight of the selected object
+  useEffect(() => {
+    const g = grupper.current.valgt;
+    if (!g) return;
+    g.clearLayers();
+    if (!valgt) return;
+    if (valgt.type === 'linje') {
+      const pts = osm?.linjer.find((l) => l.id === valgt.id)?.pts ?? aksjon.linjestatus[valgt.id]?.pts;
+      if (pts) L.polyline(pts.map(toLL), { color: '#2563eb', weight: 12, opacity: 0.45, interactive: false, renderer: linjeRenderer.current ?? undefined }).addTo(g);
+    } else {
+      const pos =
+        valgt.type === 'punkt' ? aksjon.punkter.find((p) => p.id === valgt.id)?.pos : resultat?.poiforslag.find((p) => p.id === valgt.id)?.pos;
+      if (pos) L.circleMarker(toLL(pos), { radius: 22, color: '#2563eb', weight: 4, fill: false, interactive: false, pane: 'ringer' }).addTo(g);
+    }
+  }, [valgt, osm, aksjon.linjestatus, aksjon.punkter, resultat]);
 
   // ------------------------------------------------------------ teiger
   useEffect(() => {
@@ -416,6 +476,7 @@ export function Kart() {
     resultat.poiforslag.slice(0, 12).forEach((p, i) => {
       L.marker(toLL(p.pos), { icon: divIkon(`<span>?${i + 1}</span>`, 'poiforslagikon') })
         .bindTooltip(`Forslag ${i + 1}: ${esc(poiTittel(p))}<br>${esc(p.grunnlag.vurder)}`)
+        .on('click', (e) => velg(e, { type: 'poiforslag', id: p.id }))
         .addTo(lag);
     });
     return () => {
@@ -474,8 +535,11 @@ export function Kart() {
       if (erEtt ? !visning.etterretningskart : !visning.plankart) continue;
       const col = p.type === 'obs' ? PUNKTFARGE.obs[p.klasse] : PUNKTFARGE[p.type];
       const m = L.marker(toLL(p.pos), {
-        icon: divIkon(`<span style="background:${col}">${esc(p.id)}</span>`, 'punktikon'),
-      }).bindTooltip(`${esc(p.id)}${p.type === 'obs' ? ` (${p.klasse})` : ''}${p.tekst ? ` – ${esc(p.tekst)}` : ''}<br>${formatLatLonUtm(p.pos.lat, p.pos.lng, aksjon.sone)}`);
+        icon: divIkon(`<span style="background:${col}">${p.sjekket ? '✓ ' : ''}${esc(p.id)}</span>`, `punktikon${p.sjekket ? ' sjekket' : ''}`),
+      }).bindTooltip(
+        `${esc(p.id)}${erEtt ? ` (${p.klasse})` : ''}${p.tekst ? ` – ${esc(p.tekst)}` : ''}${p.sjekket ? '<br>✓ Ferdig sjekket' : ''}<br>${formatLatLonUtm(p.pos.lat, p.pos.lng, aksjon.sone)}`,
+      );
+      m.on('click', (e) => velg(e, { type: 'punkt', id: p.id }));
       m.addTo(erEtt ? ett : plan);
     }
   }, [aksjon.punkter, aksjon.sone, visning.plankart, visning.etterretningskart]);
@@ -550,6 +614,16 @@ export function Kart() {
       <div ref={el} className="kart" role="application" aria-label="Kart" />
       <div ref={coordRef} className="koordinat mono" aria-live="off" />
       <div className="sentrumskors" aria-hidden="true" />
+      {aksjon.ipp && !modus && (
+        <button
+          type="button"
+          className="knapp kartknapp"
+          title="Nytt punkt: funn, observasjon/etterretning, sperrepost eller interessepunkt. Du kan også høyreklikke eller holde fingeren på kartet."
+          onClick={() => useStore.getState().set({ modus: { type: 'punkt', hurtig: true }, valgt: null })}
+        >
+          + Punkt
+        </button>
+      )}
     </div>
   );
 }

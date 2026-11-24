@@ -2,7 +2,7 @@ import { kopierStatistikk, type LpbKategori, type Terreng } from '../data/lpb-st
 import { medStandard, STANDARD_MODELL, type Modellantakelser, type Observasjonsklasse, type SporRessurs } from '../data/modellantakelser';
 import type { ValgtKategori } from '../model/lpb';
 import { INGEN_RESSURSER, type Ressursantall } from '../model/ressurser';
-import type { OsmData } from '../model/typer';
+import type { LinjeType, OsmData } from '../model/typer';
 import type { LatLng } from './coords';
 import type { ForslagGrunnlag } from './grunnlag';
 import type { Sekvens } from './naming';
@@ -50,6 +50,26 @@ export interface Punkt {
   pos: LatLng;
   /** why it was suggested (points added from «Foreslåtte interessepunkter») */
   begrunnelse?: { type: string; tekst: string; vurder?: string };
+  /** marked as checked («ferdig sjekket») – lowers the probability around the point */
+  sjekket?: { tid: string; av?: string };
+}
+
+/**
+ * A ledelinje marked as searched: by hand («ferdig sjekket») or because imported GPS
+ * tracks follow it. The geometry is stored so the status survives fetching paths again.
+ */
+export interface Linjestatus {
+  tid: string;
+  av?: string;
+  kilde: 'manuell' | 'spor';
+  /** simplified geometry of the line */
+  pts: LatLng[];
+  nr?: string;
+  navn: string;
+  type: LinjeType;
+  /** GPS tracks that follow it, and the share of the line they cover (kilde 'spor') */
+  spor?: string[];
+  andel?: number;
 }
 
 export interface LoggPost {
@@ -102,6 +122,8 @@ export interface Aksjon {
   ressurser: Ressursantall;
   /** OSM chain id → fixed L number */
   lnummer: Record<string, string>;
+  /** OSM chain id → searched status */
+  linjestatus: Record<string, Linjestatus>;
   seq: Sekvens;
   modell: Modellantakelser;
   logg: LoggPost[];
@@ -126,8 +148,9 @@ export function nyId(): string {
  * Data-model revision of an aksjon (separate from the file format version, which stays 1).
  * 2: regioner/Mattson and the savnet profile removed.
  * 3: drone areas 0,2–0,45 km² (one battery) instead of 1–3 km².
+ * 4: funn (finds) count like observations; old ones get klasse «mulig».
  */
-export const AKSJON_SKJEMA = 3;
+export const AKSJON_SKJEMA = 4;
 
 export function nyAksjon(): Aksjon {
   const t = new Date().toISOString();
@@ -148,6 +171,7 @@ export function nyAksjon(): Aksjon {
     sykkelhjul: {},
     ressurser: { ...INGEN_RESSURSER },
     lnummer: {},
+    linjestatus: {},
     seq: {},
     modell: medStandard(undefined),
     logg: [{ tid: t, tekst: 'Aksjon opprettet' }],
@@ -239,6 +263,10 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
     modell: medStandard(a.modell),
     logg: Array.isArray(a.logg) ? a.logg : [],
     lnummer: a.lnummer && typeof a.lnummer === 'object' ? a.lnummer : {},
+    linjestatus:
+      a.linjestatus && typeof a.linjestatus === 'object'
+        ? Object.fromEntries(Object.entries(a.linjestatus).filter(([, s]) => s && Array.isArray(s.pts) && s.pts.every(erLatLng)))
+        : {},
     seq: a.seq && typeof a.seq === 'object' ? a.seq : {},
     sykkelhjul: a.sykkelhjul && typeof a.sykkelhjul === 'object' ? a.sykkelhjul : {},
     ordre: { ...TOMME_ORDRETEKSTER, ...(a.ordre ?? {}) },
@@ -294,6 +322,15 @@ function migrer(a: Aksjon, fra: number, advarsler: string[]): void {
     a.modell.droneMinKm2 = STANDARD_MODELL.droneMinKm2;
     a.modell.droneMaksKm2 = STANDARD_MODELL.droneMaksKm2;
     const t = 'Droneområder er gjort mindre: 0,2–0,45 km² (ca. ett batteri) i stedet for 1–3 km².';
+    a.logg.push({ tid: new Date().toISOString(), tekst: t });
+    advarsler.push(t);
+  }
+  // finds now move the probability like observations; the class was never chosen for old
+  // finds (the field was hidden), so they get the class that only weights locally
+  const funn = fra < 4 ? a.punkter.filter((p) => p.type === 'funn') : [];
+  if (funn.length) {
+    for (const p of funn) p.klasse = 'mulig';
+    const t = `Funn av gjenstand påvirker nå sannsynlighetskartet. ${funn.map((p) => p.id).join(', ')} er satt til «mulig» – kontroller klassifiseringen i fanen Punkter.`;
     a.logg.push({ tid: new Date().toISOString(), tekst: t });
     advarsler.push(t);
   }

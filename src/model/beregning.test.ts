@@ -187,6 +187,30 @@ describe('søk og observasjoner', () => {
   });
 });
 
+describe('ferdig sjekket punkt og ledelinje', () => {
+  it('et sjekket punkt fjerner POD × dekket andel av sannsynligheten i cella', () => {
+    const uten = beregn(input());
+    const g = uten.grid;
+    // the centre of the cell about 600 m east of the IPP, so the 50 m disc stays inside it
+    const i = Math.floor((u0.e + 600 - g.west) / g.cell);
+    const j = Math.floor((g.north - u0.n) / g.cell);
+    const de = g.west + (i + 0.5) * g.cell - u0.e;
+    const dn = g.north - (j + 0.5) * g.cell - u0.n;
+    const med = beregn(input({ innsats: { punkter: [at(de, dn)], linjer: [] } }));
+    const k = j * g.n + i;
+    const andel = (Math.PI * m.sjekketPunktM ** 2) / ((g.cell / g.k) ** 2);
+    expect(med.sokt / (uten.post[k] * m.sjekketPunktPod * andel)).toBeCloseTo(1, 1);
+    expect(med.post[k]).toBeLessThan(uten.post[k]);
+  });
+  it('en sjekket ledelinje senker sannsynligheten langs linja', () => {
+    const r0 = beregn(input({ osm, osmVersjon: '1' }));
+    const r1 = beregn(input({ osm, osmVersjon: '1', innsats: { punkter: [], linjer: [osm.linjer[0].pts] } }));
+    const w1 = (r: typeof r0) => r.linjer.find((l) => l.id === 'w1')!.na;
+    expect(w1(r1)).toBeLessThan(w1(r0) * 0.9);
+    expect(r1.sokt).toBeGreaterThan(0.005);
+  });
+});
+
 describe('søk i teig', () => {
   it('POS = POA før søk × POD, og POA utenfor teiger er resten', () => {
     const ring = [at(-3000, -3000), at(0, -3000), at(0, 3000), at(-3000, 3000)];

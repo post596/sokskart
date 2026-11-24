@@ -127,6 +127,10 @@ omprioritering.
 
 Flere observasjoner: p = (grunnfordeling + Σ rᵢ Gᵢ) / (1 + Σ rᵢ), der rᵢ = wᵢ / K.
 
+**Funn av gjenstand** behandles som en observasjon med samme klasser. Et sikkert eller
+sannsynlig funn blir altså nytt utgangspunkt. Funn registrert før dette ble innført, får
+klassen «mulig» ved innlasting, fordi klassen ikke kunne velges for funn før.
+
 ## 8. Normalisering, søk og POS
 
 1. Alt over normaliseres til 100 %. Dette er **POA før søk** (prior).
@@ -137,6 +141,21 @@ Flere observasjoner: p = (grunnfordeling + Σ rᵢ Gᵢ) / (1 + Σ rᵢ), der r�
 
 Eksempel fra veilederen: R25 har POA 25 %. Hund med POD 50 % gir 12,5 % igjen.
 Søkekjede med POD 70 % gir 3,75 % igjen. Dette er dekket av enhetstester.
+
+**Ferdig sjekket punkt og ledelinje** (`src/model/innsats.ts`). Etter teigsøkene ganges
+sannsynligheten også med det som er igjen etter søkt innsats utenfor teiger:
+
+- Sjekket punkt: en skive på 50 m med POD 80 %.
+- Sjekket ledelinje: en korridor på 30 m til hver side med POD 50 % (hurtigsøk).
+- POD i en celle = POD × andelen av cella som skiva eller korridoren dekker. Det virker
+  for alle cellestørrelser.
+- Arealet samples i rutenettet: skiva skaleres til nøyaktig πr², korridoren til 2 × bredde
+  × lengde.
+- En sjekket sperrepost påvirker ikke kartet.
+- Det som fjernes, telles i POS.
+- Alle fire tallene er modellantakelser.
+- Merk bare det som er sjekket i egne oppdrag. Det som er dekket av et registrert teigsøk,
+  telles ellers dobbelt.
 
 ## 8b. Regioner og Mattson konsensus (fjernet)
 

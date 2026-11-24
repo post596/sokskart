@@ -68,9 +68,9 @@ export function lagFempunktsordre(i: OrdreInput): string {
         (i.fart ? `; gangfart ${fmtFart(i.fart.v)}, mobilitet ${fmtTimer(i.fart.mob)}` : ''),
     );
   }
-  const obs = i.observasjoner.filter((o) => o.type === 'obs' && (o.klasse === 'sikker' || o.klasse === 'sannsynlig'));
+  const obs = i.observasjoner.filter((o) => (o.type === 'obs' || o.type === 'funn') && (o.klasse === 'sikker' || o.klasse === 'sannsynlig'));
   if (obs.length) {
-    L.push('   Observasjoner (sikre/sannsynlige):');
+    L.push('   Observasjoner og funn (sikre/sannsynlige):');
     for (const o of obs) L.push(`   - ${o.id} ${o.klasse}, ${fmtTid(o.tid)}, ${utm(o.pos, a.sone)}${o.tekst ? ` – ${o.tekst}` : ''}`);
   }
   L.push(`b) Egne styrker: ${a.ordre.egneStyrker || '–'}`);

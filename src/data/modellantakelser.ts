@@ -112,6 +112,13 @@ export interface Modellantakelser {
   droneFartKmt: number;
   droneBatteriMin: number;
 
+  /** «Ferdig sjekket» point: POD within the radius (m). */
+  sjekketPunktPod: number;
+  sjekketPunktM: number;
+  /** «Ferdig sjekket» ledelinje (hurtigsøk): POD within this distance (m) on each side. */
+  sjekketLinjePod: number;
+  sjekketLinjeM: number;
+
   /** Tak på søkeradius for stier og veier (km). */
   ledelinjeTakKm: number;
   /** Antall ledelinjer som får L-nummer. */
@@ -167,6 +174,11 @@ export const STANDARD_MODELL: Modellantakelser = {
   droneMaksKm2: 0.45,
   droneFartKmt: 18,
   droneBatteriMin: 25,
+
+  sjekketPunktPod: 0.8,
+  sjekketPunktM: 50,
+  sjekketLinjePod: 0.5,
+  sjekketLinjeM: 30,
 
   ledelinjeTakKm: 10,
   antallLedelinjer: 20,
@@ -240,6 +252,10 @@ export const MODELL_FELT: Array<{
   },
   { felt: 'droneFartKmt', navn: 'Drone søkefart (km/t)', steg: 1, min: 3, max: 60 },
   { felt: 'droneBatteriMin', navn: 'Effektiv flytid per batteri (min)', steg: 1, min: 5, max: 120 },
+  { felt: 'sjekketPunktPod', navn: 'POD for sjekket punkt (0–1)', steg: 0.05, min: 0, max: 1, hjelp: 'Gjelder innenfor radiusen under.' },
+  { felt: 'sjekketPunktM', navn: 'Radius for sjekket punkt (m)', steg: 5, min: 10, max: 500 },
+  { felt: 'sjekketLinjePod', navn: 'POD for sjekket ledelinje (0–1)', steg: 0.05, min: 0, max: 1, hjelp: 'Hurtigsøk langs linja. Gjelder innenfor avstanden under på hver side.' },
+  { felt: 'sjekketLinjeM', navn: 'Avstand på hver side av sjekket ledelinje (m)', steg: 5, min: 5, max: 300 },
   { felt: 'ledelinjeTakKm', navn: 'Tak på søkeradius for stier (km)', steg: 1, min: 1, max: 25 },
   { felt: 'antallLedelinjer', navn: 'Antall ledelinjer med L-nummer', steg: 1, min: 5, max: 60 },
   { felt: 'antallPunkter', navn: 'Antall mest sannsynlige punkter', steg: 1, min: 3, max: 20 },

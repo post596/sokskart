@@ -45,7 +45,8 @@ const lukk = (r: LatLng[]) => {
 };
 const xy = (p: LatLng) => [+p.lng.toFixed(6), +p.lat.toFixed(6)];
 
-const PUNKTTYPE: Record<string, string> = { obs: 'Observasjon', sp: 'Sperrepost', poi: 'Refleks/POI', funn: 'Funn' };
+const PUNKTTYPE: Record<string, string> = { obs: 'Observasjon/etterretning', sp: 'Sperrepost', poi: 'Interessepunkt (refleks)', funn: 'Funn av gjenstand' };
+const medKlasse = (t: string) => t === 'obs' || t === 'funn';
 
 export function lagGeoJson(i: EksportInput): string {
   const a = i.aksjon;
@@ -75,9 +76,10 @@ export function lagGeoJson(i: EksportInput): string {
         name: p.id,
         kind: p.type,
         type: PUNKTTYPE[p.type],
-        ...(p.type === 'obs' ? { klasse: p.klasse } : {}),
+        ...(medKlasse(p.type) ? { klasse: p.klasse } : {}),
         tid: p.tid,
         description: p.tekst,
+        ...(p.sjekket ? { sjekket: p.sjekket.tid } : {}),
         ...(p.begrunnelse ? { begrunnelse: p.begrunnelse.tekst, vurder: p.begrunnelse.vurder ?? '' } : {}),
       },
       geometry: { type: 'Point', coordinates: xy(p.pos) },
@@ -121,7 +123,7 @@ export function lagKml(i: EksportInput): string {
   }
   for (const p of a.punkter) {
     ut.push(
-      `<Placemark><name>${escXml(p.id)}</name><description>${escXml(`${PUNKTTYPE[p.type]}${p.type === 'obs' ? ` (${p.klasse})` : ''}${p.tekst ? ` – ${p.tekst}` : ''}${p.begrunnelse ? `. Hvorfor: ${p.begrunnelse.tekst}${p.begrunnelse.vurder ? ` Vurder: ${p.begrunnelse.vurder}` : ''}` : ''}`)}</description><Point><coordinates>${koord([p.pos])}</coordinates></Point></Placemark>`,
+      `<Placemark><name>${escXml(p.id)}</name><description>${escXml(`${PUNKTTYPE[p.type]}${medKlasse(p.type) ? ` (${p.klasse})` : ''}${p.sjekket ? ', ferdig sjekket' : ''}${p.tekst ? ` – ${p.tekst}` : ''}${p.begrunnelse ? `. Hvorfor: ${p.begrunnelse.tekst}${p.begrunnelse.vurder ? ` Vurder: ${p.begrunnelse.vurder}` : ''}` : ''}`)}</description><Point><coordinates>${koord([p.pos])}</coordinates></Point></Placemark>`,
     );
   }
   for (const l of i.ledelinjer) {

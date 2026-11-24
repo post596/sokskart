@@ -43,6 +43,8 @@ export interface SannsynlighetInput {
   hav: Uint8Array | null;
   observasjoner: Observasjon[];
   sok: SokMaske[];
+  /** remaining share per cell after search effort outside teiger (checked points/lines, GPS tracks) */
+  innsats?: Float32Array | null;
 }
 
 export interface SannsynlighetResultat {
@@ -164,6 +166,7 @@ export function beregnSannsynlighet(inp: SannsynlighetInput): SannsynlighetResul
     const f = 1 - Math.min(1, Math.max(0, s.pod));
     for (const c of s.celler) p[c] *= f;
   }
+  if (inp.innsats) for (let k = 0; k < N; k++) p[k] *= inp.innsats[k];
   const igjen = normaliser(p);
   const sokt = 1 - igjen;
 

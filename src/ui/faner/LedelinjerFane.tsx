@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { prosent } from '../../domain/pod';
+import { settLinjeSjekket } from '../../state/handlinger';
 import { LINJETYPE_FARGE, LINJETYPE_NAVN, type LinjeType } from '../../model/typer';
 import { useStore } from '../../state/store';
 import { Advarsel } from '../felles';
@@ -10,7 +12,14 @@ export function LedelinjerFane() {
   const osm = useStore((s) => s.osm);
   const r = useStore((s) => s.resultat);
   const status = useStore((s) => s.osmStatus);
+  const valgt = useStore((s) => s.valgt);
   const K = a.modell.antallLedelinjer;
+  const valgtId = valgt?.type === 'linje' ? valgt.id : null;
+  const listeRef = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    if (valgtId) listeRef.current?.querySelector(`[data-id="${CSS.escape(valgtId)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [valgtId]);
+  const sjekkede = Object.entries(a.linjestatus);
 
   return (
     <div className="fane">
@@ -43,20 +52,32 @@ export function LedelinjerFane() {
         ))}
       </div>
       {r && osm && (
-        <ol className="liste">
+        <ol className="liste" ref={listeRef}>
           {r.linjer.slice(0, K).map((l) => {
             const ol = osm.linjer[l.i];
             const nr = a.lnummer[l.id] ?? '–';
+            const st = a.linjestatus[l.id];
             return (
-              <li key={l.id}>
+              <li key={l.id} data-id={l.id} className={valgtId === l.id ? 'valgt' : st ? 'sjekket' : ''}>
                 <div className="linje">
                   <b>
-                    <i className="farge" style={{ background: LINJETYPE_FARGE[l.type] }} /> {nr} {l.navn || LINJETYPE_NAVN[l.type]}
+                    <i className="farge" style={{ background: LINJETYPE_FARGE[l.type] }} /> {st && '✓ '}
+                    {nr} {l.navn || LINJETYPE_NAVN[l.type]}
                   </b>
                   <span className="knapperad">
                     <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: ol.pts })}>
                       Vis
                     </button>
+                    {st?.kilde !== 'spor' && (
+                      <button
+                        type="button"
+                        className={`knapp liten ${st ? '' : 'hoved'}`}
+                        title={st ? 'Fjern merket «ferdig sjekket»' : 'Merk som ferdig sjekket – senker sannsynligheten langs linja'}
+                        onClick={() => settLinjeSjekket(l.id, !st)}
+                      >
+                        {st ? 'Angre sjekket' : 'Sjekket'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="knapp liten"
@@ -72,11 +93,41 @@ export function LedelinjerFane() {
                   {l.for > l.na * 1.05 && ` (før søk ${prosent(l.for)})`}
                   {Number.isFinite(l.tMin) && ` · nås etter ${fmtTimer(l.tMin)}`}
                   {ol.kilde === 'turrutebasen' && ' · Turrutebasen'}
+                  {st && (st.kilde === 'spor' ? ` · søkt (GPS-spor ${prosent(st.andel ?? 1, 0)})` : ` · ferdig sjekket ${fmtTid(st.tid)}${st.av ? ` av ${st.av}` : ''}`)}
                 </div>
               </li>
             );
           })}
         </ol>
+      )}
+      {sjekkede.length > 0 && (
+        <>
+          <h3>Søkte og sjekkede ledelinjer ({sjekkede.length})</h3>
+          <ul className="liste kompakt">
+            {sjekkede.map(([id, st]) => (
+              <li key={id} className={valgtId === id ? 'valgt' : 'sjekket'}>
+                <div className="linje">
+                  <span>
+                    ✓ <b>{st.nr ?? LINJETYPE_NAVN[st.type]}</b> {st.navn && `«${st.navn}»`}{' '}
+                    <span className="dempet liten-tekst">
+                      {st.kilde === 'spor' ? `GPS-spor ${prosent(st.andel ?? 1, 0)}` : `sjekket ${fmtTid(st.tid)}${st.av ? ` av ${st.av}` : ''}`}
+                    </span>
+                  </span>
+                  <span className="knapperad">
+                    <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: st.pts })}>
+                      Vis
+                    </button>
+                    {st.kilde === 'manuell' && (
+                      <button type="button" className="knapp liten" onClick={() => settLinjeSjekket(id, false)}>
+                        Angre
+                      </button>
+                    )}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
