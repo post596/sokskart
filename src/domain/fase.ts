@@ -22,7 +22,7 @@ export function sokefase(timer: number | null, grenser: [number, number]): Sokef
 }
 
 export interface TeigOnske {
-  modus: 'navet' | 'neste' | 'sett' | 'region';
+  modus: 'navet' | 'neste' | 'sett';
   antall: number;
   teknikk: SokTeknikk;
 }
@@ -73,7 +73,7 @@ export function faseanbefaling(p: {
   }
   return {
     fase,
-    tekst: 'Formell søksplanlegging: lag et felles teigsett for 75 %-sonen og prioriter etter POA. Bruk regioner og kvalitetssikring.',
+    tekst: 'Formell søksplanlegging: lag et felles teigsett for 75 %-sonen og prioriter etter POA. Bruk kvalitetssikringen.',
     teig: { modus: 'sett', antall: 0, teknikk: p.standardTeknikk },
     knapp: 'Foreslå teigsett for 75 %-sonen',
   };

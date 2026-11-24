@@ -6,8 +6,8 @@ import type { BeregningResultat, ForslagOnske, TeigForslag } from '../model/bere
 import type { HoydeRaster, OsmData } from '../model/typer';
 import { hent, lagre, slettAlt } from '../services/lagring';
 
-export type Fane = 'aksjon' | 'savnet' | 'ledelinjer' | 'teiger' | 'regioner' | 'punkter' | 'ressurser' | 'tidslinje' | 'statistikk';
-export type Modus = null | { type: 'ipp' } | { type: 'punkt' } | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' } | { type: 'region' };
+export type Fane = 'aksjon' | 'savnet' | 'ledelinjer' | 'teiger' | 'punkter' | 'ressurser' | 'tidslinje' | 'statistikk';
+export type Modus = null | { type: 'ipp' } | { type: 'punkt' } | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' };
 export type OrdreFor = { type: 'teig' | 'linje' | 'punkt'; id: string };
 
 export interface Melding {
@@ -180,7 +180,11 @@ export const useStore = create<State>()((set, get) => ({
     if (aksjon) {
       // run through the importer to fill fields added in later versions
       const r = lesAksjonsfil(JSON.stringify({ format: 'sokskart-aksjon', versjon: 1, aksjon, statistikk: statistikk ?? [], osm: null }));
-      if (r.ok) p.aksjon = r.fil.aksjon;
+      if (r.ok) {
+        p.aksjon = r.fil.aksjon;
+        // show migration notes once the app is up
+        setTimeout(() => r.advarsler.forEach((t) => get().melding(t, 'info')), 0);
+      }
     }
     if (statistikk?.length) p.statistikk = statistikk;
     if (osm) p.osm = osm;

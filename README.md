@@ -211,9 +211,6 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
   ferdig tekst (situasjon, oppdrag, utførelse, administrasjon/forsyning, ledelse/samband)
   med UTM, savnetprofil og sikre/sannsynlige observasjoner. Tekstene for egne styrker, vær,
   administrasjon og samband gjelder hele aksjonen.
-- **Regioner og Mattson konsensus** (fanen Regioner): tegn REGA, REGB …, legg til deltakere
-  i ILKO og la hver fordele poeng. Snittet styrer sannsynlighetskartet. I teiglista vises
-  teigene som REGA-T001 (bare internt i ILKO).
 - **GPS-spor** (fanen Teiger): importer GPX. Navn etter veilederen
   («T005–281345–RK–Drone–71») gir ressurstype, organisasjon og id automatisk. Åpne en teig
   for å se dekning og foreslått POD, trykk «Bruk foreslått POD» og juster før du registrerer.
@@ -237,8 +234,7 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
   | Overgang, 6–12 t | Neste teiger der det er mest sannsynlighet igjen, like mange som fotlag (fotmannskap delt på lagstørrelse). |
   | Formell, over 12 t | Teigsett for 75 %-sonen. |
 
-  Under «Andre forslag» kan du også be om nærområdet, neste teiger, hele teigsettet eller å
-  dele en region.
+  Under «Andre forslag» kan du også be om nærområdet, neste teiger eller hele teigsettet.
 - **Teiggeneratoren** lager teiger langs naturlige grenser: stier, veier, bekker, kraftgater,
   jernbane, stup og skog- og myrkanter. Der det ikke finnes slike grenser, deles området langs
   rygger og dalbunner fra høydedata.

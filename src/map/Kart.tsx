@@ -12,7 +12,7 @@ import { LINJETYPE_FARGE, LINJETYPE_NAVN } from '../model/typer';
 import { KARTLAG } from '../services/kartfliser';
 import { VEKTOR_ATTRIBUSJON } from '../services/vektorfliser';
 import { mixRinger, standardVisning } from '../state/beregning';
-import { endreTeigRing, leggTilPunkt, leggTilRegion, leggTilTeig } from '../state/handlinger';
+import { endreTeigRing, leggTilPunkt, leggTilTeig } from '../state/handlinger';
 import { kvalitetssikring } from '../domain/kvalitet';
 import { SPORRESSURSER } from '../data/modellantakelser';
 import { useStore } from '../state/store';
@@ -92,7 +92,7 @@ export function Kart() {
       if (p !== 'teiger') map.getPane(p)!.style.pointerEvents = p === 'linjer' ? 'auto' : 'none';
     }
     linjeRenderer.current = L.canvas({ pane: 'linjer', padding: 0.3 });
-    for (const g of ['regioner', 'ringer', 'alleLinjer', 'spor', 'topp', 'teigforslag', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'forslag', 'egen']) {
+    for (const g of ['ringer', 'alleLinjer', 'spor', 'topp', 'teigforslag', 'teiger', 'ks', 'plan', 'etterretning', 'punkter', 'forslag', 'egen']) {
       grupper.current[g] = L.layerGroup().addTo(map);
     }
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
@@ -135,9 +135,6 @@ export function Kart() {
       if (m?.type === 'teig' && ll.length >= 3) {
         const id = leggTilTeig(ll, m.avgrensning);
         s.melding(`${id} er tegnet. Registrer status og søk i fanen Teiger.`, 'ok');
-      } else if (m?.type === 'region' && ll.length >= 3) {
-        const id = leggTilRegion(ll);
-        s.melding(`${id} er tegnet. Gi regionen navn og legg inn vurderinger i fanen Regioner.`, 'ok');
       } else s.set({ modus: null });
     });
 
@@ -379,19 +376,6 @@ export function Kart() {
     }
   }, [aksjon.teiger, visning.plankart, visning.resultatkart, valgtTeig, redigererTeig]);
 
-  // ------------------------------------------------------------ regions (plankart, used in ILKO)
-  useEffect(() => {
-    const g = grupper.current.regioner;
-    if (!g) return;
-    g.clearLayers();
-    if (!visning.plankart) return;
-    for (const r of aksjon.regioner) {
-      L.polygon(r.ring.map(toLL), { color: '#111827', weight: 2.5, dashArray: '12 6', fill: false, pane: 'teiger', interactive: false })
-        .bindTooltip(`${r.id}${r.navn ? ` ${esc(r.navn)}` : ''}`, { permanent: true, direction: 'center', className: 'regionetikett' })
-        .addTo(g);
-    }
-  }, [aksjon.regioner, visning.plankart]);
-
   // ------------------------------------------------------------ GPS tracks (resultatkart)
   useEffect(() => {
     const g = grupper.current.spor;
@@ -466,8 +450,8 @@ export function Kart() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (modus?.type === 'teig' || modus?.type === 'region') {
-      const col = modus.type === 'region' ? '#111827' : '#1d4ed8';
+    if (modus?.type === 'teig') {
+      const col = '#1d4ed8';
       map.pm.enableDraw('Polygon', { snappable: true, finishOn: 'dblclick', templineStyle: { color: col }, hintlineStyle: { color: col, dashArray: '5 5' }, pathOptions: { color: col } } as L.PM.DrawModeOptions);
       map.doubleClickZoom.disable();
     } else {

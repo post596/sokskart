@@ -48,8 +48,6 @@ function input(over: Partial<BeregningInput> = {}): BeregningInput {
     observasjoner: [],
     teiger: [],
     reflekser: [],
-    regioner: [],
-    konsensus: null,
     ressurser: INGEN_RESSURSER,
     visningTimer: null,
     merkatorBredde: 160,
@@ -188,28 +186,11 @@ describe('søk og observasjoner', () => {
   });
 });
 
-describe('regioner og Mattson konsensus', () => {
-  const REGA = { id: 'REGA', ring: [at(-3000, -3000), at(0, -3000), at(0, 3000), at(-3000, 3000)] };
-  const REGB = { id: 'REGB', ring: [at(0, -3000), at(3000, -3000), at(3000, 3000), at(0, 3000)] };
-  it('uten konsensus viser modellens POA per region', () => {
-    const r = beregn(input({ regioner: [REGA, REGB] }));
-    const sum = r.regioner.reduce((s, x) => s + x.modell, 0) + r.restRegion!.modell;
-    expect(sum).toBeCloseTo(1, 8);
-    // nearly symmetric model (the IPP column lies on the boundary and goes to one side)
-    for (const x of r.regioner) {
-      expect(x.modell).toBeGreaterThan(0.25);
-      expect(x.modell).toBeLessThan(0.45);
-    }
-    expect(r.regioner[0].poaFor).toBeCloseTo(r.regioner[0].modell, 10);
-  });
-  it('med konsensus blir regionenes POA lik konsensus, og søk virker videre', () => {
-    const r = beregn(input({ regioner: [REGA, REGB], konsensus: [0.7, 0.2, 0.1] }));
-    expect(r.regioner[0].poaFor).toBeCloseTo(0.7, 8);
-    expect(r.regioner[1].poaFor).toBeCloseTo(0.2, 8);
-    expect(r.restRegion!.poaFor).toBeCloseTo(0.1, 8);
-    const teig = { id: 'T001', ringer: [REGA.ring], pod: 0.5 };
-    const s = beregn(input({ regioner: [REGA, REGB], konsensus: [0.7, 0.2, 0.1], teiger: [teig] }));
-    expect(s.sokt).toBeCloseTo(0.35, 6);
+describe('søk i teig', () => {
+  it('POS = POA før søk × POD, og POA utenfor teiger er resten', () => {
+    const ring = [at(-3000, -3000), at(0, -3000), at(0, 3000), at(-3000, 3000)];
+    const s = beregn(input({ teiger: [{ id: 'T001', ringer: [ring], pod: 0.5 }] }));
+    expect(s.sokt).toBeCloseTo(0.5 * s.teiger[0].poaFor, 10);
     expect(s.utenforTeiger).toBeCloseTo(1 - s.teiger[0].poaNa, 10);
   });
 });

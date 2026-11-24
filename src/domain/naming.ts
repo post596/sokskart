@@ -1,13 +1,13 @@
 /**
  * Naming conventions from the veileder (kap. 10.5, tabell s. 69):
  * T### teig, L### ledelinje, R### punkt/refleks, H### helikoptersøk, D### drone,
- * SP### sperrepost, REGA/REGB … regioner. Observasjoner (OBS###) and funn (F###) follow
- * the same pattern; they are not named in the table.
+ * SP### sperrepost. Observasjoner (OBS###) and funn (F###) follow the same pattern;
+ * they are not named in the table.
  */
 
 export type Prefiks = 'T' | 'L' | 'R' | 'H' | 'D' | 'SP' | 'OBS' | 'F';
 
-export type Sekvens = Partial<Record<Prefiks | 'REG', number>>;
+export type Sekvens = Partial<Record<Prefiks, number>>;
 
 export const løpenummer = (n: number) => String(n).padStart(3, '0');
 
@@ -15,17 +15,6 @@ export const løpenummer = (n: number) => String(n).padStart(3, '0');
 export function nesteId(seq: Sekvens, prefiks: Prefiks): { id: string; seq: Sekvens } {
   const n = (seq[prefiks] ?? 0) + 1;
   return { id: prefiks + løpenummer(n), seq: { ...seq, [prefiks]: n } };
-}
-
-/** REGA … REGZ, REGAA … */
-export function regionId(index: number): string {
-  let s = '';
-  let i = index;
-  do {
-    s = String.fromCharCode(65 + (i % 26)) + s;
-    i = Math.floor(i / 26) - 1;
-  } while (i >= 0);
-  return 'REG' + s;
 }
 
 /** Etat/organisasjon (veileder tabell s. 69), in the veileder's order. */

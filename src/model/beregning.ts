@@ -6,7 +6,7 @@ import { gangtid } from './gangtid';
 import { cellAreaKm2, cellIndex, cellX, cellY, fraGrid, lagGrid, lagMercatorIndeks, tilGrid, type Grid, type MercatorIndeks } from './grid';
 import { blandingRinger, vektetFart, type Komponent } from './lpb';
 import { cellerLangs, rangerLinjer, tidVedPunkter } from './rangering';
-import { forCellsInPolygon, forCellsNearLine } from './raster';
+import { cellerIPolygon, forCellsInPolygon, forCellsNearLine } from './raster';
 import { fordelRessurser, kandidatIBesteCelle, type Forslag, type Kandidat, type Ressursantall } from './ressurser';
 import { beregnSannsynlighet, mestSannsynlige, sumCeller, UTGANGSPUNKT } from './sannsynlighet';
 import { AREALKLASSE, byggTerreng, type TerrengLag } from './terreng';
@@ -30,10 +30,6 @@ export interface BeregningInput {
   observasjoner: Array<{ pos: LatLng; timerSiden: number; klasse: Observasjonsklasse }>;
   teiger: Array<{ id: string; ringer: LatLng[][]; pod: number }>;
   reflekser: Array<{ id: string; navn: string; pos: LatLng }>;
-  /** regions (REGA …) */
-  regioner: Array<{ id: string; ring: LatLng[] }>;
-  /** Mattson consensus aligned with `regioner` plus the rest, or null (model only) */
-  konsensus: number[] | null;
   ressurser: Ressursantall;
   /** hours walked used for the frontier along ledelinjer (time slider) */
   visningTimer: number | null;
@@ -43,7 +39,7 @@ export interface BeregningInput {
 }
 
 export interface ForslagOnske {
-  teig: { modus: 'navet' | 'neste' | 'sett' | 'region'; antall: number; teknikk: SokTeknikk; region?: LatLng[] } | null;
+  teig: { modus: 'navet' | 'neste' | 'sett'; antall: number; teknikk: SokTeknikk } | null;
   drone: { antall: number } | null;
 }
 
@@ -100,10 +96,6 @@ export interface BeregningResultat {
   teiger: Array<{ id: string; poaFor: number; poaNa: number; celler: number; timer: number }>;
   /** POA now outside all teiger */
   utenforTeiger: number;
-  /** per region: model POA (before consensus), POA before searches and POA now */
-  regioner: Array<{ id: string; modell: number; poaFor: number; poaNa: number }>;
-  /** the rest (outside all regions) */
-  restRegion: { modell: number; poaFor: number; poaNa: number } | null;
   punkter: Punkt[];
   linjer: LinjeInfo[];
   linjeTider: Float32Array;
@@ -169,22 +161,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
   const { v, mob } = vektetFart(komps);
 
   // teiger as cell masks
-  const teigCeller = inp.teiger.map((t) => {
-    const c: number[] = [];
-    forCellsInPolygon(
-      g,
-      t.ringer.map((r) => r.map((p) => tilGrid(g, p))),
-      (idx) => c.push(idx),
-    );
-    return Int32Array.from(c);
-  });
-
-  const tilCeller = (ring: LatLng[]) => {
-    const c: number[] = [];
-    forCellsInPolygon(g, [ring.map((p) => tilGrid(g, p))], (idx) => c.push(idx));
-    return Int32Array.from(c);
-  };
-  const regionCeller = inp.regioner.map((r) => tilCeller(r.ring));
+  const teigCeller = inp.teiger.map((t) => cellerIPolygon(g, t.ringer));
 
   // walking time from each observation that becomes a new starting point (cached)
   cache.obsT1 ??= new Map();
@@ -218,8 +195,6 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     hav: terr.hav,
     observasjoner: obs,
     sok: inp.teiger.map((t, k) => ({ celler: teigCeller[k], pod: t.pod })),
-    regioner: regionCeller,
-    konsensus: inp.konsensus,
   });
 
   const ringer = s.ringer;
@@ -271,21 +246,6 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
   let utenforTeiger = 0;
   for (let k = 0; k < s.post.length; k++) if (!iTeig[k]) utenforTeiger += s.post[k];
 
-  // region statistics (a cell belongs to the first region that contains it)
-  const R = inp.regioner.length;
-  const eier = new Int16Array(s.post.length).fill(R);
-  regionCeller.forEach((c, ri) => {
-    for (const k of c) if (eier[k] === R) eier[k] = ri;
-  });
-  const rFor = new Float64Array(R + 1);
-  const rNa = new Float64Array(R + 1);
-  for (let k = 0; k < s.post.length; k++) {
-    rFor[eier[k]] += s.prior[k];
-    rNa[eier[k]] += s.post[k];
-  }
-  const regioner = inp.regioner.map((r, i) => ({ id: r.id, modell: s.regionModell[i] ?? 0, poaFor: rFor[i], poaNa: rNa[i] }));
-  const restRegion = R ? { modell: s.regionModell[R] ?? 0, poaFor: rFor[R], poaNa: rNa[R] } : null;
-
   // resource suggestions
   const total = Object.values(inp.ressurser).reduce((a, b) => a + (b || 0), 0);
   let forslag: Forslag[] = [];
@@ -314,8 +274,6 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
       const maal = new Uint8Array(N);
       if (o.modus === 'navet') {
         for (let j = 0; j < g.n; j++) for (let i = 0; i < g.n; i++) if (Math.hypot(cellX(g, i) - g.cx, cellY(g, j) - g.cy) / g.k <= ringer[0]) maal[j * g.n + i] = 1;
-      } else if (o.modus === 'region' && o.region) {
-        forCellsInPolygon(g, [o.region.map((p) => tilGrid(g, p))], (idx) => (maal[idx] = 1));
       } else {
         const grenseBand = o.modus === 'neste' ? 1 : 2;
         for (let k = 0; k < N; k++) if (s.band[k] >= 0 && s.band[k] <= grenseBand) maal[k] = 1;
@@ -385,8 +343,6 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
     sokt: s.sokt,
     teiger,
     utenforTeiger,
-    regioner,
-    restRegion,
     punkter,
     linjer,
     linjeTider: tider,

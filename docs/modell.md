@@ -138,17 +138,10 @@ Flere observasjoner: p = (grunnfordeling + Σ rᵢ Gᵢ) / (1 + Σ rᵢ), der r�
 Eksempel fra veilederen: R25 har POA 25 %. Hund med POD 50 % gir 12,5 % igjen.
 Søkekjede med POD 70 % gir 3,75 % igjen. Dette er dekket av enhetstester.
 
-## 8b. Regioner og Mattson konsensus
+## 8b. Regioner og Mattson konsensus (fjernet)
 
-Regioner (REGA, REGB …) er områder med tilnærmet lik POA (veileder 7.5). En celle som ligger
-i flere regioner, hører til den første. Hver deltaker i ILKO fordeler poeng på regionene og
-«resten» utenfor alle regioner. Poengene normaliseres til 100 % per deltaker, og snittet
-blir konsensus-POA (veilederen: «gjennomsnittet av hva hver enkelt mener»).
-
-Når minst én deltaker har vurdert, skaleres sannsynligheten i hver region slik at regionens
-sum blir lik konsensus. Modellen bestemmer fordelingen *inne* i regionen. Har modellen
-ingenting i en region, fordeles konsensus jevnt på arealet. Søk virker deretter som før.
-Uten vurderinger vises modellens POA per region til sammenligning.
+Regioner og Mattson-konsensus er tatt ut av Søkskart (november 2026). Gamle aksjonsfiler
+lastes uten dem, med et varsel.
 
 ## 8c. Dekning og POD fra GPS-spor
 

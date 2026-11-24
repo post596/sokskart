@@ -44,6 +44,24 @@ describe('aksjonsfil', () => {
     const r = lesAksjonsfil(JSON.stringify(f));
     expect(r.ok && r.fil.aksjon.teiger.length === 0 && r.advarsler.length === 1).toBe(true);
   });
+  it('fjerner regioner og Mattson fra gamle filer med ett varsel', () => {
+    const f = lagAksjonsfil(nyAksjon(), kopierStatistikk(), null) as unknown as { aksjon: Record<string, unknown> };
+    f.aksjon.regioner = [{ id: 'REGA', navn: '', ring: [] }];
+    f.aksjon.mattson = { deltakere: [{ id: 'a', navn: 'IL' }], vurdering: {} };
+    f.aksjon.seq = { T: 2, REG: 1 };
+    const r = lesAksjonsfil(JSON.stringify(f));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const a = r.fil.aksjon as unknown as Record<string, unknown>;
+      expect('regioner' in a).toBe(false);
+      expect('mattson' in a).toBe(false);
+      expect(r.fil.aksjon.seq).toEqual({ T: 2 });
+      expect(r.advarsler).toHaveLength(1);
+      // loading again (IndexedDB) gives no new warning
+      const igjen = lesAksjonsfil(JSON.stringify(r.fil));
+      expect(igjen.ok && igjen.advarsler.length).toBe(0);
+    }
+  });
   it('leser aksjonsfiler fra prototypen', () => {
     const proto = {
       state: {

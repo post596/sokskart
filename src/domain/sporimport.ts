@@ -81,7 +81,7 @@ export function tolkSporloggnavn(navn: string): Sporloggnavn | null {
     .filter(Boolean);
   if (deler.length < 4) return null;
   const [avgrensning, ddttmm, org, type, ...rest] = deler;
-  if (!/^(T|L|R|H|D|SP)\d{3}$/i.test(avgrensning) && !/^REG[A-Z]+-?T\d{3}$/i.test(avgrensning)) return null;
+  if (!/^(T|L|R|H|D|SP)\d{3}$/i.test(avgrensning)) return null;
   if (!/^\d{6}$/.test(ddttmm)) return null;
   return { avgrensning: avgrensning.toUpperCase(), ddttmm, org, type, id: rest.join('–') };
 }

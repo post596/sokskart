@@ -1,5 +1,6 @@
 import { distToSegment, pointInRing } from '../domain/geo';
-import { cellX, cellY, type Grid } from './grid';
+import type { LatLng } from '../domain/coords';
+import { cellX, cellY, tilGrid, type Grid } from './grid';
 
 export type XY = [number, number];
 
@@ -75,6 +76,17 @@ export function forCellsInPolygon(g: Grid, rings: XY[][], mark: (idx: number) =>
       if (inside) mark(j * g.n + i);
     }
   }
+}
+
+/** Cell indices inside a polygon given in lat/lng (rings: outer + holes, even–odd). */
+export function cellerIPolygon(g: Grid, ringer: LatLng[][]): Int32Array {
+  const c: number[] = [];
+  forCellsInPolygon(
+    g,
+    ringer.map((r) => r.map((p) => tilGrid(g, p))),
+    (idx) => c.push(idx),
+  );
+  return Int32Array.from(c);
 }
 
 export function rasterPolygon(g: Grid, rings: XY[][], out: Uint8Array, value = 1): void {

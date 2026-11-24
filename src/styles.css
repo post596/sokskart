@@ -897,18 +897,6 @@ textarea {
   padding: 0;
   color: var(--fokus);
 }
-.kort-input {
-  max-width: 220px;
-  min-height: 36px;
-  padding: 4px 8px;
-}
-table.mattson td input[type='number'] {
-  width: 70px;
-}
-table.mattson tfoot th,
-table.mattson tfoot td {
-  border-top: 2px solid var(--linje);
-}
 .dekning {
   background: var(--bla-info);
   border-left: 4px solid var(--bla-kant);
@@ -942,17 +930,6 @@ table.mattson tfoot td {
 }
 .bilde {
   margin: 8px 0;
-}
-.leaflet-tooltip.regionetikett {
-  font: 800 14px system-ui, sans-serif;
-  background: rgba(17, 24, 39, 0.85);
-  color: #fff;
-  border: 0;
-  padding: 2px 8px;
-  box-shadow: none;
-}
-.leaflet-tooltip.regionetikett::before {
-  display: none;
 }
 
 .boks.forslag {

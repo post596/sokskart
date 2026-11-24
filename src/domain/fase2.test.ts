@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { kvalitetssikring, overlapperSirkel, type XY } from './kvalitet';
-import { konsensus, RESTEN } from './mattson';
 import { dekning, forenkle, lengdeInnenfor, lesGpx, ressursFraKode, tolkSporloggnavn } from './sporimport';
 
 const kvadrat = (x: number, y: number, s: number): XY[] => [
@@ -50,28 +49,6 @@ describe('kvalitetssikring (veileder 7.5.2)', () => {
       2,
     );
     expect(r.hoyPoa.map((t) => t.id)).toEqual(['A']);
-  });
-});
-
-describe('Mattson konsensus', () => {
-  it('normaliserer hver deltaker og tar snittet', () => {
-    const k = konsensus(
-      [{ id: 'il' }, { id: 'sp' }, { id: 'tom' }],
-      {
-        il: { REGA: 60, REGB: 30, [RESTEN]: 10 },
-        sp: { REGA: 2, REGB: 2, [RESTEN]: 0 }, // relative points
-        tom: {},
-      },
-      ['REGA', 'REGB'],
-    )!;
-    expect(k.antall).toBe(2);
-    expect(k.andeler.REGA).toBeCloseTo((0.6 + 0.5) / 2, 10);
-    expect(k.andeler.REGB).toBeCloseTo((0.3 + 0.5) / 2, 10);
-    expect(k.andeler[RESTEN]).toBeCloseTo(0.05, 10);
-    expect(Object.values(k.andeler).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 10);
-  });
-  it('gir null uten vurderinger', () => {
-    expect(konsensus([{ id: 'a' }], {}, ['REGA'])).toBeNull();
   });
 });
 

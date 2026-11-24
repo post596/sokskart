@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { datoTidsgruppe, nesteId, oppdragsnavn, regionId, sporloggnavn } from './naming';
+import { datoTidsgruppe, nesteId, oppdragsnavn, sporloggnavn } from './naming';
 
 describe('Navngiving etter veilederen', () => {
   it('gir T001, T002 … uten å endre originalen', () => {
@@ -9,12 +9,6 @@ describe('Navngiving etter veilederen', () => {
     expect(b.id).toBe('T002');
     expect(a.seq.T).toBe(1);
     expect(nesteId(b.seq, 'SP').id).toBe('SP001');
-  });
-  it('gir regioner REGA, REGB … REGZ, REGAA', () => {
-    expect(regionId(0)).toBe('REGA');
-    expect(regionId(1)).toBe('REGB');
-    expect(regionId(25)).toBe('REGZ');
-    expect(regionId(26)).toBe('REGAA');
   });
   it('oppdragsnavn som i veilederens eksempel', () => {
     expect(oppdragsnavn('T001', 'RK', 'Msk', '21')).toBe('T001–RK–Msk–21');

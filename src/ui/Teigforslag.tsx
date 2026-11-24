@@ -21,7 +21,6 @@ export function Teigforslag() {
   const set = useStore((s) => s.set);
   const m = a.modell;
   const [teknikk, setTeknikk] = useState<SokTeknikk>(m.standardTeknikk);
-  const [region, setRegion] = useState('');
   if (!a.ipp) return null;
 
   const R = r?.ringer ?? mixRinger();
@@ -35,10 +34,9 @@ export function Teigforslag() {
     standardTeknikk: m.standardTeknikk,
   });
   const be = (teig: TeigOnske | null, drone: boolean) => {
-    const reg = a.regioner.find((x) => x.id === region);
     set({
       forslagOnske: {
-        teig: teig ? { ...teig, ...(teig.modus === 'region' && reg ? { region: reg.ring } : {}) } : null,
+        teig,
         drone: drone ? { antall: Math.max(1, a.ressurser.drone || 3) } : null,
       },
       ...(teig ? { teigforslag: [] } : {}),
@@ -102,24 +100,6 @@ export function Teigforslag() {
             Teigsett for 75 %-sonen
           </button>
         </div>
-        {a.regioner.length > 0 && (
-          <div className="rad">
-            <label>
-              Del en region i teiger
-              <select value={region} onChange={(e) => setRegion(e.target.value)}>
-                <option value="">Velg region …</option>
-                {a.regioner.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.id} {x.navn}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="knapp" disabled={!region || !!onske} onClick={() => be({ modus: 'region', antall: 0, teknikk }, false)}>
-              Del inn
-            </button>
-          </div>
-        )}
       </details>
       {onske && <p className="liten-tekst">Lager forslag langs naturlige grenser …</p>}
 

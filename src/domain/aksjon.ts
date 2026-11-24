@@ -75,18 +75,6 @@ export interface Ordretekster {
   ledelseSamband: string;
 }
 
-export interface Region {
-  id: string;
-  navn: string;
-  ring: LatLng[];
-}
-
-export interface Mattson {
-  deltakere: Array<{ id: string; navn: string }>;
-  /** deltaker id → region id (or 'resten') → points */
-  vurdering: Record<string, Record<string, number>>;
-}
-
 export type { SporRessurs } from '../data/modellantakelser';
 
 export interface Spor {
@@ -105,6 +93,8 @@ export interface Spor {
 
 export interface Aksjon {
   id: string;
+  /** data-model revision (see AKSJON_SKJEMA); drives one-time migrations in lesAksjonsfil */
+  skjema: number;
   navn: string;
   sarNr: string;
   kategorier: ValgtKategori[];
@@ -127,8 +117,6 @@ export interface Aksjon {
   logg: LoggPost[];
   savnet: Savnetprofil;
   ordre: Ordretekster;
-  regioner: Region[];
-  mattson: Mattson;
   spor: Spor[];
   opprettet: string;
   endret: string;
@@ -157,10 +145,17 @@ export function nyId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+/**
+ * Data-model revision of an aksjon (separate from the file format version, which stays 1).
+ * 2: regioner/Mattson removed.
+ */
+export const AKSJON_SKJEMA = 2;
+
 export function nyAksjon(): Aksjon {
   const t = new Date().toISOString();
   return {
     id: nyId(),
+    skjema: AKSJON_SKJEMA,
     navn: '',
     sarNr: '',
     kategorier: [{ key: 'turgaer', vekt: 1 }],
@@ -180,8 +175,6 @@ export function nyAksjon(): Aksjon {
     logg: [{ tid: t, tekst: 'Aksjon opprettet' }],
     savnet: { ...TOM_PROFIL },
     ordre: { ...TOMME_ORDRETEKSTER },
-    regioner: [],
-    mattson: { deltakere: [], vurdering: {} },
     spor: [],
     opprettet: t,
     endret: t,
@@ -248,13 +241,17 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
   if (typeof o.versjon !== 'number' || o.versjon > AKSJONSFIL_VERSJON) {
     return { ok: false, feil: 'Aksjonsfila er laget med en nyere versjon av Søkskart.' };
   }
-  const a = o.aksjon as Partial<Aksjon> | undefined;
-  if (!a || typeof a !== 'object') return { ok: false, feil: 'Aksjonsfila mangler aksjonsdata.' };
+  if (!o.aksjon || typeof o.aksjon !== 'object') return { ok: false, feil: 'Aksjonsfila mangler aksjonsdata.' };
+  // work on a copy: fields removed from Søkskart are stripped here (the spread below would keep them)
+  const raw = { ...(o.aksjon as Record<string, unknown>) };
+  fjernUtgatteFelt(raw, advarsler);
+  const a = raw as Partial<Aksjon>;
   const base = nyAksjon();
   const aksjon: Aksjon = {
     ...base,
     ...a,
     id: typeof a.id === 'string' ? a.id : base.id,
+    skjema: AKSJON_SKJEMA,
     ipp: erLatLng(a.ipp) ? a.ipp : null,
     aksjonStart: typeof a.aksjonStart === 'string' ? a.aksjonStart : (a.ippSatt ?? null),
     teiger: Array.isArray(a.teiger) ? a.teiger.filter((t) => t && Array.isArray(t.ring) && t.ring.every(erLatLng)) : [],
@@ -268,17 +265,31 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
     sykkelhjul: a.sykkelhjul && typeof a.sykkelhjul === 'object' ? a.sykkelhjul : {},
     savnet: { ...TOM_PROFIL, ...(a.savnet ?? {}) },
     ordre: { ...TOMME_ORDRETEKSTER, ...(a.ordre ?? {}) },
-    regioner: Array.isArray(a.regioner) ? a.regioner.filter((r) => r && Array.isArray(r.ring) && r.ring.every(erLatLng)) : [],
-    mattson: {
-      deltakere: Array.isArray(a.mattson?.deltakere) ? a.mattson!.deltakere : [],
-      vurdering: a.mattson?.vurdering && typeof a.mattson.vurdering === 'object' ? a.mattson.vurdering : {},
-    },
     spor: Array.isArray(a.spor) ? a.spor.filter((s) => s && Array.isArray(s.pts) && s.pts.every(erLatLng)) : [],
   };
   if (Array.isArray(a.teiger) && aksjon.teiger.length < a.teiger.length) advarsler.push('Noen teiger hadde ugyldig geometri og ble hoppet over.');
   const statistikk = Array.isArray(o.statistikk) && o.statistikk.length ? (o.statistikk as LpbKategori[]) : kopierStatistikk();
   const osm = o.osm && typeof o.osm === 'object' && Array.isArray((o.osm as OsmData).linjer) ? (o.osm as OsmData) : null;
   return { ok: true, fil: { format: AKSJONSFIL_FORMAT, versjon: AKSJONSFIL_VERSJON, eksportert: String(o.eksportert ?? ''), aksjon, statistikk, osm }, advarsler };
+}
+
+/**
+ * Removes data from features that no longer exist in Søkskart. Runs on every load
+ * (files and IndexedDB), so it must be safe to repeat.
+ */
+function fjernUtgatteFelt(raw: Record<string, unknown>, advarsler: string[]): void {
+  const regioner = Array.isArray(raw.regioner) ? raw.regioner.length : 0;
+  const mattson = raw.mattson as { deltakere?: unknown[] } | undefined;
+  if (regioner > 0 || (Array.isArray(mattson?.deltakere) && mattson.deltakere.length > 0)) {
+    advarsler.push('Regioner og Mattson-vurderinger er fjernet fra Søkskart og ble ikke lastet inn.');
+  }
+  delete raw.regioner;
+  delete raw.mattson;
+  if (raw.seq && typeof raw.seq === 'object') {
+    const seq = { ...(raw.seq as Record<string, unknown>) };
+    delete seq.REG;
+    raw.seq = seq;
+  }
 }
 
 /** The single-file prototype stored {state:{…}, ways:[…]}. */

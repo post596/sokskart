@@ -8,7 +8,6 @@ import { RessurserFane } from './ui/faner/RessurserFane';
 import { StatistikkFane } from './ui/faner/StatistikkFane';
 import { TeigerFane } from './ui/faner/TeigerFane';
 import { SavnetFane } from './ui/faner/SavnetFane';
-import { RegionerFane } from './ui/faner/RegionerFane';
 import { TidslinjeFane } from './ui/faner/TidslinjeFane';
 import { OrdreDialog } from './ui/Ordre';
 import { Kartkontroller } from './ui/Kartkontroller';
@@ -19,7 +18,6 @@ const FANER: Array<[Fane, string]> = [
   ['savnet', 'Savnet'],
   ['ledelinjer', 'Ledelinjer'],
   ['teiger', 'Teiger'],
-  ['regioner', 'Regioner'],
   ['punkter', 'Punkter'],
   ['ressurser', 'Ressurser'],
   ['tidslinje', 'Tidslinje'],
@@ -31,7 +29,6 @@ const INNHOLD: Record<Fane, () => ReactNode> = {
   savnet: () => <SavnetFane />,
   ledelinjer: () => <LedelinjerFane />,
   teiger: () => <TeigerFane />,
-  regioner: () => <RegionerFane />,
   punkter: () => <PunkterFane />,
   ressurser: () => <RessurserFane />,
   tidslinje: () => <TidslinjeFane />,
@@ -54,9 +51,7 @@ function Modusbar() {
       ? 'Klikk i kartet for å sette IPP'
       : modus?.type === 'punkt'
         ? 'Klikk der punktet skal stå'
-        : modus?.type === 'region'
-          ? 'Klikk hjørnene i regionen – dobbeltklikk eller klikk første hjørne for å avslutte'
-          : 'Klikk hjørnene i teigen – dobbeltklikk eller klikk første hjørne for å avslutte';
+        : 'Klikk hjørnene i teigen – dobbeltklikk eller klikk første hjørne for å avslutte';
   return (
     <div className="modusbar" role="status">
       <span>{tekst}</span>

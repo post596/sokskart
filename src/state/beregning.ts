@@ -1,5 +1,4 @@
 import { timerMellom } from '../domain/aksjon';
-import { konsensus, RESTEN } from '../domain/mattson';
 import { gridFor, type BeregningInput } from '../model/beregning';
 import { blandingRinger, byggKomponenter, vektetFart } from '../model/lpb';
 import { Beregner } from '../model/workerKlient';
@@ -44,22 +43,11 @@ export function lagInput(): BeregningInput | null {
       .map((p) => ({ pos: p.pos, timerSiden: Math.max(0, timerMellom(p.tid, now) ?? 0), klasse: p.klasse })),
     teiger: a.teiger.map((t) => ({ id: t.id, ringer: [t.ring], pod: 1 - t.sok.reduce((acc, x) => acc * (1 - x.pod), 1) })),
     reflekser: a.punkter.filter((p) => p.type === 'poi').map((p) => ({ id: p.id, navn: p.tekst, pos: p.pos })),
-    regioner: a.regioner.map((r) => ({ id: r.id, ring: r.ring })),
-    konsensus: konsensusListe(),
     ressurser: a.ressurser,
     visningTimer: s.visningTimer ?? standardVisning(),
     forslagOnske: s.forslagOnske,
     merkatorBredde: Math.min(1100, Math.max(400, Math.round(g.n * 2.2))),
   };
-}
-
-/** Mattson consensus aligned with the regions (+ rest), or null when nobody has assessed. */
-export function konsensusListe(): number[] | null {
-  const a = useStore.getState().aksjon;
-  if (!a.regioner.length) return null;
-  const ids = a.regioner.map((r) => r.id);
-  const k = konsensus(a.mattson.deltakere, a.mattson.vurdering, ids);
-  return k ? [...ids.map((id) => k.andeler[id]), k.andeler[RESTEN]] : null;
 }
 
 /** Default hours walked: time since last seen (capped by mobility), else 1 hour. */

@@ -307,24 +307,11 @@ export function TeigerFane() {
     set({ modus: { type: 'teig', avgrensning }, redigererTeig: null });
     useStore.getState().melding('Klikk hjørnene i kartet. Dobbeltklikk eller klikk på første hjørne for å avslutte.', 'info');
   };
-  const regionFor = (t: Teig) => {
-    const c = t.ring.reduce((s, p) => ({ lat: s.lat + p.lat / t.ring.length, lng: s.lng + p.lng / t.ring.length }), { lat: 0, lng: 0 });
-    return a.regioner.find((reg) => {
-      let inn = false;
-      for (let i = 0, j = reg.ring.length - 1; i < reg.ring.length; j = i++) {
-        const pi = reg.ring[i];
-        const pj = reg.ring[j];
-        if (pi.lat > c.lat !== pj.lat > c.lat && c.lng < ((pj.lng - pi.lng) * (c.lat - pi.lat)) / (pj.lat - pi.lat) + pi.lng) inn = !inn;
-      }
-      return inn;
-    })?.id;
-  };
-
   return (
     <div className="fane">
       <p className="dempet">
-        Tegn teiger (typisk 0,2–0,5 km², naturlig avgrenset langs ledelinjer). Alle aktører må bruke samme teigsett. POS = POA × POD, akkumulert POD =
-        1 − (1 − POD₁)(1 − POD₂)…
+        Tegn teiger naturlig avgrenset langs ledelinjer (maks {String(a.modell.maksTeigKm2).replace('.', ',')} km² og {fmtTimer(a.modell.maksSoketid)} søk
+        per teig). Alle aktører må bruke samme teigsett. POS = POA × POD, akkumulert POD = 1 − (1 − POD₁)(1 − POD₂)…
       </p>
       <div className="knapperad">
         <button type="button" className="knapp hoved" disabled={!a.ipp} onClick={() => tegn('T')}>
@@ -357,13 +344,12 @@ export function TeigerFane() {
             const f = teigfarge(t.status, t.sok.map((s) => s.pod));
             const areal = areaM2(t.ring) / 1e6;
             const apen = valgt === t.id;
-            const reg = a.regioner.length ? regionFor(t) : undefined;
             const dekning = apen ? dekningForTeig(t, a.spor, a.modell.sokebredde, a.sone) : null;
             return (
               <li key={t.id} className={apen ? 'valgt' : ''}>
                 <div className="linje">
                   <button type="button" className="lenkeknapp" onClick={() => set({ valgtTeig: apen ? null : t.id })} aria-expanded={apen}>
-                    <i className="farge" style={{ background: TEIGFARGER[f] }} /> <b>{reg ? `${reg}-${t.id}` : t.id}</b>{' '}
+                    <i className="farge" style={{ background: TEIGFARGER[f] }} /> <b>{t.id}</b>{' '}
                     <span className="dempet">{TYPENAVN[t.type]}</span>
                   </button>
                   <span className="knapperad">
