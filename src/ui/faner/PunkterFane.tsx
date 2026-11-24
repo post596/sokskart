@@ -97,8 +97,13 @@ export function PunkterFane() {
                 <span className="knapperad">
                   <VisKnapp pos={p.pos} zoom={15} />
                   {(p.type === 'sp' || p.type === 'poi') && (
-                    <button type="button" className="knapp liten" onClick={() => useStore.getState().set({ ordreFor: { type: 'punkt', id: p.id } })}>
-                      Ordre
+                    <button
+                      type="button"
+                      className="knapp liten"
+                      title="Lag 5-punktsordre (oppdrag til mannskapet) for dette punktet"
+                      onClick={() => useStore.getState().set({ ordreFor: { type: 'punkt', id: p.id } })}
+                    >
+                      5-punktsordre
                     </button>
                   )}
                   <button

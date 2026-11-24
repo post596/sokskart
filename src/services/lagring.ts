@@ -2,7 +2,7 @@ import { clear, createStore, del, get, set, type UseStore } from 'idb-keyval';
 
 /**
  * Local storage in IndexedDB. Nothing leaves the device: no server, no tracking.
- * Keys: 'aksjon', 'statistikk', 'osm', 'hoyde'.
+ * Keys: 'aksjon', 'statistikk', 'osm', 'hoyde' ('bilde' from older versions is deleted on load).
  */
 let store: UseStore | null = null;
 const db = () => (store ??= createStore('sokskart', 'data'));

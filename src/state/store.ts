@@ -4,9 +4,9 @@ import { harRegistrerteSok, lesAksjonsfil, nyAksjon, type Aksjon } from '../doma
 import type { LatLng } from '../domain/coords';
 import type { BeregningResultat, ForslagOnske, TeigForslag } from '../model/beregning';
 import type { HoydeRaster, OsmData } from '../model/typer';
-import { hent, lagre, slettAlt } from '../services/lagring';
+import { hent, lagre, slett, slettAlt } from '../services/lagring';
 
-export type Fane = 'aksjon' | 'savnet' | 'ledelinjer' | 'teiger' | 'punkter' | 'ressurser' | 'tidslinje' | 'statistikk';
+export type Fane = 'aksjon' | 'ledelinjer' | 'teiger' | 'punkter' | 'ressurser' | 'tidslinje' | 'statistikk';
 export type Modus = null | { type: 'ipp' } | { type: 'punkt' } | { type: 'teig'; avgrensning: 'T' | 'H' | 'D' };
 export type OrdreFor = { type: 'teig' | 'linje' | 'punkt'; id: string };
 
@@ -72,8 +72,6 @@ interface State {
   forslagOnske: ForslagOnske | null;
   teigforslag: TeigForslag[];
   droneforslag: TeigForslag[];
-  /** photo of the missing person (data URL), only on this device, never exported */
-  bilde: string | null;
   visKvalitet: boolean;
 
   endreAksjon: (fn: (a: Aksjon) => void, logg?: string) => void;
@@ -131,7 +129,6 @@ export const useStore = create<State>()((set, get) => ({
   forslagOnske: null,
   teigforslag: [],
   droneforslag: [],
-  bilde: null,
   visKvalitet: false,
 
   endreAksjon: (fn, logg) =>
@@ -169,14 +166,15 @@ export const useStore = create<State>()((set, get) => ({
   set: (p) => set(p),
 
   lastInn: async () => {
-    const [aksjon, statistikk, osm, hoyde, bilde] = await Promise.all([
+    const [aksjon, statistikk, osm, hoyde] = await Promise.all([
       hent<Aksjon>('aksjon'),
       hent<LpbKategori[]>('statistikk'),
       hent<OsmData>('osm'),
       hent<HoydeRaster>('hoyde'),
-      hent<string>('bilde'),
     ]);
-    const p: Partial<State> = { lastet: true, bilde: bilde ?? null };
+    // the photo of the missing person was removed from Søkskart; delete any old copy
+    void slett('bilde');
+    const p: Partial<State> = { lastet: true };
     if (aksjon) {
       // run through the importer to fill fields added in later versions
       const r = lesAksjonsfil(JSON.stringify({ format: 'sokskart-aksjon', versjon: 1, aksjon, statistikk: statistikk ?? [], osm: null }));
@@ -207,7 +205,6 @@ export const useStore = create<State>()((set, get) => ({
       });
       if (!ok) return false;
     }
-    void lagre('bilde', null);
     set({
       aksjon: r.fil.aksjon,
       statistikk: r.fil.statistikk,
@@ -215,7 +212,6 @@ export const useStore = create<State>()((set, get) => ({
       hoyde: null,
       resultat: null,
       visningTimer: null,
-      bilde: null,
       ordreFor: null,
     });
     get().endreAksjon(() => {}, 'Aksjon åpnet fra fil');
@@ -225,8 +221,7 @@ export const useStore = create<State>()((set, get) => ({
   },
 
   nyAksjon: () => {
-    void lagre('bilde', null);
-    set({ aksjon: nyAksjon(), osm: null, hoyde: null, resultat: null, visningTimer: null, valgtTeig: null, redigererTeig: null, bilde: null, ordreFor: null });
+    set({ aksjon: nyAksjon(), osm: null, hoyde: null, resultat: null, visningTimer: null, valgtTeig: null, redigererTeig: null, ordreFor: null });
   },
 
   slettAksjonHelt: async () => {
@@ -241,7 +236,6 @@ export const useStore = create<State>()((set, get) => ({
       egenposisjon: null,
       valgtTeig: null,
       redigererTeig: null,
-      bilde: null,
       ordreFor: null,
     });
     // map tiles and the app itself stay cached: they hold no personal data

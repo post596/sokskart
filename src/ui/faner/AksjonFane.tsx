@@ -344,10 +344,14 @@ export function AksjonFane() {
       {hoydeStatus.henter && <p className="dempet liten-tekst">Henter høydedata fra Kartverket …</p>}
       {hoydeStatus.feil && <Advarsel type="info">{hoydeStatus.feil}</Advarsel>}
 
-      {a.ipp && ringer && (
+      {ringer && (
         <div className="boks">
           <h3>Situasjon</h3>
           <dl className="kv">
+            <dt>Savnetkategori</dt>
+            <dd>{komps.map((k) => `${k.navn}${komps.length > 1 ? ` (${Math.round(k.w * 100)} %)` : ''}`).join(', ')}</dd>
+            <dt>Sist sett</dt>
+            <dd>{fmtTid(a.sistSett)}</dd>
             <dt>Ringer</dt>
             <dd>
               R25 {fmtAvstand(ringer[0])} · R50 {fmtAvstand(ringer[1])} · R75 {fmtAvstand(ringer[2])} · R95 {fmtAvstand(ringer[3])}

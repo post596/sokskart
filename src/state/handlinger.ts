@@ -3,7 +3,6 @@ import type { LatLng } from '../domain/coords';
 import { nesteId, type Prefiks } from '../domain/naming';
 import { podBetegnelse, prosent } from '../domain/pod';
 import type { Observasjonsklasse } from '../data/modellantakelser';
-import { lagre } from '../services/lagring';
 import { useStore } from './store';
 
 export interface PunktUtkast {
@@ -142,11 +141,4 @@ export function slettSpor(id: string): void {
   useStore.getState().endreAksjon((a) => {
     a.spor = a.spor.filter((s) => s.id !== id);
   }, `GPS-spor «${navn}» slettet`);
-}
-
-export async function settBilde(dataUrl: string | null): Promise<void> {
-  const ok = await lagre('bilde', dataUrl);
-  useStore.getState().set({ bilde: dataUrl });
-  if (!ok) useStore.getState().melding('Klarte ikke lagre bildet på enheten.', 'feil');
-  useStore.getState().endreAksjon(() => {}, dataUrl ? 'Bilde av savnede lagt inn (bare lokalt)' : 'Bilde av savnede fjernet');
 }

@@ -38,13 +38,6 @@ export interface OrdreInput {
   naa: Date;
 }
 
-const SCENARIO: Record<string, string> = {
-  ukjent: 'ikke avklart',
-  mobil: 'trolig i bevegelse (mobil)',
-  'i ro': 'trolig i ro',
-  livløs: 'kan være livløs',
-};
-
 export function omradeNavn(k: OrdreKilde): string {
   return k.type === 'teig' ? k.teig.id : k.type === 'linje' ? k.nr : k.punkt.id;
 }
@@ -54,7 +47,6 @@ const utm = (p: LatLng, sone: ZoneChoice) => formatLatLonUtm(p.lat, p.lng, sone)
 /** Text for a 5-punktsordre (veileder kap. 10.3.1), ready to copy. */
 export function lagFempunktsordre(i: OrdreInput): string {
   const a = i.aksjon;
-  const s = a.savnet;
   const k = i.kilde;
   const L: string[] = [];
   const omr = omradeNavn(k);
@@ -64,14 +56,9 @@ export function lagFempunktsordre(i: OrdreInput): string {
   L.push('');
   L.push('1. SITUASJON');
   L.push('a) Den savnede');
-  const person = [s.navn, s.alder && `${s.alder} år`].filter(Boolean).join(', ');
-  if (person) L.push(`   ${person}`);
-  if (s.beskrivelse) L.push(`   Beskrivelse: ${s.beskrivelse}`);
-  if (s.bekledning) L.push(`   Bekledning: ${s.bekledning}`);
-  if (s.utstyr) L.push(`   Utstyr: ${s.utstyr}`);
+  // personal details are never stored in Søkskart; ILKO gives them orally or from its own systems
+  L.push('   Personopplysninger om den savnede (signalement, bekledning, helse) gis av ILKO.');
   L.push(`   Savnetkategori: ${i.kategorier || 'ikke valgt'}`);
-  if (s.helse) L.push(`   Fysisk og psykisk helse: ${s.helse}`);
-  L.push(`   Scenario: ${SCENARIO[s.scenario] ?? s.scenario}${s.scenarioTekst ? ` – ${s.scenarioTekst}` : ''}`);
   if (a.sistSett) L.push(`   Sist sett: ${fmtTid(a.sistSett)}`);
   if (a.ipp) L.push(`   IPP: ${utm(a.ipp, a.sone)}`);
   if (i.ringer) {

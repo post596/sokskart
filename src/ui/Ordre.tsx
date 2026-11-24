@@ -98,7 +98,9 @@ export function OrdreDialog() {
             {ordrefelt('varLysFore', 'Vær, lys og føre')}
             {ordrefelt('administrasjon', 'Administrasjon og forsyning')}
             {ordrefelt('ledelseSamband', 'Ledelse og samband')}
-            <p className="liten-tekst dempet">Savnetprofilen hentes fra fanen Savnet.</p>
+            <p className="liten-tekst dempet">
+              Personopplysninger legges ikke inn i Søkskart. Ordren sier at de gis av ILKO – fyll dem eventuelt inn i teksten før den gis ut.
+            </p>
           </div>
           <textarea className="ordretekst mono" readOnly value={tekst} aria-label="Ferdig 5-punktsordre" />
         </div>

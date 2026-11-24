@@ -922,15 +922,6 @@ textarea {
   border-radius: 6px;
   margin: 8px 0;
 }
-.bilde img {
-  max-width: 100%;
-  max-height: 320px;
-  border-radius: 8px;
-  border: 1px solid var(--linje);
-}
-.bilde {
-  margin: 8px 0;
-}
 
 .boks.forslag {
   border-left: 5px solid var(--rod);

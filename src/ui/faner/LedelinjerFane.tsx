@@ -57,8 +57,13 @@ export function LedelinjerFane() {
                     <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: ol.pts })}>
                       Vis
                     </button>
-                    <button type="button" className="knapp liten" onClick={() => useStore.getState().set({ ordreFor: { type: 'linje', id: l.id } })}>
-                      Ordre
+                    <button
+                      type="button"
+                      className="knapp liten"
+                      title="Lag 5-punktsordre (oppdrag til mannskapet) for denne ledelinja: Fra/Til i UTM, lengde, når personen kan ha nådd den, og hurtigsøk helt ut"
+                      onClick={() => useStore.getState().set({ ordreFor: { type: 'linje', id: l.id } })}
+                    >
+                      5-punktsordre
                     </button>
                   </span>
                 </div>

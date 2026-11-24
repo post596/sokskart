@@ -204,13 +204,14 @@ veier, har enhetstester (`*.test.ts` ved siden av koden).
 
 ## Fase 2 – bruk
 
-- **Savnet:** savnetprofil (navn, beskrivelse, bekledning, utstyr, helse, scenario) og
-  statistiske hovedpunkter. Bildet er valgfritt, lagres bare på enheten og tas ikke med i
-  aksjonsfila.
-- **5-punktsordre:** knappen «Ordre» på en teig, ledelinje, sperrepost eller refleks lager
-  ferdig tekst (situasjon, oppdrag, utførelse, administrasjon/forsyning, ledelse/samband)
-  med UTM, savnetprofil og sikre/sannsynlige observasjoner. Tekstene for egne styrker, vær,
-  administrasjon og samband gjelder hele aksjonen.
+- **Ingen personopplysninger:** Søkskart er en åpen løsning og lagrer ikke opplysninger om den
+  savnede (navn, signalement, helse, bilde). Savnetkategori, sist sett og terreng velges i
+  fanen Aksjon. Eldre aksjoner lastes uten savnetprofilen.
+- **5-punktsordre:** knappen «5-punktsordre» på en teig, ledelinje, sperrepost eller refleks
+  lager ferdig tekst (situasjon, oppdrag, utførelse, administrasjon/forsyning,
+  ledelse/samband) med UTM, savnetkategori, statistikk og sikre/sannsynlige observasjoner.
+  Personopplysninger gis av ILKO. Tekstene for egne styrker, vær, administrasjon og samband
+  gjelder hele aksjonen.
 - **GPS-spor** (fanen Teiger): importer GPX. Navn etter veilederen
   («T005–281345–RK–Drone–71») gir ressurstype, organisasjon og id automatisk. Åpne en teig
   for å se dekning og foreslått POD, trykk «Bruk foreslått POD» og juster før du registrerer.

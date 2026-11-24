@@ -356,8 +356,13 @@ export function TeigerFane() {
                     <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: t.ring })}>
                       Vis
                     </button>
-                    <button type="button" className="knapp liten" onClick={() => set({ ordreFor: { type: 'teig', id: t.id } })}>
-                      Ordre
+                    <button
+                      type="button"
+                      className="knapp liten"
+                      title="Lag 5-punktsordre (oppdrag til mannskapet) for denne teigen"
+                      onClick={() => set({ ordreFor: { type: 'teig', id: t.id } })}
+                    >
+                      5-punktsordre
                     </button>
                     <button
                       type="button"

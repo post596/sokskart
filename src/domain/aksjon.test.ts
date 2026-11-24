@@ -62,6 +62,24 @@ describe('aksjonsfil', () => {
       expect(igjen.ok && igjen.advarsler.length).toBe(0);
     }
   });
+  it('fjerner savnetprofil og logglinjene fra Savnet-fanen, men beholder annen logg', () => {
+    const f = lagAksjonsfil(nyAksjon(), kopierStatistikk(), null) as unknown as { aksjon: Record<string, unknown> };
+    f.aksjon.savnet = { navn: 'Ola', alder: '72', scenario: 'mobil' };
+    f.aksjon.logg = [
+      { tid: '1', tekst: 'Aksjon opprettet' },
+      { tid: '2', tekst: 'Savnetprofil: navn endret til «Ola»' },
+      { tid: '3', tekst: 'Bilde av savnede lagt inn (bare lokalt)' },
+      { tid: '4', tekst: 'IPP satt' },
+    ];
+    const r = lesAksjonsfil(JSON.stringify(f));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect('savnet' in (r.fil.aksjon as unknown as Record<string, unknown>)).toBe(false);
+      expect(r.fil.aksjon.logg.map((l) => l.tekst)).toEqual(['Aksjon opprettet', 'IPP satt']);
+      expect(r.advarsler.some((t) => t.includes('personopplysninger'))).toBe(true);
+      expect(JSON.stringify(r.fil)).not.toContain('Ola');
+    }
+  });
   it('leser aksjonsfiler fra prototypen', () => {
     const proto = {
       state: {

@@ -7,7 +7,6 @@ import { PunkterFane } from './ui/faner/PunkterFane';
 import { RessurserFane } from './ui/faner/RessurserFane';
 import { StatistikkFane } from './ui/faner/StatistikkFane';
 import { TeigerFane } from './ui/faner/TeigerFane';
-import { SavnetFane } from './ui/faner/SavnetFane';
 import { TidslinjeFane } from './ui/faner/TidslinjeFane';
 import { OrdreDialog } from './ui/Ordre';
 import { Kartkontroller } from './ui/Kartkontroller';
@@ -15,7 +14,6 @@ import { Tidslinje } from './ui/Tidslinje';
 
 const FANER: Array<[Fane, string]> = [
   ['aksjon', 'Aksjon'],
-  ['savnet', 'Savnet'],
   ['ledelinjer', 'Ledelinjer'],
   ['teiger', 'Teiger'],
   ['punkter', 'Punkter'],
@@ -26,7 +24,6 @@ const FANER: Array<[Fane, string]> = [
 
 const INNHOLD: Record<Fane, () => ReactNode> = {
   aksjon: () => <AksjonFane />,
-  savnet: () => <SavnetFane />,
   ledelinjer: () => <LedelinjerFane />,
   teiger: () => <TeigerFane />,
   punkter: () => <PunkterFane />,

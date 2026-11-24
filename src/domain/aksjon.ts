@@ -52,21 +52,6 @@ export interface LoggPost {
   tekst: string;
 }
 
-export type Scenario = 'ukjent' | 'mobil' | 'i ro' | 'livløs';
-
-/** Savnetprofil (veileder kap. 10.3). The photo is stored separately, only on this device. */
-export interface Savnetprofil {
-  navn: string;
-  alder: string;
-  beskrivelse: string;
-  bekledning: string;
-  utstyr: string;
-  helse: string;
-  scenario: Scenario;
-  scenarioTekst: string;
-  notater: string;
-}
-
 /** Aksjon-wide text used in every 5-punktsordre (edited in the order dialog). */
 export interface Ordretekster {
   egneStyrker: string;
@@ -115,24 +100,11 @@ export interface Aksjon {
   seq: Sekvens;
   modell: Modellantakelser;
   logg: LoggPost[];
-  savnet: Savnetprofil;
   ordre: Ordretekster;
   spor: Spor[];
   opprettet: string;
   endret: string;
 }
-
-export const TOM_PROFIL: Savnetprofil = {
-  navn: '',
-  alder: '',
-  beskrivelse: '',
-  bekledning: '',
-  utstyr: '',
-  helse: '',
-  scenario: 'ukjent',
-  scenarioTekst: '',
-  notater: '',
-};
 
 export const TOMME_ORDRETEKSTER: Ordretekster = {
   egneStyrker: '',
@@ -147,7 +119,7 @@ export function nyId(): string {
 
 /**
  * Data-model revision of an aksjon (separate from the file format version, which stays 1).
- * 2: regioner/Mattson removed.
+ * 2: regioner/Mattson and the savnet profile removed.
  */
 export const AKSJON_SKJEMA = 2;
 
@@ -173,7 +145,6 @@ export function nyAksjon(): Aksjon {
     seq: {},
     modell: medStandard(undefined),
     logg: [{ tid: t, tekst: 'Aksjon opprettet' }],
-    savnet: { ...TOM_PROFIL },
     ordre: { ...TOMME_ORDRETEKSTER },
     spor: [],
     opprettet: t,
@@ -263,7 +234,6 @@ export function lesAksjonsfil(tekst: string): ImportResultat {
     lnummer: a.lnummer && typeof a.lnummer === 'object' ? a.lnummer : {},
     seq: a.seq && typeof a.seq === 'object' ? a.seq : {},
     sykkelhjul: a.sykkelhjul && typeof a.sykkelhjul === 'object' ? a.sykkelhjul : {},
-    savnet: { ...TOM_PROFIL, ...(a.savnet ?? {}) },
     ordre: { ...TOMME_ORDRETEKSTER, ...(a.ordre ?? {}) },
     spor: Array.isArray(a.spor) ? a.spor.filter((s) => s && Array.isArray(s.pts) && s.pts.every(erLatLng)) : [],
   };
@@ -290,7 +260,25 @@ function fjernUtgatteFelt(raw: Record<string, unknown>, advarsler: string[]): vo
     delete seq.REG;
     raw.seq = seq;
   }
+
+  // personal data about the missing person is no longer kept in Søkskart (open app):
+  // drop the profile and the log lines the old Savnet tab wrote (they held the values)
+  const profil = raw.savnet as Record<string, unknown> | undefined;
+  const hadde = !!profil && Object.values(profil).some((v) => typeof v === 'string' && v !== '' && v !== 'ukjent');
+  delete raw.savnet;
+  let fjernet = 0;
+  if (Array.isArray(raw.logg)) {
+    const antallFor = raw.logg.length;
+    raw.logg = (raw.logg as LoggPost[]).filter((l) => !(typeof l?.tekst === 'string' && SAVNET_LOGG.test(l.tekst)));
+    fjernet = antallFor - (raw.logg as LoggPost[]).length;
+  }
+  if (hadde || fjernet > 0) {
+    advarsler.push('Opplysninger om den savnede (profil, bilde og logglinjer om dem) er fjernet. Søkskart lagrer ikke lenger personopplysninger.');
+  }
 }
+
+/** Log lines written by the removed Savnet tab and photo function. */
+export const SAVNET_LOGG = /^(Savnetprofil:|Bilde av savnede)/;
 
 /** The single-file prototype stored {state:{…}, ways:[…]}. */
 function fraPrototype(o: Record<string, unknown>): ImportResultat {

@@ -23,7 +23,6 @@ describe('5-punktsordre (veileder 10.3.1)', () => {
   a.sarNr = 'SAR-1';
   a.ipp = { lat: 61.6265, lng: 8.4006 };
   a.sone = '32';
-  a.savnet = { ...a.savnet, navn: 'Ola', alder: '72', beskrivelse: 'Rød jakke', scenario: 'mobil', helse: 'Demens' };
   a.ordre.egneStyrker = '3 lag NFS';
   const tekst = lagFempunktsordre({
     aksjon: a,
@@ -45,9 +44,10 @@ describe('5-punktsordre (veileder 10.3.1)', () => {
     expect(idx.every((v) => v >= 0)).toBe(true);
     expect([...idx].sort((x, y) => x - y)).toEqual(idx);
   });
-  it('tar med savnetprofil, statistikk, IPP og bare sikre/sannsynlige observasjoner', () => {
-    expect(tekst).toContain('Ola, 72 år');
-    expect(tekst).toContain('Scenario: trolig i bevegelse (mobil)');
+  it('har ingen personopplysninger, men statistikk, IPP og bare sikre/sannsynlige observasjoner', () => {
+    expect(tekst).toContain('gis av ILKO');
+    expect(tekst).toContain('Savnetkategori: Demens');
+    expect(tekst).not.toMatch(/Scenario|Bekledning:|Fysisk og psykisk helse:/);
     expect(tekst).toContain('R25 300 m, R50 800 m, R75 1,9 km, R95 8,3 km');
     expect(tekst).toContain('IPP: 32V 0468222 6832719');
     expect(tekst).toContain('OBS001 sikker');
