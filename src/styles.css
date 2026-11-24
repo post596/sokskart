@@ -950,6 +950,23 @@ textarea {
   min-height: 36px;
   font-weight: 600;
 }
+details.grunnlag {
+  margin: 4px 0 2px;
+  font-size: 0.88rem;
+}
+details.grunnlag summary {
+  cursor: pointer;
+  min-height: 32px;
+  font-weight: 600;
+  color: var(--fokus);
+}
+details.grunnlag ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+details.grunnlag li {
+  margin: 2px 0;
+}
 .liste.kompakt > li {
   padding: 4px 8px;
   margin: 4px 0;

@@ -1,5 +1,6 @@
 import { lokalTid, nyId, type Avgrensningstype, type PunktType, type Sok, type Spor } from '../domain/aksjon';
 import type { LatLng } from '../domain/coords';
+import { medLnummer, type ForslagGrunnlag } from '../domain/grunnlag';
 import { nesteId, type Prefiks } from '../domain/naming';
 import { podBetegnelse, prosent } from '../domain/pod';
 import type { Observasjonsklasse } from '../data/modellantakelser';
@@ -58,22 +59,26 @@ export function slettPunkt(id: string): void {
   }, `${id} slettet`);
 }
 
-export function leggTilTeig(ring: LatLng[], type: Avgrensningstype): string {
+export function leggTilTeig(ring: LatLng[], type: Avgrensningstype, fra?: { grunnlag?: ForslagGrunnlag; logg: string }): string {
   const s = useStore.getState();
   const { id, seq } = nesteId(s.aksjon.seq, type);
-  s.endreAksjon((a) => {
-    a.seq = seq;
-    a.teiger.push({
-      id,
-      type,
-      navn: '',
-      ring: ring.map((p) => ({ lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6) })),
-      status: 'planlagt',
-      utdelt: null,
-      sok: [],
-      opprettet: new Date().toISOString(),
-    });
-  }, `${id} tegnet`);
+  s.endreAksjon(
+    (a) => {
+      a.seq = seq;
+      a.teiger.push({
+        id,
+        type,
+        navn: '',
+        ring: ring.map((p) => ({ lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6) })),
+        status: 'planlagt',
+        utdelt: null,
+        sok: [],
+        opprettet: new Date().toISOString(),
+        ...(fra?.grunnlag ? { grunnlag: medLnummer(fra.grunnlag, a.lnummer) } : {}),
+      });
+    },
+    fra ? `${id} ${fra.logg}` : `${id} tegnet`,
+  );
   s.set({ modus: null, valgtTeig: id, fane: 'teiger' });
   return id;
 }

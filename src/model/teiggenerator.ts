@@ -206,8 +206,9 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
     let t = 0;
     for (const p of celler) t += tid[p];
     const a = celler.length * finArealKm2;
-    // 15 % margin: the boundary cells are added to the parts afterwards
-    return drone ? a / inp.maksKm2 : Math.max(t / (inp.maksTimer * 0.85), a / (inp.maksKm2 * 0.9));
+    // 15 % margin: the boundary cells are added to the parts afterwards. Drone: 5 % margin so
+    // a merged sliver never pushes an area over the maximum (one battery)
+    return drone ? a / (inp.maksKm2 * 0.95) : Math.max(t / (inp.maksTimer * 0.85), a / (inp.maksKm2 * 0.9));
   };
 
   // 2. split too large parts (geodesic k-means with ridge cost)
@@ -258,7 +259,8 @@ export function genererTeiger(inp: GeneratorInput): GenerertTeig[] {
       let bestMal = Infinity;
       for (const [o] of nabo) {
         const m2 = mal([...deler[o], ...d]);
-        if (m2 <= 1.1 && m2 < bestMal) {
+        // foot teiger may end up 10 % over the target (the target has a margin); drone areas may not
+        if (m2 <= (drone ? 1 : 1.1) && m2 < bestMal) {
           best = o;
           bestMal = m2;
         }

@@ -25,6 +25,8 @@ export interface TeigOnske {
   modus: 'navet' | 'neste' | 'sett';
   antall: number;
   teknikk: SokTeknikk;
+  /** why: search phase and the reason for this kind/number of teiger (shown per suggestion) */
+  fase?: { navn: string; timer: number | null; grunn: string };
 }
 
 export interface Faseanbefaling {
@@ -45,14 +47,21 @@ export function faseanbefaling(p: {
   standardTeknikk: SokTeknikk;
 }): Faseanbefaling {
   const fase = sokefase(p.timer, p.grenser);
+  // no crew registered: suggest 3 teiger
   const lag = Math.max(1, Math.floor(p.fotmannskap / Math.max(1, p.mannskapPerLag)) || 3);
+  const f = (grunn: string) => ({ navn: FASENAVN[fase], timer: p.timer, grunn });
   if (fase === 'forsteinnsats') {
     if (p.r25 < 300) {
       return {
         fase,
         tekst:
           'Sykkelhjulmodellen: søk IPP grundig, ledelinjer helt ut og interessepunkter. R25 er under 300 m, så nærområdet (navet) bør finsøkes umiddelbart. Ikke lag teigsett ennå.',
-        teig: { modus: 'navet', antall: 0, teknikk: 'finsok' },
+        teig: {
+          modus: 'navet',
+          antall: 0,
+          teknikk: 'finsok',
+          fase: f(`R25 er bare ${Math.round(p.r25)} m, så hele nærområdet (navet) deles i finsøksteiger og søkes umiddelbart.`),
+        },
         knapp: 'Foreslå finsøksteiger i nærområdet',
       };
     }
@@ -67,14 +76,28 @@ export function faseanbefaling(p: {
     return {
       fase,
       tekst: `Søket har pågått en stund. Foreslå teiger der det er mest sannsynlighet igjen – like mange som tilgjengelige fotlag (${lag}).`,
-      teig: { modus: 'neste', antall: lag, teknikk: p.standardTeknikk },
+      teig: {
+        modus: 'neste',
+        antall: lag,
+        teknikk: p.standardTeknikk,
+        fase: f(
+          p.fotmannskap > 0
+            ? `${p.fotmannskap} fotmannskap / ${p.mannskapPerLag} per lag = ${lag} lag, så de ${lag} teigene med mest sannsynlighet igjen i 50 %-sonen foreslås.`
+            : `Ingen fotmannskap registrert under Ressurser, så de ${lag} teigene med mest sannsynlighet igjen i 50 %-sonen foreslås.`,
+        ),
+      },
       knapp: `Foreslå ${lag} neste teiger`,
     };
   }
   return {
     fase,
     tekst: 'Formell søksplanlegging: lag et felles teigsett for 75 %-sonen og prioriter etter POA. Bruk kvalitetssikringen.',
-    teig: { modus: 'sett', antall: 0, teknikk: p.standardTeknikk },
+    teig: {
+      modus: 'sett',
+      antall: 0,
+      teknikk: p.standardTeknikk,
+      fase: f('Hele 75 %-sonen deles i et felles teigsett langs naturlige grenser, rangert etter sannsynlighet (veileder 7.5).'),
+    },
     knapp: 'Foreslå teigsett for 75 %-sonen',
   };
 }

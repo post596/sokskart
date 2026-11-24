@@ -208,6 +208,24 @@ describe('teig- og droneforslag', () => {
     // sorted by probability
     expect(r.teigforslag[0].poa).toBeGreaterThanOrEqual(r.teigforslag[3].poa);
   });
+  it('gir en begrunnelse med rang, soner, terreng og teknikk for hvert forslag', () => {
+    const fase = { navn: 'Overgang', timer: 7, grunn: '3 lag' };
+    const r = beregn(input({ osm, osmVersjon: '1', forslagOnske: { teig: { modus: 'neste', antall: 4, teknikk: 'grovsok', fase }, drone: null } }));
+    const g = r.teigforslag.map((t) => t.grunnlag!);
+    expect(g.map((x) => x.rang)).toEqual([1, 2, 3, 4]);
+    expect(g.every((x) => x.antall === 4)).toBe(true);
+    for (let i = 1; i < g.length; i++) expect(g[i].poaKum).toBeGreaterThanOrEqual(g[i - 1].poaKum);
+    expect(g[3].poaKum).toBeCloseTo(r.teigforslag.reduce((s, t) => s + t.poa, 0), 4);
+    for (const x of g) {
+      expect(x.soner.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 2);
+      expect(x.teknikk?.navn).toContain('Grovsøk');
+      expect(x.fase).toEqual(fase);
+      expect(JSON.parse(JSON.stringify(x))).toEqual(x); // plain JSON
+    }
+    expect(r.teigforslag.every((t) => t.teknikk === 'grovsok')).toBe(true);
+    // the trail runs east from the IPP: the best teig should contain it
+    expect(g.some((x) => x.linjer.some((l) => l.id === 'w1'))).toBe(true);
+  });
   it('finsøk av navet dekker R25', () => {
     const r = beregn(input({ forslagOnske: { teig: { modus: 'navet', antall: 0, teknikk: 'finsok' }, drone: null } }));
     const sum = r.teigforslag.reduce((s, t) => s + t.arealKm2, 0);
@@ -218,9 +236,11 @@ describe('teig- og droneforslag', () => {
     const r = beregn(input({ forslagOnske: { teig: null, drone: { antall: 3 } } }));
     expect(r.droneforslag.length).toBeGreaterThan(0);
     for (const d of r.droneforslag) {
-      expect(d.arealKm2).toBeLessThanOrEqual(0.5);
+      expect(d.arealKm2).toBeLessThanOrEqual(m.droneMaksKm2);
       expect(d.arealKm2).toBeGreaterThanOrEqual(0.06);
       expect(droneFlytid(d.arealKm2, m).batterier).toBe(1);
+      expect(d.grunnlag?.drone?.batterier).toBe(1);
+      expect(d.grunnlag?.drone?.effekt).toBeGreaterThanOrEqual(0.5);
     }
   });
   it('lager ingen forslag når de ikke er bedt om', () => {

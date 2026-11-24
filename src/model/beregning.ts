@@ -10,7 +10,9 @@ import { cellerIPolygon, forCellsInPolygon, forCellsNearLine } from './raster';
 import { fordelRessurser, kandidatIBesteCelle, type Forslag, type Kandidat, type Ressursantall } from './ressurser';
 import { beregnSannsynlighet, mestSannsynlige, sumCeller, UTGANGSPUNKT } from './sannsynlighet';
 import { AREALKLASSE, byggTerreng, type TerrengLag } from './terreng';
-import { cellSoketid, sokefaktorer } from './soketid';
+import { cellSoketid, droneFlytid, sokefaktorer } from './soketid';
+import { forslagGrunnlag, type GrunnlagKontekst } from './grunnlag';
+import type { ForslagGrunnlag } from '../domain/grunnlag';
 import { genererTeiger } from './teiggenerator';
 import type { SokTeknikk } from '../data/modellantakelser';
 import { PUNKTTYPENAVN, punktvekter, type PunktTypeKandidat } from '../data/interessepunkter';
@@ -39,7 +41,8 @@ export interface BeregningInput {
 }
 
 export interface ForslagOnske {
-  teig: { modus: 'navet' | 'neste' | 'sett'; antall: number; teknikk: SokTeknikk } | null;
+  /** fase: why the suggestions were asked for (search phase), passed on to the explanation */
+  teig: { modus: 'navet' | 'neste' | 'sett'; antall: number; teknikk: SokTeknikk; fase?: ForslagGrunnlag['fase'] } | null;
   drone: { antall: number } | null;
 }
 
@@ -59,6 +62,10 @@ export interface TeigForslag {
   timer: number;
   poa: number;
   score: number;
+  /** technique the search time is for (teig suggestions) */
+  teknikk?: SokTeknikk;
+  /** why it was suggested */
+  grunnlag?: ForslagGrunnlag;
 }
 
 export interface LinjeInfo {
@@ -269,6 +276,7 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
         return { lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6) };
       }),
     });
+    const ctx: GrunnlagKontekst = { g, band: s.band, T1, v, terr, osm: inp.osm, reflekser: inp.reflekser, sokefaktor: sf };
     if (onske.teig) {
       const o = onske.teig;
       const maal = new Uint8Array(N);
@@ -296,7 +304,13 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
         maksKm2: m.maksTeigKm2,
         minKm2: m.minTeigKm2,
       });
-      teigforslag = (o.modus === 'neste' ? gen.slice(0, Math.max(1, o.antall)) : gen).filter((t) => t.poa > 0 || o.modus !== 'neste').map(tilLL);
+      const valgt = (o.modus === 'neste' ? gen.slice(0, Math.max(1, o.antall)) : gen).filter((t) => t.poa > 0 || o.modus !== 'neste');
+      let kum = 0;
+      teigforslag = valgt.map((t, i) => {
+        kum += t.poa;
+        const grunnlag = forslagGrunnlag(ctx, t.ring, { ...t, rang: i + 1, antall: valgt.length, poaKum: kum }, { teknikk: m.teknikker[o.teknikk], fase: o.fase });
+        return { ...tilLL(t), teknikk: o.teknikk, grunnlag };
+      });
     }
     if (onske.drone) {
       const maal = new Uint8Array(N);
@@ -322,7 +336,13 @@ export function beregn(inp: BeregningInput, cache: BeregningCache = {}): Beregni
         modus: 'drone',
         droneeffekt: droneeffekt(g, terr),
       });
-      droneforslag = gen.slice(0, Math.max(1, onske.drone.antall)).map(tilLL);
+      const valgt = gen.slice(0, Math.max(1, onske.drone.antall));
+      let kum = 0;
+      droneforslag = valgt.map((t, i) => {
+        kum += t.poa;
+        const drone = { effekt: t.poa > 0 ? t.score / t.poa : 0, ...droneFlytid(t.arealKm2, m) };
+        return { ...tilLL(t), grunnlag: forslagGrunnlag(ctx, t.ring, { ...t, rang: i + 1, antall: valgt.length, poaKum: kum }, { drone }) };
+      });
     }
   }
 

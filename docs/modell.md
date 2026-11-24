@@ -223,7 +223,23 @@ rangeres etter POA × effekt.
 
 Flytid per område: areal / (søkebredde × fart), med søkebredde 60 m og 18 km/t, altså ca.
 1,08 km² i timen. Antall batterier = flytid / 25 min, rundet opp. Maks 0,45 km² er valgt slik
-at ett område kan flys på ett batteri. Alle fire tallene er modellantakelser.
+at ett område kan flys på ett batteri. Alle fire tallene er modellantakelser. Generatoren
+deler droneområder til 95 % av maks og slår aldri sammen over maks, slik at ett område aldri
+krever to batterier.
+
+**Begrunnelse per forslag** («Hvorfor dette forslaget?», `src/model/grunnlag.ts`). Når et
+teig- eller droneforslag lages, oppsummeres cellene i hovedrutenettet innenfor omrisset:
+
+- rang og POA (generatorens verdi), og kumulativ POA med forslagene foran
+- arealandel i 25/50/75/95 %-sonen og utenfor
+- korteste gangtid fra IPP og avstand fra IPP til nærmeste kant
+- de tre største arealtypene fra OSM og snitthelning fra høydedata
+- ledelinjer inni (lengde innenfor omrisset, minst 20 m) og interessepunkter inni
+- for fotteiger: teknikk, søketid og snittfaktor for søkefart i terrenget
+- for droneområder: snitt droneeffekt (score / POA), flytid og batterier
+- søksfase og hvorfor antallet (f.eks. fotmannskap delt på lagstørrelse)
+
+Begrunnelsen lagres på teigen når forslaget godkjennes, og vises i fanen Teiger.
 
 **Interessepunkter** (`src/data/interessepunkter.ts`): vekt per punkttype per kategori,
 blandet med kategorivektene. Score = POA innen 150 m × vekt. Punktene ligger minst 150 m fra

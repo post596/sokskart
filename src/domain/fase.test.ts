@@ -15,12 +15,17 @@ describe('søksfase etter tid', () => {
   it('førsteinnsats: ingen teiger, men finsøk av navet når R25 < 300 m', () => {
     expect(faseanbefaling({ ...base, timer: 1 }).teig).toBeNull();
     const navet = faseanbefaling({ ...base, timer: 1, r25: 200 });
-    expect(navet.teig).toEqual({ modus: 'navet', antall: 0, teknikk: 'finsok' });
+    expect(navet.teig).toMatchObject({ modus: 'navet', antall: 0, teknikk: 'finsok' });
+    expect(navet.teig?.fase?.grunn).toContain('R25 er bare 200 m');
   });
-  it('overgang: like mange teiger som fotlag', () => {
+  it('overgang: like mange teiger som fotlag, med grunnen', () => {
     const a = faseanbefaling({ ...base, timer: 7 });
-    expect(a.teig).toEqual({ modus: 'neste', antall: 5, teknikk: 'grovsok' });
-    expect(faseanbefaling({ ...base, timer: 7, fotmannskap: 0 }).teig?.antall).toBe(3);
+    expect(a.teig).toMatchObject({ modus: 'neste', antall: 5, teknikk: 'grovsok' });
+    expect(a.teig?.fase).toMatchObject({ navn: 'Overgang til formell søksplanlegging', timer: 7 });
+    expect(a.teig?.fase?.grunn).toContain('15 fotmannskap / 3 per lag = 5 lag');
+    const ingen = faseanbefaling({ ...base, timer: 7, fotmannskap: 0 });
+    expect(ingen.teig?.antall).toBe(3);
+    expect(ingen.teig?.fase?.grunn).toContain('Ingen fotmannskap registrert');
   });
   it('formell: teigsett for 75 %-sonen', () => {
     expect(faseanbefaling({ ...base, timer: 13 }).teig?.modus).toBe('sett');

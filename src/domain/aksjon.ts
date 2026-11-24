@@ -4,6 +4,7 @@ import type { ValgtKategori } from '../model/lpb';
 import { INGEN_RESSURSER, type Ressursantall } from '../model/ressurser';
 import type { OsmData } from '../model/typer';
 import type { LatLng } from './coords';
+import type { ForslagGrunnlag } from './grunnlag';
 import type { Sekvens } from './naming';
 import { akkumulertPod, type TeigStatus } from './pod';
 import type { ZoneChoice } from './utm';
@@ -33,6 +34,8 @@ export interface Teig {
   utdelt: { tid: string; ressurs: string } | null;
   sok: Sok[];
   opprettet: string;
+  /** why it was suggested (kept from the suggestion when approved) */
+  grunnlag?: ForslagGrunnlag;
 }
 
 export type PunktType = 'obs' | 'sp' | 'poi' | 'funn';

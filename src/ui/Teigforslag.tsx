@@ -9,6 +9,7 @@ import { mixRinger } from '../state/beregning';
 import { leggTilTeig } from '../state/handlinger';
 import { useStore } from '../state/store';
 import { Modellmerke } from './felles';
+import { Grunnlag } from './Grunnlag';
 import { fmtFlytid, fmtKm2, fmtTimer } from './format';
 
 export function Teigforslag() {
@@ -44,15 +45,20 @@ export function Teigforslag() {
     });
   };
   const godkjenn = (f: TeigForslag, type: 'T' | 'D', liste: 'teigforslag' | 'droneforslag') => {
-    const id = leggTilTeig(f.ring, type);
-    useStore.getState().endreAksjon(
-      () => {},
-      `${id} godkjent fra forslag (${fmtKm2(f.arealKm2)}${type === 'T' ? `, ca. ${fmtTimer(f.timer)} ${m.teknikker[teknikk].navn.toLowerCase()}` : ''}, POA ${prosent(f.poa)})`,
-    );
+    // log with the technique the suggestion was made for (not the one selected now)
+    const tek = f.teknikk ? m.teknikker[f.teknikk].navn.toLowerCase() : null;
+    const detalj =
+      type === 'T'
+        ? `ca. ${fmtTimer(f.timer)}${tek ? ` ${tek}` : ''}`
+        : f.grunnlag?.drone
+          ? fmtFlytid(f.grunnlag.drone)
+          : fmtFlytid(droneFlytid(f.arealKm2, m));
+    leggTilTeig(f.ring, type, { grunnlag: f.grunnlag, logg: `godkjent fra forslag (${fmtKm2(f.arealKm2)}, ${detalj}, POA ${prosent(f.poa)})` });
     const s = useStore.getState();
     set({ [liste]: s[liste].filter((x) => x !== f) } as Partial<ReturnType<typeof useStore.getState>>);
   };
   const t = m.teknikker[teknikk];
+  const manuelt = (grunn: string) => ({ navn: 'Valgt manuelt', timer, grunn });
 
   return (
     <section className="boks forslag">
@@ -90,13 +96,31 @@ export function Teigforslag() {
           {fmtKm2((arealPerTime(t) * m.maksSoketid) / 1e6)} på {fmtTimer(m.maksSoketid)} i lett terreng – mindre i skog, myr og bratt. <Modellmerke />
         </p>
         <div className="knapperad">
-          <button type="button" className="knapp liten" disabled={!!onske} onClick={() => be({ modus: 'navet', antall: 0, teknikk: 'finsok' }, false)}>
+          <button
+            type="button"
+            className="knapp liten"
+            disabled={!!onske}
+            onClick={() => be({ modus: 'navet', antall: 0, teknikk: 'finsok', fase: manuelt('nærområdet innenfor R25 deles i finsøksteiger.') }, false)}
+          >
             Nærområdet (R25, finsøk)
           </button>
-          <button type="button" className="knapp liten" disabled={!!onske} onClick={() => be({ modus: 'neste', antall: Math.max(1, Math.floor(a.ressurser.fotmannskap / t.mannskap)) || 3, teknikk }, false)}>
+          <button
+            type="button"
+            className="knapp liten"
+            disabled={!!onske}
+            onClick={() => {
+              const lag = Math.max(1, Math.floor(a.ressurser.fotmannskap / t.mannskap) || 3);
+              be({ modus: 'neste', antall: lag, teknikk, fase: manuelt(`de ${lag} teigene med mest sannsynlighet igjen i 50 %-sonen (ett per fotlag).`) }, false);
+            }}
+          >
             Neste teiger for fotlagene
           </button>
-          <button type="button" className="knapp liten" disabled={!!onske} onClick={() => be({ modus: 'sett', antall: 0, teknikk }, false)}>
+          <button
+            type="button"
+            className="knapp liten"
+            disabled={!!onske}
+            onClick={() => be({ modus: 'sett', antall: 0, teknikk, fase: manuelt('hele 75 %-sonen deles i et teigsett, rangert etter sannsynlighet.') }, false)}
+          >
             Teigsett for 75 %-sonen
           </button>
         </div>
@@ -127,7 +151,8 @@ export function Teigforslag() {
               <li key={i}>
                 <div className="linje">
                   <span>
-                    <b>Forslag {i + 1}</b> · {fmtKm2(f.arealKm2)} · ca. {fmtTimer(f.timer)} · POA {prosent(f.poa)}
+                    <b>Forslag {i + 1}</b> · {fmtKm2(f.arealKm2)} · ca. {fmtTimer(f.timer)}
+                    {f.teknikk ? ` ${m.teknikker[f.teknikk].navn.split(' ')[0].toLowerCase()}` : ''} · POA {prosent(f.poa)}
                   </span>
                   <span className="knapperad">
                     <button type="button" className="knapp liten" onClick={() => useStore.getState().vis({ bounds: f.ring })}>
@@ -138,6 +163,7 @@ export function Teigforslag() {
                     </button>
                   </span>
                 </div>
+                {f.grunnlag && <Grunnlag g={f.grunnlag} />}
               </li>
             ))}
           </ol>
@@ -169,6 +195,7 @@ export function Teigforslag() {
                     </button>
                   </span>
                 </div>
+                {f.grunnlag && <Grunnlag g={f.grunnlag} />}
               </li>
             ))}
           </ol>

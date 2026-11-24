@@ -13,6 +13,7 @@ import { endreSpor, leggTilSpor, registrerSok, settTeigStatus, slettSok, slettSp
 import { useStore } from '../../state/store';
 import { Advarsel, Modellmerke } from '../felles';
 import { Teigforslag } from '../Teigforslag';
+import { Grunnlag } from '../Grunnlag';
 import { fmtAvstand, fmtFlytid, fmtKm2, fmtTid, fmtTimer, lesProsent } from '../format';
 import { droneFlytid } from '../../model/soketid';
 
@@ -436,6 +437,7 @@ export function TeigerFane() {
                         ))}
                       </ul>
                     )}
+                    {t.grunnlag && <Grunnlag g={t.grunnlag} tittel="Hvorfor teigen ble foreslått" />}
                     <SokSkjema key={t.id} teig={t} dekning={dekning} />
                   </div>
                 )}
