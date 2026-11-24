@@ -1,4 +1,5 @@
-import { fmtKm2, fmtTimer } from '../ui/format';
+import { LINJETYPE_FARGE, LINJETYPE_NAVN, type LinjeType } from '../model/typer';
+import { fmtAvstand, fmtKm2, fmtTimer } from '../ui/format';
 import type { Aksjon } from './aksjon';
 import { teigAkkPod } from './aksjon';
 import type { LatLng } from './coords';
@@ -260,4 +261,73 @@ export function utmHjorner(ring: LatLng[], sone: ZoneChoice, maks = 12): string[
     pts = forenklet(tol);
   }
   return pts.map((p) => formatLatLonUtm(p.lat, p.lng, sone));
+}
+
+/** A ledelinje for export (all paths and roads, the prioritised ones, or one). */
+export interface LinjeEksport {
+  navn: string;
+  type: LinjeType;
+  pts: LatLng[];
+  lengdeM: number;
+  nr?: string;
+  kilde?: string;
+  /** «ferdig sjekket» / «søkt (GPS-spor)» */
+  status?: string;
+  /** recommended resource for the stisøk */
+  anbefalt?: string;
+}
+
+export function linjeBeskrivelse(l: LinjeEksport): string {
+  return [
+    `${LINJETYPE_NAVN[l.type]}, ${fmtAvstand(l.lengdeM)}`,
+    l.status ? `status: ${l.status}` : '',
+    l.anbefalt ? `anbefalt: ${l.anbefalt}` : '',
+    l.kilde ? `kilde: ${l.kilde}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** KML with one folder per line type (Sti, Vei, …), styled with the map colours. */
+export function lagLinjeKml(tittel: string, linjer: LinjeEksport[]): string {
+  const ut: string[] = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>',
+    `<name>${escXml(tittel)}</name>`,
+  ];
+  const typer = Object.keys(LINJETYPE_NAVN) as LinjeType[];
+  for (const t of typer) ut.push(`<Style id="linje-${t}"><LineStyle><color>${kmlFarge(LINJETYPE_FARGE[t])}</color><width>3</width></LineStyle></Style>`);
+  const data = (navn: string, v: string | number | null | undefined) => (v == null || v === '' ? '' : `<Data name="${navn}"><value>${escXml(String(v))}</value></Data>`);
+  for (const t of typer) {
+    const gruppe = linjer.filter((l) => l.type === t && l.pts.length >= 2);
+    if (!gruppe.length) continue;
+    ut.push(`<Folder><name>${escXml(LINJETYPE_NAVN[t])} (${gruppe.length})</name>`);
+    for (const l of gruppe) {
+      ut.push(
+        `<Placemark><name>${escXml(l.navn)}</name><description>${escXml(linjeBeskrivelse(l))}</description><styleUrl>#linje-${t}</styleUrl>` +
+          '<ExtendedData>' +
+          data('l_nummer', l.nr) +
+          data('type', LINJETYPE_NAVN[t]) +
+          data('lengde_m', Math.round(l.lengdeM)) +
+          data('status', l.status) +
+          data('anbefalt_ressurs', l.anbefalt) +
+          data('kilde', l.kilde) +
+          '</ExtendedData>' +
+          `<LineString><tessellate>1</tessellate><coordinates>${koord(l.pts)}</coordinates></LineString></Placemark>`,
+      );
+    }
+    ut.push('</Folder>');
+  }
+  ut.push('</Document></kml>');
+  return ut.join('\n');
+}
+
+/** GPX with each line as a track (for GPS units). */
+export function lagLinjeGpx(tittel: string, linjer: LinjeEksport[], tid = new Date()): string {
+  return lagGpx(
+    tittel,
+    [],
+    linjer.filter((l) => l.pts.length >= 2).map((l) => ({ navn: l.navn, pts: l.pts, beskrivelse: linjeBeskrivelse(l) })),
+    tid,
+  );
 }

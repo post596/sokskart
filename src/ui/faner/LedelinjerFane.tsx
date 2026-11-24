@@ -8,6 +8,7 @@ import { fmtAvstand, fmtTid, fmtTimer } from '../format';
 import { hentStier } from './AksjonFane';
 import { stisokAnbefaling, valgteKategorier } from '../../data/stisok';
 import { Stisok } from '../Stisok';
+import { lastNedLinjer } from '../linjeeksport';
 
 export function LedelinjerFane() {
   const a = useStore((s) => s.aksjon);
@@ -50,6 +51,26 @@ export function LedelinjerFane() {
           {osm.linjer.length} linjer innen {fmtAvstand(osm.radiusM)} fra {osm.kilde}, hentet {fmtTid(osm.hentet)}. Mangler i OSM finnes – mannskaper kan
           oppdage ledelinjer som ikke er i kartet.
         </p>
+      )}
+      {osm && (
+        <div className="knapperad">
+          <span className="dempet liten-tekst">Alle stier og veier:</span>
+          {(['kml', 'gpx'] as const).map((f) => (
+            <button key={f} type="button" className="knapp liten" title="Alle hentede stier, veier, bekker og kraftgater, med mappe per type, L-nummer, status og anbefalt ressurs" onClick={() => lastNedLinjer(f, 'alle')}>
+              {f.toUpperCase()}
+            </button>
+          ))}
+          {r && (
+            <>
+              <span className="dempet liten-tekst">Prioriterte:</span>
+              {(['kml', 'gpx'] as const).map((f) => (
+                <button key={f} type="button" className="knapp liten" title="Ledelinjene med L-nummer" onClick={() => lastNedLinjer(f, 'prioriterte')}>
+                  {f.toUpperCase()}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
       )}
       <div className="forklaring">
         {(Object.keys(LINJETYPE_NAVN) as LinjeType[]).map((t) => (

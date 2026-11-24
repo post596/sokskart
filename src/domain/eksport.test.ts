@@ -142,3 +142,27 @@ describe('teiger og forslag til FAKS', () => {
     expect(utmHjorner(sirkelring, '32', 8).length).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe('KML og GPX for stier', () => {
+  it('lager en mappe per linjetype med ExtendedData og escaping', async () => {
+    const { lagLinjeKml, lagLinjeGpx } = await import('./eksport');
+    const linjer = [
+      { navn: 'L001 Sti «Preikestien & co»', type: 'sti' as const, pts: [{ lat: 59, lng: 6 }, { lat: 59.01, lng: 6.01 }], lengdeM: 1300, nr: 'L001', kilde: 'OpenStreetMap', anbefalt: 'Fotlag 1–3 personer' },
+      { navn: 'Vei', type: 'vei' as const, pts: [{ lat: 59, lng: 6 }, { lat: 59.02, lng: 6 }], lengdeM: 2200, status: 'ferdig sjekket' },
+      { navn: 'Bare ett punkt', type: 'vei' as const, pts: [{ lat: 59, lng: 6 }], lengdeM: 0 },
+    ];
+    const kml = lagLinjeKml('Test <1>', linjer);
+    expect(kml).toContain('<name>Test &lt;1&gt;</name>');
+    expect(kml).toContain('<Folder><name>Sti (1)</name>');
+    expect(kml).toContain('<Folder><name>Vei (1)</name>');
+    expect(kml).toContain('Preikestien &amp; co');
+    expect(kml).toContain('<Data name="l_nummer"><value>L001</value></Data>');
+    expect(kml).toContain('<Data name="anbefalt_ressurs"><value>Fotlag 1–3 personer</value></Data>');
+    expect(kml).toContain('<Data name="status"><value>ferdig sjekket</value></Data>');
+    expect(kml).toContain('<coordinates>6.000000,59.000000,0 6.010000,59.010000,0</coordinates>');
+    expect(kml).not.toContain('Bare ett punkt');
+    const gpx = lagLinjeGpx('Test', linjer);
+    expect(gpx.match(/<trk>/g)).toHaveLength(2);
+    expect(gpx).toContain('Sti, 1,3 km');
+  });
+});

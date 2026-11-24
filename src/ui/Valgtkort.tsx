@@ -7,6 +7,7 @@ import { Utm } from './felles';
 import { fmtAvstand, fmtTid, fmtTimer } from './format';
 import { leggTilPoi, PoiGrunnlagListe, poiTittel } from './Poiforslag';
 import { Stisok, useStisok } from './Stisok';
+import { lastNedLinjer } from './linjeeksport';
 
 /**
  * Card over the map for the object clicked in the map: a point, a ledelinje or a suggested
@@ -154,6 +155,12 @@ export function Valgtkort() {
           )}
           <button type="button" className="knapp liten" onClick={() => visIListe('ledelinjer')}>
             Vis i liste
+          </button>
+          <button type="button" className="knapp liten" title="Last ned linja som KML" onClick={() => lastNedLinjer('kml', { id: valgt.id })}>
+            KML
+          </button>
+          <button type="button" className="knapp liten" title="Last ned linja som GPX (GPS)" onClick={() => lastNedLinjer('gpx', { id: valgt.id })}>
+            GPX
           </button>
         </div>
       </>
