@@ -8,7 +8,7 @@ import type { LatLng } from '../domain/coords';
 import { formatLatLonUtm, toUtm } from '../domain/utm';
 import { TEIGFARGER, teigfarge } from '../domain/pod';
 import { LINJETYPE_FARGE, LINJETYPE_NAVN, type LinjeType } from '../model/typer';
-import { KARTLAG } from '../services/kartfliser';
+import { KARTLAG, STRAVA_ATTRIBUSJON, STRAVA_MAKS_ZOOM, stravaStandard, stravaUrl } from '../services/kartfliser';
 import { VEKTOR_ATTRIBUSJON } from '../services/vektorfliser';
 import { mixRinger, standardVisning } from '../state/beregning';
 import { endreTeigRing, leggTilPunkt, leggTilTeig, settSperrefelt, settSperreRadius } from '../state/handlinger';
@@ -108,6 +108,7 @@ export function Kart() {
   const droneforslag = useStore((s) => s.droneforslag);
   const valgt = useStore((s) => s.valgt);
   const linjeFilter = useStore((s) => s.linjeFilter);
+  const stravaLag = useStore((s) => s.stravaLag);
   // which line types the chosen resource is recommended for (primary or alternative)
   const kategorier = aksjon.kategorier;
   const modell = aksjon.modell;
@@ -133,6 +134,7 @@ export function Kart() {
     const panes: Array<[string, number]> = [
       ['sannsynlighet', 350],
       ['gangtid', 360],
+      ['strava', 365],
       ['linjer', 390],
       ['rekkevidde', 395],
       ['teiger', 405],
@@ -243,6 +245,39 @@ export function Kart() {
     t.addTo(map);
     grunn.current = t;
   }, [grunnkart]);
+
+  // ------------------------------------------------------------ Strava heatmap (public tiles, display only, never cached)
+  const stravaAktivitet = stravaLag.aktivitet ?? stravaStandard(valgteKategorier(kategorier));
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !visning.strava) return;
+    let feil = 0;
+    let varslet = false;
+    // no crossOrigin: Strava sends no CORS headers, the tiles are only shown as images
+    const t = L.tileLayer(stravaUrl(stravaAktivitet, stravaLag.farge), {
+      subdomains: 'abc',
+      maxNativeZoom: STRAVA_MAKS_ZOOM,
+      maxZoom: 19,
+      tileSize: 256,
+      opacity: stravaLag.opasitet,
+      pane: 'strava',
+      attribution: STRAVA_ATTRIBUSJON,
+    });
+    t.on('tileerror', () => {
+      feil++;
+      if (feil >= 6 && !varslet) {
+        varslet = true;
+        useStore.getState().melding('Strava-heatmap svarer ikke (ingen nett, eller Strava har stengt tilgangen). Resten av kartet virker som før.', 'info');
+      }
+    });
+    t.on('tileload', () => {
+      feil = 0;
+    });
+    t.addTo(map);
+    return () => {
+      t.remove();
+    };
+  }, [visning.strava, stravaAktivitet, stravaLag.farge, stravaLag.opasitet]);
 
   // ------------------------------------------------------------ IPP and rings (all map layers)
   useEffect(() => {

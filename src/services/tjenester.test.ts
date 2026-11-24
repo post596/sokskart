@@ -39,3 +39,19 @@ describe('kartfliser', () => {
     expect(flisUrl(KARTLAG[0], { z: 10, x: 535, y: 287 })).toBe('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/10/287/535.png');
   });
 });
+
+describe('Strava-heatmap', () => {
+  it('bruker de offentlige flisene uten innlogging, med valgt aktivitet og farge', async () => {
+    const { stravaUrl, stravaStandard, STRAVA_MAKS_ZOOM } = await import('./kartfliser');
+    expect(stravaUrl('run', 'hot')).toBe('https://heatmap-external-{s}.strava.com/tiles/run/hot/{z}/{x}/{y}.png');
+    expect(STRAVA_MAKS_ZOOM).toBe(11);
+    expect(stravaStandard(['turgaer'])).toBe('run');
+    expect(stravaStandard(['turgaer', 'langrenn'])).toBe('winter');
+  });
+  it('lagres aldri offline: ikke et grunnkart, og service workeren cacher bare Kartverket og OSM', async () => {
+    expect(KARTLAG.some((k) => k.url.includes('strava'))).toBe(false);
+    const vite = (await import('../../vite.config.ts?raw')).default;
+    expect(vite).not.toMatch(/strava/i);
+    expect(vite).toContain("url.hostname === 'cache.kartverket.no' || url.hostname === 'tile.openstreetmap.org'");
+  });
+});

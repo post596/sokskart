@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { fliserForOmrade, flisUrl, KARTLAG, lastNedFliser } from '../services/kartfliser';
+import { fliserForOmrade, flisUrl, KARTLAG, lastNedFliser, STRAVA_AKTIVITETER, STRAVA_FARGER, STRAVA_MAKS_ZOOM, stravaStandard, type StravaAktivitet, type StravaFarge } from '../services/kartfliser';
+import { valgteKategorier } from '../data/stisok';
 import { posisjonAktiv, startPosisjon, stoppPosisjon } from '../services/posisjon';
 import { useStore, type Visning } from '../state/store';
 import { BANDFARGER } from '../map/lag';
@@ -25,6 +26,9 @@ export function Kartkontroller() {
   const visning = useStore((s) => s.visning);
   const grunnkart = useStore((s) => s.grunnkart);
   const linjeFilter = useStore((s) => s.linjeFilter);
+  const stravaLag = useStore((s) => s.stravaLag);
+  const kategorier = useStore((s) => s.aksjon.kategorier);
+  const stravaAuto = stravaStandard(valgteKategorier(kategorier));
   const egen = useStore((s) => s.egenposisjon);
   const r = useStore((s) => s.resultat);
   const set = useStore((s) => s.set);
@@ -141,6 +145,61 @@ export function Kartkontroller() {
               </button>
             )}
           </div>
+          <hr />
+          <label className="avkryss">
+            <input type="checkbox" checked={visning.strava} onChange={(e) => set({ visning: { ...visning, strava: e.target.checked } })} />
+            Strava-heatmap (mye brukte stier)
+          </label>
+          {visning.strava && (
+            <>
+              <label>
+                Aktivitet
+                <select
+                  value={stravaLag.aktivitet ?? 'auto'}
+                  onChange={(e) => set({ stravaLag: { ...stravaLag, aktivitet: e.target.value === 'auto' ? null : (e.target.value as StravaAktivitet) } })}
+                >
+                  <option value="auto">Etter kategori ({STRAVA_AKTIVITETER.find((x) => x.id === stravaAuto)?.navn.toLowerCase()})</option>
+                  {STRAVA_AKTIVITETER.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.navn}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Farge
+                <select value={stravaLag.farge} onChange={(e) => set({ stravaLag: { ...stravaLag, farge: e.target.value as StravaFarge } })}>
+                  {STRAVA_FARGER.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.navn}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Synlighet
+                <input
+                  type="range"
+                  min={0.3}
+                  max={1}
+                  step={0.1}
+                  value={stravaLag.opasitet}
+                  onChange={(e) => set({ stravaLag: { ...stravaLag, opasitet: Number(e.target.value) } })}
+                />
+              </label>
+              <details className="grunnlag">
+                <summary>Om Strava-heatmap</summary>
+                <ul>
+                  <li>Viser hvor folk har logget turer i Strava det siste året. Sterk farge = mye brukt.</li>
+                  <li>Avslører stier og gangveier som brukes mye, også de som mangler i OSM – nyttig ved søk etter turfolk.</li>
+                  <li>Grov oppløsning (ca. 20 m, zoom {STRAVA_MAKS_ZOOM}); nærmere inn blir flisene forstørret.</li>
+                  <li>Sier ikke om ferdsel er lovlig eller trygg (kan vise snarveier i bratt terreng).</li>
+                  <li>Brukes ikke i beregningene og lagres ikke for bruk uten nett.</li>
+                  <li>Strava kan stenge tilgangen. Tillatelse til annen bruk enn OSM bør avklares med Strava.</li>
+                </ul>
+              </details>
+            </>
+          )}
           <hr />
           <button type="button" className={`knapp liten ${egen ? 'hoved' : ''}`} onClick={vekslPosisjon}>
             {egen ? 'Skjul min posisjon' : 'Min posisjon'}

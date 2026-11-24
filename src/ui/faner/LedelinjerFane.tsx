@@ -24,6 +24,8 @@ export function LedelinjerFane() {
   }, [valgtId]);
   const sjekkede = Object.entries(a.linjestatus);
   const kat = valgteKategorier(a.kategorier);
+  const strava = useStore((s) => s.visning.strava);
+  const turfolk = kat.some((k) => k === 'turgaer' || k === 'jeger' || k === 'plukker' || k === 'fisker');
 
   return (
     <div className="fane">
@@ -51,6 +53,14 @@ export function LedelinjerFane() {
           {osm.linjer.length} linjer innen {fmtAvstand(osm.radiusM)} fra {osm.kilde}, hentet {fmtTid(osm.hentet)}. Mangler i OSM finnes – mannskaper kan
           oppdage ledelinjer som ikke er i kartet.
         </p>
+      )}
+      {osm && turfolk && !strava && (
+        <Advarsel type="info">
+          Turfolk følger ofte stier som brukes mye – også stier som mangler i OSM.{' '}
+          <button type="button" className="knapp liten" onClick={() => useStore.getState().set({ visning: { ...useStore.getState().visning, strava: true } })}>
+            Vis Strava-heatmap
+          </button>
+        </Advarsel>
       )}
       {osm && (
         <div className="knapperad">

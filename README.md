@@ -145,7 +145,9 @@ Aksjonen lagres fortløpende på enheten og overlever omlasting.
 | Overpass API (`overpass-api.de`, reserve `overpass.private.coffee`) | Stier, veier, vann, myr, bre, stup, hytter | Én spørring per trykk, aldri i løkke. Resultatet lagres i aksjonen og sendes med i aksjonsfila. |
 | Kartverket høydemodell (DTM), WCS `https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-258{32,33,35}`, coverage `nhm_dtm_topo_258xx` | Helning og hav i gangtiden | CC BY 4.0. Hentes som GeoTIFF for beregningsområdet og lagres lokalt. |
 
-Kildene vises nederst til høyre i kartet. URL-ene ble sjekket 22.11.2026 (svarer med CORS).
+| Strava Global Heatmap, offentlige fliser `https://heatmap-external-{a,b,c}.strava.com/tiles/{run,winter,ride,all}/{hot,blue,gray}/{z}/{x}/{y}.png` | Valgfritt kartlag (av som standard) som viser mye brukte stier og gangveier | «Heatmap © Strava». Bare visning: ikke offline, ikke i beregningene, ingen avtegning. Uten innlogging finnes bare zoom ≤ 11 (ca. 20 m). Detaljflisene krever strava.com-cookies som en nettside ikke kan sende. Strava har gitt tillatelse til avtegning bare inn i OpenStreetMap ([OSM-wiki](https://wiki.openstreetmap.org/wiki/Strava)), så **Norsk Folkehjelp bør få skriftlig OK fra Strava** for annen bruk. Strava API gir bare innlogget brukers egne turer, og Garmin Connect har ingen åpen heatmap. |
+
+Kildene vises nederst til høyre i kartet. URL-ene ble sjekket 22.11.2026 (svarer med CORS). Strava-flisene ble sjekket 24.11.2026 (svarer uten CORS, vises som bilder).
 Kartverkets egen tjenesteside for cache-tjenesten var ikke tilgjengelig, så sjekk
 [register.geonorge.no/varsler](https://register.geonorge.no/varsler) for endringer.
 

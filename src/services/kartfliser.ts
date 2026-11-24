@@ -91,3 +91,43 @@ export async function lastNedFliser(
   await Promise.all(Array.from({ length: samtidig }, arbeider));
   return feil;
 }
+
+/**
+ * Strava Global Heatmap as an overlay: where people have run, walked, skied and cycled the
+ * last year – shows much used paths, also those missing in OSM. Only the public tiles that
+ * need no login (up to zoom 11, 512 px ≈ 20 m per pixel in southern Norway); the detailed
+ * tiles need strava.com cookies that a web page cannot send. Display only: Strava sends no
+ * CORS headers (the pixels cannot be read), the tiles are never stored offline (the service
+ * worker only caches Kartverket and OSM) and they are not used in any calculation. Strava has
+ * allowed tracing from the heatmap into OpenStreetMap only; other use should be cleared with
+ * Strava.
+ */
+export type StravaAktivitet = 'run' | 'winter' | 'ride' | 'all';
+export type StravaFarge = 'hot' | 'blue' | 'gray';
+
+export const STRAVA_AKTIVITETER: Array<{ id: StravaAktivitet; navn: string }> = [
+  { id: 'run', navn: 'Til fots (løp, gange, fottur)' },
+  { id: 'winter', navn: 'Vinter (ski)' },
+  { id: 'ride', navn: 'Sykkel' },
+  { id: 'all', navn: 'Alle aktiviteter' },
+];
+
+export const STRAVA_FARGER: Array<{ id: StravaFarge; navn: string }> = [
+  { id: 'hot', navn: 'Rød–gul' },
+  { id: 'blue', navn: 'Blå' },
+  { id: 'gray', navn: 'Grå' },
+];
+
+/** Highest zoom with public tiles; above it the tiles are scaled up. */
+export const STRAVA_MAKS_ZOOM = 11;
+
+export const STRAVA_ATTRIBUSJON = 'Heatmap © <a href="https://www.strava.com/maps/global-heatmap" target="_blank" rel="noopener">Strava</a>';
+
+export function stravaUrl(aktivitet: StravaAktivitet, farge: StravaFarge): string {
+  return `https://heatmap-external-{s}.strava.com/tiles/${aktivitet}/${farge}/{z}/{x}/{y}.png`;
+}
+
+/** Winter activities for ski categories, otherwise on foot. */
+export function stravaStandard(kategorier: string[]): StravaAktivitet {
+  return kategorier.some((k) => k === 'langrenn' || k === 'alpin') ? 'winter' : 'run';
+}
