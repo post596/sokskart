@@ -19,6 +19,7 @@ import { useStore, type Valgt } from '../state/store';
 import { fmtAvstand, fmtTimer } from '../ui/format';
 import { poiTittel } from '../ui/Poiforslag';
 import { divIkon, esc, lagCanvasOverlay, Rekkeviddelinjer, tegnGangtid, tegnSannsynlighet } from './lag';
+import { naermesteLinje, type PlukkLinje, type Px } from './linjeplukk';
 
 const RINGFARGER = ['#7f1d1d', '#b91c1c', '#ea580c', '#a16207'];
 const PUNKTFARGE = {
@@ -46,6 +47,39 @@ function velg(e: L.LeafletEvent, v: Valgt): void {
   if (s.modus || s.redigererTeig) return;
   L.DomEvent.stopPropagation(e as L.LeafletMouseEvent);
   s.set({ valgt: v });
+}
+
+/**
+ * The ledelinje nearest to a click (in pixels), also when lines are hidden or lie under a teig
+ * polygon, so a tap on the path in the base map selects it.
+ */
+function plukkLinje(map: L.Map, ll: L.LatLng): string | null {
+  const s = useStore.getState();
+  const grov = window.matchMedia?.('(pointer: coarse)').matches;
+  const b = map.getBounds().pad(0.1);
+  const linjer: PlukkLinje[] = [];
+  const legg = (id: string, pts: LatLng[]) => {
+    let s0 = 90;
+    let n0 = -90;
+    let w0 = 180;
+    let e0 = -180;
+    for (const q of pts) {
+      s0 = Math.min(s0, q.lat);
+      n0 = Math.max(n0, q.lat);
+      w0 = Math.min(w0, q.lng);
+      e0 = Math.max(e0, q.lng);
+    }
+    if (!b.intersects(L.latLngBounds([s0, w0], [n0, e0]))) return;
+    linjer.push({ id, pts: pts.map((q) => { const c = map.latLngToContainerPoint([q.lat, q.lng]); return [c.x, c.y] as Px; }) });
+  };
+  const ider = new Set<string>();
+  for (const l of s.osm?.linjer ?? []) {
+    legg(l.id, l.pts);
+    ider.add(l.id);
+  }
+  for (const [id, st] of Object.entries(s.aksjon.linjestatus)) if (!ider.has(id)) legg(id, st.pts);
+  const p = map.latLngToContainerPoint(ll);
+  return naermesteLinje([p.x, p.y], linjer, grov ? 14 : 7)?.id ?? null;
 }
 
 export function Kart() {
@@ -97,6 +131,7 @@ export function Kart() {
       ['linjer', 390],
       ['rekkevidde', 395],
       ['teiger', 405],
+      ['valgt', 415],
       ['ringer', 420],
     ];
     for (const [p, z] of panes) {
@@ -141,6 +176,10 @@ export function Kart() {
           const id = leggTilPunkt(pos);
           s.melding(`${id} er lagt til.`, 'ok');
         }
+      } else if (!m && !s.redigererTeig) {
+        // a click that missed the drawn objects: nearest ledelinje within a few pixels, else deselect
+        const id = plukkLinje(map, e.latlng);
+        s.set({ valgt: id ? { type: 'linje', id } : null });
       }
     });
     // right-click, or long-press on touch screens: new point here (funn, observasjon, …)
@@ -376,11 +415,15 @@ export function Kart() {
     if (!valgt) return;
     if (valgt.type === 'linje') {
       const pts = osm?.linjer.find((l) => l.id === valgt.id)?.pts ?? aksjon.linjestatus[valgt.id]?.pts;
-      if (pts) L.polyline(pts.map(toLL), { color: '#2563eb', weight: 12, opacity: 0.45, interactive: false, renderer: linjeRenderer.current ?? undefined }).addTo(g);
+      // own pane above the reach lines and teiger, so the selection is always visible
+      if (pts) {
+        L.polyline(pts.map(toLL), { color: '#ffffff', weight: 13, opacity: 0.95, interactive: false, pane: 'valgt' }).addTo(g);
+        L.polyline(pts.map(toLL), { color: '#0284c7', weight: 6, opacity: 1, interactive: false, pane: 'valgt' }).addTo(g);
+      }
     } else {
       const pos =
         valgt.type === 'punkt' ? aksjon.punkter.find((p) => p.id === valgt.id)?.pos : resultat?.poiforslag.find((p) => p.id === valgt.id)?.pos;
-      if (pos) L.circleMarker(toLL(pos), { radius: 22, color: '#2563eb', weight: 4, fill: false, interactive: false, pane: 'ringer' }).addTo(g);
+      if (pos) L.circleMarker(toLL(pos), { radius: 22, color: '#0284c7', weight: 4, fill: false, interactive: false, pane: 'valgt' }).addTo(g);
     }
   }, [valgt, osm, aksjon.linjestatus, aksjon.punkter, resultat]);
 
@@ -424,9 +467,14 @@ export function Kart() {
       const akk = teigAkkPod(t);
       poly.bindTooltip(`${t.id}${sokt ? ` · ${Math.round(akk * 100)} %` : ''}`, { permanent: true, direction: 'center', className: 'teigetikett' });
       poly.on('click', (e) => {
+        const s = useStore.getState();
+        // while placing or drawing, the click belongs to the map (a point may be placed inside a teig)
+        if (s.modus || s.redigererTeig) return;
         L.DomEvent.stopPropagation(e);
-        if (useStore.getState().modus) return;
-        useStore.getState().set({ valgtTeig: t.id, fane: 'teiger' });
+        // a ledelinje inside the teig wins when the click is right on it
+        const linje = plukkLinje(map, e.latlng);
+        if (linje) s.set({ valgt: { type: 'linje', id: linje } });
+        else s.set({ valgtTeig: t.id, fane: 'teiger' });
       });
       poly.addTo(g);
       teigLag.current.set(t.id, poly);

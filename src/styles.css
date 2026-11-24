@@ -663,6 +663,11 @@ hr {
 .kart.sikte .leaflet-interactive {
   cursor: crosshair !important;
 }
+/* the SVG root of the teig pane spans the whole map: only the polygons themselves may take
+   clicks, so the ledelinjer drawn underneath stay clickable */
+.leaflet-teiger-pane > svg {
+  pointer-events: none;
+}
 .modusbar {
   position: absolute;
   z-index: 900;
